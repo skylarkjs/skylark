@@ -1,0 +1,59 @@
+(function(factory,globals) {
+  var define = globals.define,
+  	  require = globals.require,
+  	  isAmd = (typeof define === 'function' && define.amd),
+  	  isCmd = (!isAmd && typeof exports !== 'undefined');
+
+  // Set up Backbone appropriately for the environment. Start with AMD.
+  if (!isAmd && !define) {
+	var map = {};
+    define = globals.define = function(id, deps, factory) {
+        if (typeof factory == 'function') {
+            map[id] = {
+                factory: factory,
+                deps: deps,
+                exports: null
+            };
+            require(id);
+        } else {
+            resolved[id] = factory;
+        }
+    };
+    require = globals.require = function(id) {
+        if (!map.hasOwnProperty(id)) {
+            throw new Error('Module ' + id + ' has not been defined');
+        }
+        var module = map[id];
+        if (!module.exports) {
+            var args = [];
+
+            module.deps.forEach(function(dep){
+                args.push(require(dep));
+            })
+
+            module.exports = module.factory.apply(window, args);
+        }
+        return module.exports;
+    };
+  }
+
+  factory(define,require);
+
+  if (isAmd) {
+    define([
+      "skylark/main",
+    ],function(skylark){
+      return skylark;
+    });
+  } else {    
+	  var skylark = require("skylark/main");
+
+  	if (isCmd) {
+  		exports = skylark;
+    } else {
+    	globals.skylark = skylark;
+    }
+  }
+
+})(function(define,require) {
+

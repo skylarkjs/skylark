@@ -1,0 +1,49 @@
+{
+  "name": "skylark",
+  "version": "0.9.0",
+  "description": "An Elegant JavaScript Library and HTML5 Application Framework.",
+  "main": "-",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "homepage": "www.skylarkjs.org",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/skylarkjs/skylark.git"
+  },
+  "keywords": [
+    "skylark",
+    "skylarkjs",
+    "javacript",
+    "library",
+    "framework",
+    "Single Page Application"
+  ],
+  "author": "Hudaokeji Co.,Ltd",
+  "license": "MIT",
+  "bugs": "https://github.com/skylarkjs/skylark/issues",
+  "dependencies": {},
+  "devDependencies": {
+    "del": "^1.2.1",
+    "gulp": "^3.9.0",
+    "gulp-amd-optimizer": "^0.3.4",
+    "gulp-autoprefixer": "^2.3.1",
+    "gulp-babel": "^5.2.0",
+    "gulp-concat": "^2.6.0",
+    "gulp-connect": "^2.2.0",
+    "gulp-footer": "^1.0.5",
+    "gulp-header": "^1.7.1",
+    "gulp-jslint": "~0.2.2",
+    "gulp-livereload": "^3.8.0",
+    "gulp-rename": "~1.2.2",
+    "gulp-replace": "^0.6.1",
+    "gulp-sourcemaps": "^1.5.2",
+    "gulp-uglify": "^1.5.4",
+    "gulp-usemin": "^0.3.11",
+    "gulp-util": "^3.0.6",
+    "run-sequence": "^2.1.0"
+  },
+  "engines": {
+    "node": ">=0.8.0"
+  }
+}

@@ -66,6 +66,6 @@ Have a bug or a feature request? Please first read the [issue guidelines](https:
 
 ## license
 
-The code is released under the [MIT License](https://github.com/twbs/bootstrap/blob/master/LICENSE).
+The code is released under the [MIT License](https://github.com/skylarkjs/skylark/blob/master/LICENSE).
 
 

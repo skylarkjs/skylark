@@ -62,7 +62,7 @@ This module provides a sophisticated html5 single application framework.
 
 ## Bugs and feature requests
 
-Have a bug or a feature request? Please first read the [issue guidelines](https://github.com/skylarkjs/skylark/blob/master/CONTRIBUTING.md#using-the-issue-tracker) and search for existing and closed issues. If your problem or idea is not addressed yet, [please open a new issue](https://github.com/skylarkjs/skylark/issues/new).
+Have a bug or a feature request? Please first search existing and closed issues. If your problem or idea is not addressed yet, [please open a new issue](https://github.com/skylarkjs/skylark/issues/new).
 
 ## license
 

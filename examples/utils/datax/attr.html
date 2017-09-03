@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+    em { color: blue;font-weight: bold;}
+    div {color: red; }
+    </style>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js"></script>
+    <script>
+    require.config({
+        baseUrl: "./",
+        packages: [{
+            name: "skylark",
+            location: "../../../src/skylark"
+        } ]
+    });
+    </script>
+</head>
+
+<body>
+    <h4>Example : <span>Find the title attribute of the first  'em' in the page.</span></h4>
+    <p>
+        Once there was a <em title="huge, gigantic">large</em> dinosaur...
+    </p>
+    The title of the emphasis is:
+    <div></div>
+    <script>
+    require(["skylark/query", "skylark/finder", "skylark/datax"], function($, finder, datax) {
+        var title = datax.attr(finder.find("em"), "title");
+        $("div").text(title);
+    });
+    </script>
+</body>
+
+</html>

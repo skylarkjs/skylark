@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js"></script>
+    <script>
+    require.config({
+        baseUrl: "./",
+        packages: [
+            { name: "skylark", location: "../../../src/skylark" }
+        ]
+    });
+    </script>
+</head>
+
+<body>
+    <h4>Example : <span>The match test class name is "test", and alert "matched" if it is "matched".</span></h4>
+    <div class="test">this is a test dom whose class name is test! </div>
+    <button>div.test</button>
+    <button>div.test1</button>
+    <script>
+    require(["skylark/query", "skylark/finder"], function($, finder) {
+        var div = finder.find("div");
+        $("button").on("click", function() {
+            var value = finder.matches(div, $(this).text());
+            alert(value ? "matched" : "not matched");
+        });
+    });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+     p { font-size:150%; cursor:pointer; }
+    </style>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js"></script>
+    <script>
+    require.config({
+        baseUrl: "./",
+        packages: [{
+            name: "skylark",
+            location: "../../../src/skylark"
+        }]
+    });
+    </script>
+</head>
+
+<body>
+<h4>Example : <span>Animates first paragraph to fade to an opacity of 0.33 (33%, about one third visible).</span></h4>
+ <p>
+Click this paragraph to see it fade.
+</p>
+<p>
+Compare to this one that won't fade.
+</p>
+    <script>
+    require(["skylark/query", "skylark/finder", "skylark/fx"], function($,finder,fx) {
+       $("p:first").on("click", function() {
+            fx.fadeTo(finder.find("p"),"slow",0.33);
+        });
+    });
+    </script>
+</body>
+
+</html>

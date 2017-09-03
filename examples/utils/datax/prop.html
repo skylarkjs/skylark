@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js"></script>
+    <script>
+    require.config({
+        baseUrl: "./",
+        packages: [{
+            name: "skylark",
+            location: "../../../src/skylark"
+        } ]
+    });
+    </script>
+</head>
+
+<body>
+    <h4>Example : <span>Click button to convert input and unselected state.</span></h4>
+    <input id="check" type="checkbox" checked=true />
+    <button id="btn" type="button">toggle check</button>
+    <script>
+    require(["skylark/query", "skylark/datax"], function($, datax) {
+        var input = $("#check")[0];
+        var value = datax.prop(input, "checked");
+        $("#btn").on("click", function() {
+            value = !value;
+            datax.prop(input, "checked", value);
+        });
+    });
+    </script>
+</body>
+
+</html>

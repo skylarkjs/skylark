@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+    button {margin: 10px;}
+    div {color: blue; font-weight: bold;}
+    span { color: red;}
+    </style>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js"></script>
+    <script>
+    require.config({
+        baseUrl: "./",
+        packages: [{
+            name: "skylark",
+            location: "../../../src/skylark"
+        }]
+    });
+    </script>
+</head>
+
+<body>
+    <h4>Click button # 2 and trigger the click event of button # 1.</h4>
+    <button>Button #1</button>
+    <button>Button #2</button>
+    <div><span>0</span> button #1 clicks.</div>
+    <div><span>0</span> button #2 clicks.</div>
+    <script>
+    require(["skylark/query", "skylark/eventer"], function($, eventer) {
+        $("button:first").click(function() {
+            update($("span:first"));
+        });
+        $("button:last").click(function() {
+            eventer.trigger($("button:first"), "click");
+            update($("span:last"));
+        });
+
+        function update(node) {
+            var value = parseInt(node.text(), 10);
+            node.text(value + 1);
+        }
+
+    });
+    </script>
+</body>
+
+</html>

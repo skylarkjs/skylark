@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+    .border {height: 100px;width:100px;margin: 100px;padding: 100px; border: 2px solid red;}
+    </style>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js"></script>
+    <script>
+    require.config({
+        baseUrl: "./",
+        packages: [{
+            name: "skylark",
+            location: "../../../src/skylark"
+        }]
+    });
+    </script>
+</head>
+
+<body>
+    <h4>Example : <span> Calculate the width of the four borders of the div, and the b elements display the results.</span></h4>
+    border extents
+    <div>Top: <b></b></div>
+    <div>Right: <b></b></div>
+    <div>Bottom: <b></b></div>
+    <div>Left: <b></b></div>
+    <div class="border"></div>
+    <script>
+    require(["skylark/query","skylark/finder", "skylark/geom", "skylark/datax"], function($,finder, geom, datax) {
+      var border =  geom.borderExtents(finder.find("div:last"));
+        datax.text($("b")[0],border.top);
+        datax.text($("b")[1],border.right);
+        datax.text($("b")[2],border.bottom);
+        datax.text($("b")[3],border.left);
+    });
+    </script>
+</body>
+
+</html>

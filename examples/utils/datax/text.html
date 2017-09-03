@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+    p {color: blue;margin: 8px;}
+    b { color: red; }
+    </style>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js"></script>
+    <script>
+    require.config({
+        baseUrl: "./",
+        packages: [{
+            name: "skylark",
+            location: "../../../src/skylark"
+        }]
+    });
+    </script>
+</head>
+
+<body>
+    <h4>Example : <span>Find the text in the first paragraph (stripping out the html), then set the html of the last paragraph to show it is just text (the red bold is gone).</span></h4>
+    <p><b>Test</b> Paragraph.</p>
+    <p><b>Test2</b> Paragraph.</p>
+    <p></p>
+    <script>
+    require(["skylark/query", "skylark/datax"], function($, datax) {
+        var str = datax.text($("p:first")[0]);
+        $("p:last").html("first p's text value is: " + str);
+    });
+    </script>
+</body>
+
+</html>

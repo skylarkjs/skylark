@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+    div {  color: red;text-align: center;cursor: pointer;font-weight: bolder;width: 300px;}
+    </style>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js"></script>
+    <script>
+    require.config({
+        baseUrl: "./",
+        packages: [{
+            name: "skylark",
+            location: "../../../src/skylark"
+        }]
+    });
+    </script>
+</head>
+
+<body>
+<h4>Example : <span>Iterate over three divs and sets their color property.</span></h4>
+    <div>Click here</div>
+    <div>to iterate through</div>
+    <div>these divs.</div>
+    <script>
+    require(["skylark/query","skylark/langx"], function($, langx) {
+        $(document.body).on("click", function() {
+            langx.each($("div"), function(i) {
+                if (this.style.color != "blue") {
+                    this.style.color = "blue";
+                } else {
+                    this.style.color = "";
+                }
+            });
+        });
+    });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+    p { font-size: 150%;cursor: pointer; }
+    </style>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js"></script>
+    <script>
+    require.config({
+        baseUrl: "./",
+        packages: [{
+            name: "skylark",
+            location: "../../../src/skylark"
+        }]
+    });
+    </script>
+</head>
+
+<body>
+    <h4>Example : <span>Hides all paragraphs then the link on click.</span></h4>
+    <p>Hello</p>
+    <a href="#">Click to hide me too</a>
+    <p>Here is another paragraph</p>
+    <script>
+    require(["skylark/query", "skylark/finder", "skylark/fx"], function($, finder, fx) {
+        fx.hide(finder.find("p"));
+        $("a").on("click", function(event) {
+            event.preventDefault();
+            fx.hide(this);
+        });
+    });
+    </script>
+</body>
+
+</html>

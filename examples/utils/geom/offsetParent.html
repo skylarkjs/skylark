@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+    .border {height: 50px;width:50px;margin: 100px;padding: 80px; border: 2px solid red;}
+    </style>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js"></script>
+    <script>
+    require.config({
+        baseUrl: "./",
+        packages: [{
+            name: "skylark",
+            location: "../../../src/skylark"
+        }]
+    });
+    </script>
+</head>
+
+<body>
+    <h4>Example : <span>Find the offsetParent of item "A."</span></h4>
+    <!-- <span>和geom描述有点不符</span> -->
+   <ul class="level-1">
+  <li class="item-i">I</li>
+  <li class="item-ii" style="position: relative;">II
+    <ul class="level-2">
+      <li class="item-a">A</li>
+      <li class="item-b">B
+        <ul class="level-3">
+          <li class="item-1">1</li>
+          <li class="item-2">2</li>
+          <li class="item-3">3</li>
+        </ul>
+      </li>
+      <li class="item-c">C</li>
+    </ul>
+  </li>
+  <li class="item-iii">III</li>
+</ul>
+    <script>
+    require(["skylark/query","skylark/finder", "skylark/geom", "skylark/datax"], function($,finder, geom, datax) {
+        $(geom.offsetParent(finder.find("li.item-a"))).style("background", "red");
+    });
+    </script>
+</body>
+
+</html>

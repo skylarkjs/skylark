@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js"></script>
+    <script>
+    require.config({
+        baseUrl: "./",
+        packages: [{
+            name: "skylark",
+            location: "../../../src/skylark"
+        }]
+    });
+    </script>
+</head>
+
+<body>
+    <h4>Example : <span>Cumulative button clicks, up to 5 times, remove click events.</span></h4>
+    <p>clicked account: 0</p>
+    <button>click me</button>
+    <script>
+    require(["skylark/query", "skylark/eventer"], function($, eventer) {
+        var value = 0,
+            btn = $("button")[0],
+            clickMe = function() {
+                value += 1;
+                if (value > 5) return eventer.off(btn, "click", clickMe);
+                $("p").html("button clicked account: " + value);
+            };
+        eventer.on(btn, "click", clickMe);
+    });
+    </script>
+</body>
+
+</html>

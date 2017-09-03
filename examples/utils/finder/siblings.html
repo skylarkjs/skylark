@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+    li {margin: 3px; padding: 3px;background: #eee;}
+
+    li.hilight {background: yellow;}
+    </style>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js"></script>
+    <script>
+    require.config({
+        baseUrl: "./",
+        packages: [{
+            name: "skylark",
+            location: "../../../src/skylark"
+        }, ]
+    });
+    </script>
+</head>
+
+<body>
+    <h4>Example : <span>Find all the siblings of each p that contains the "selected" style.</span></h4>
+    <p>Hello</p>
+    <p>Hello Again</p>
+    <p class="selected">And Again</p>
+    <p class="selected">Agin And Again</p>
+    <script>
+    require(["skylark/styler", "skylark/finder"], function(styler, finder) {
+        finder.siblings(finder.find("p"), ".selected").forEach(function(node, index) {
+            styler.css(node, "background", index % 2 === 0 ? "yellow" : "green");
+        });
+    });
+    </script>
+</body>
+
+</html>

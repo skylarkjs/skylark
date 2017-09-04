@@ -1,5 +1,5 @@
 # skylark
-An Elegant Javascript Library and HTML5 Application Framework
+An Elegant Javascript Library and HTML5 Application Framework. http://www.skylarkjs.org
 
 ## Features
 

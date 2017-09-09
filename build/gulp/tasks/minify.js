@@ -35,33 +35,39 @@ var options = {
 };
 
 module.exports = function() {
+    gulp.src(src)
+        .pipe(sourceMaps.init())
+        .pipe(sourceMaps.write())
+        .pipe(uglify())
+        .pipe(header(util.banner, {
+            pkg: util.pkg
+        }) )
+        .pipe(gulp.dest(dest));
+
     var p =  new Promise(function(resolve, reject) {
         gulp.src(src)
-            .pipe(amdOptimize(requireConfig, options))
-            .on("error", reject)
-            .pipe(concat(util.pkg.name + "-all.js"))
-            .pipe(header(fs.readFileSync(util.allinoneHeader, 'utf8')))
-            .pipe(footer(fs.readFileSync(util.allinoneFooter, 'utf8')))
-            .pipe(gulp.dest(dest+util.pkg.name))
-            .pipe(rename(util.pkg.name + "-all.min.js"))
+            .pipe(sourceMaps.init())
+            .pipe(sourceMaps.write())
             .pipe(uglify())
             .on("error", reject)
-            .pipe(gulp.dest(dest+util.pkg.name))
+            .pipe(header(util.banner, {
+                pkg: util.pkg
+            }) )
+            .pipe(gulp.dest(dest))
             .on("end",resolve);
     });
 
     return p.then(function(){
-        gulp.src(dest+util.pkg.name + "/" + util.pkg.name + "-all.js")
+        return gulp.src(src)
+            .pipe(amdOptimize(requireConfig, options))
+            .pipe(concat(util.pkg.name + "-all.js"))
+            .pipe(header(fs.readFileSync(util.allinoneHeader, 'utf8')))
+            .pipe(footer(fs.readFileSync(util.allinoneFooter, 'utf8')))
+            .pipe(uglify())
             .pipe(header(util.banner, {
                 pkg: util.pkg
             })) 
-            .pipe(gulp.dest(dest+util.pkg.name));  
-
-        gulp.src(dest+util.pkg.name + "/" + util.pkg.name + "-all.min.js")
-            .pipe(header(util.banner, {
-                pkg: util.pkg
-            })) 
-            .pipe(gulp.dest(dest+util.pkg.name));  
+            .pipe(gulp.dest(dest));
 
     });
 

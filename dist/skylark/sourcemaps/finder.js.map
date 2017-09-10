@@ -1,0 +1,1 @@
+{"version":3,"sources":["finder.js"],"names":["define","finder"],"mappings":";;;;;;;AAAAA,QACI,wBACD,SAASC,GACR,MAAOA","file":"../finder.js","sourcesContent":["define([\r\n    \"skylark-utils/finder\"\r\n], function(finder) {\r\n    return finder;\r\n});\r\n"]}

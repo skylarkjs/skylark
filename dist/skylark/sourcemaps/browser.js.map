@@ -1,0 +1,1 @@
+{"version":3,"sources":["browser.js"],"names":["define","browser"],"mappings":";;;;;;;AAAAA,QACI,yBACD,SAASC,GACR,MAAOA","file":"../browser.js","sourcesContent":["define([\r\n    \"skylark-utils/browser\"\r\n], function(browser) {\r\n    return browser;\r\n});\r\n"]}

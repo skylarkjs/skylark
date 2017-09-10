@@ -1,0 +1,1 @@
+{"version":3,"sources":["styler.js"],"names":["define","styler"],"mappings":";;;;;;;AAAAA,QACI,wBACD,SAASC,GACR,MAAOA","file":"../styler.js","sourcesContent":["define([\r\n    \"skylark-utils/styler\"\r\n], function(styler) {\r\n    return styler;\r\n});\r\n"]}

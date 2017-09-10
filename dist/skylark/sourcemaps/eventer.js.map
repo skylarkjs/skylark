@@ -1,0 +1,1 @@
+{"version":3,"sources":["eventer.js"],"names":["define","eventer"],"mappings":";;;;;;;AAAAA,QACI,yBACD,SAASC,GACR,MAAOA","file":"../eventer.js","sourcesContent":["define([\r\n    \"skylark-utils/eventer\"\r\n], function(eventer) {\r\n    return eventer;\r\n});\r\n"]}

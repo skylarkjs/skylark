@@ -1,0 +1,1 @@
+{"version":3,"sources":["datax.js"],"names":["define","datax"],"mappings":";;;;;;;AAAAA,QACI,uBACD,SAASC,GACR,MAAOA","file":"../datax.js","sourcesContent":["define([\r\n    \"skylark-utils/datax\"\r\n], function(datax) {\r\n    return datax;\r\n});\r\n"]}

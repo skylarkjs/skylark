@@ -1,0 +1,1 @@
+{"version":3,"sources":["skylark.js"],"names":["define","skylark"],"mappings":";;;;;;;AAAAA,QACI,yBACD,SAASC,GACR,MAAOA","file":"../skylark.js","sourcesContent":["define([\r\n    \"skylark-utils/skylark\"\r\n], function(skylark) {\r\n    return skylark;\r\n});\r\n"]}

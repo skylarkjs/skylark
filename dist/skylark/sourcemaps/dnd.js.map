@@ -1,0 +1,1 @@
+{"version":3,"sources":["dnd.js"],"names":["define","dnd"],"mappings":";;;;;;;AAAAA,QACI,qBACD,SAASC,GACR,MAAOA","file":"../dnd.js","sourcesContent":["define([\r\n    \"skylark-utils/dnd\"\r\n], function(dnd) {\r\n    return dnd;\r\n});\r\n"]}

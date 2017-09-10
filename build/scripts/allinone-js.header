@@ -6,12 +6,28 @@
 
   // Set up Backbone appropriately for the environment. Start with AMD.
   if (!isAmd && !define) {
-	var map = {};
+	  var map = {};
+    function absolute(relative, base) {
+        var stack = base.split("/"),
+            parts = relative.split("/");
+        stack.pop(); 
+        for (var i=0; i<parts.length; i++) {
+            if (parts[i] == ".")
+                continue;
+            if (parts[i] == "..")
+                stack.pop();
+            else
+                stack.push(parts[i]);
+        }
+        return stack.join("/");
+    }
     define = globals.define = function(id, deps, factory) {
         if (typeof factory == 'function') {
             map[id] = {
                 factory: factory,
-                deps: deps,
+                deps: deps.map(function(dep){
+                  return absolute(dep,id);
+                }),
                 exports: null
             };
             require(id);
@@ -39,14 +55,8 @@
 
   factory(define,require);
 
-  if (isAmd) {
-    define([
-      "skylark/main",
-    ],function(skylark){
-      return skylark;
-    });
-  } else {    
-	  var skylark = require("skylark/main");
+  if (!isAmd) {
+ 	  var skylark = require("skylark");
 
   	if (isCmd) {
   		exports = skylark;

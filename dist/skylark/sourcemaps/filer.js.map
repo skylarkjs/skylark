@@ -1,0 +1,1 @@
+{"version":3,"sources":["filer.js"],"names":["define","filer"],"mappings":";;;;;;;AAAAA,QACI,uBACD,SAASC,GACR,MAAOA","file":"../filer.js","sourcesContent":["define([\r\n    \"skylark-utils/filer\"\r\n], function(filer) {\r\n    return filer;\r\n});\r\n"]}

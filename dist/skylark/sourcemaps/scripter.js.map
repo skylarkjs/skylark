@@ -1,0 +1,1 @@
+{"version":3,"sources":["scripter.js"],"names":["define","scripter"],"mappings":";;;;;;;AAAAA,QACI,0BACD,SAASC,GACR,MAAOA","file":"../scripter.js","sourcesContent":["define([\r\n    \"skylark-utils/scripter\"\r\n], function(scripter) {\r\n    return scripter;\r\n});\r\n"]}

@@ -1,0 +1,1 @@
+{"version":3,"sources":["noder.js"],"names":["define","noder"],"mappings":";;;;;;;AAAAA,QACI,uBACD,SAASC,GACR,MAAOA","file":"../noder.js","sourcesContent":["define([\r\n    \"skylark-utils/noder\"\r\n], function(noder) {\r\n    return noder;\r\n});\r\n"]}

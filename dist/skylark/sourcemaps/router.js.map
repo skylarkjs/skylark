@@ -1,0 +1,1 @@
+{"version":3,"sources":["router.js"],"names":["define","router"],"mappings":";;;;;;;AAAAA,QACI,yBACD,SAASC,GACR,MAAOA","file":"../router.js","sourcesContent":["define([\r\n    \"skylark-router/router\"\r\n], function(router) {\r\n    return router;\r\n});\r\n"]}

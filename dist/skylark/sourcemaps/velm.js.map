@@ -1,0 +1,1 @@
+{"version":3,"sources":["velm.js"],"names":["define","velm"],"mappings":";;;;;;;AAAAA,QACI,sBACD,SAASC,GACR,MAAOA","file":"../velm.js","sourcesContent":["define([\r\n    \"skylark-utils/velm\"\r\n], function(velm) {\r\n    return velm;\r\n});\r\n"]}

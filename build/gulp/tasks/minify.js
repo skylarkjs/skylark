@@ -4,7 +4,7 @@ var gulp = require('gulp'),
     header = require('gulp-header'),
     footer = require('gulp-footer'),
     sourceMaps = require('gulp-sourcemaps'),
-    amdOptimize = require('gulp-amd-optimizer'),
+    amdOptimize = require('gulp-requirejs'),
     uglify = require('gulp-uglify'),
     replace = require('gulp-replace'),
     rename = require("gulp-rename"),
@@ -16,57 +16,57 @@ var src = [util.src +  "**/*.js"];
 
 var dest = util.dest;
 
+
+var dest = util.dest;
+
 var requireConfig = {
     baseUrl: util.src,
-    paths: {
-//       "skylark" : util.lib + "skylark"
+    out : util.pkg.name + "-all.js",
+    packages : [{
+       name : "skylark-utils" ,
+       location :  util.lib+"skylark-utils-v0.9.0/uncompressed/skylark-utils"
     },
+    {
+       name : "skylark-router" ,
+       location :  util.lib+"skylark-router-v0.9.0/uncompressed/skylark-router"
+    },
+    {
+       name : util.pkg.name ,
+       location :  util.src
+
+    }],
+
     include: [
+        util.pkg.name + "/main"
     ],
     exclude: [
     ]
 };
 
-requireConfig.paths[util.pkg.name] = util.pkg.name;
-
-
-var options = {
-    umd: false
-};
-
 module.exports = function() {
-    gulp.src(src)
-        .pipe(sourceMaps.init())
-        .pipe(sourceMaps.write())
-        .pipe(uglify())
-        .pipe(header(util.banner, {
-            pkg: util.pkg
-        }) )
-        .pipe(gulp.dest(dest));
-
     var p =  new Promise(function(resolve, reject) {
         gulp.src(src)
             .pipe(sourceMaps.init())
-            .pipe(sourceMaps.write())
             .pipe(uglify())
             .on("error", reject)
             .pipe(header(util.banner, {
                 pkg: util.pkg
             }) )
-            .pipe(gulp.dest(dest))
+            .pipe(sourceMaps.write("sourcemaps"))
+            .pipe(gulp.dest(dest+util.pkg.name))
             .on("end",resolve);
     });
 
     return p.then(function(){
-        return gulp.src(src)
-            .pipe(amdOptimize(requireConfig, options))
-            .pipe(concat(util.pkg.name + "-all.js"))
+        return amdOptimize(requireConfig)
+            .pipe(sourceMaps.init())
             .pipe(header(fs.readFileSync(util.allinoneHeader, 'utf8')))
             .pipe(footer(fs.readFileSync(util.allinoneFooter, 'utf8')))
             .pipe(uglify())
             .pipe(header(util.banner, {
                 pkg: util.pkg
             })) 
+            .pipe(sourceMaps.write("sourcemaps"))
             .pipe(gulp.dest(dest));
 
     });

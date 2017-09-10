@@ -1,0 +1,1 @@
+{"version":3,"sources":["mover.js"],"names":["define","mover"],"mappings":";;;;;;;AAAAA,QACI,uBACD,SAASC,GACR,MAAOA","file":"../mover.js","sourcesContent":["define([\r\n    \"skylark-utils/mover\"\r\n], function(mover) {\r\n    return mover;\r\n});\r\n"]}

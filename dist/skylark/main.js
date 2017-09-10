@@ -5,4 +5,5 @@
  * @link www.skylarkjs.org
  * @license MIT
  */
-define(["skylark/skylark","skylark/async","skylark/browser","skylark/css","skylark/datax","skylark/dnd","skylark/eventer","skylark/filer","skylark/finder","skylark/fx","skylark/geom","skylark/mover","skylark/noder","skylark/query","skylark/router","skylark/scripter","skylark/spa","skylark/styler","skylark/touchx","skylark/langx","skylark/velm"],function(k){return k});
+define(["./skylark","./async","./browser","./css","./datax","./dnd","./eventer","./filer","./finder","./fx","./geom","./mover","./noder","./query","./router","./scripter","./spa","./styler","./langx","./velm"],function(e){return e});
+//# sourceMappingURL=sourcemaps/main.js.map

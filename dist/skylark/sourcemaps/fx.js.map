@@ -1,0 +1,1 @@
+{"version":3,"sources":["fx.js"],"names":["define","fx"],"mappings":";;;;;;;AAAAA,QACI,oBACD,SAASC,GACR,MAAOA","file":"../fx.js","sourcesContent":["define([\r\n    \"skylark-utils/fx\"\r\n], function(fx) {\r\n    return fx;\r\n});\r\n"]}

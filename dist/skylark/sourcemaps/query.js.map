@@ -1,0 +1,1 @@
+{"version":3,"sources":["query.js"],"names":["define","query"],"mappings":";;;;;;;AAAAA,QACI,uBACD,SAASC,GACR,MAAOA","file":"../query.js","sourcesContent":["define([\r\n    \"skylark-utils/query\"\r\n], function(query) {\r\n    return query;\r\n});\r\n"]}

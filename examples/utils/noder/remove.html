@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+    p {background: yellow; margin: 6px 0;}
+    </style>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js"></script>
+    <script>
+    require.config({
+        baseUrl: "./",
+        packages: [{
+            name: "skylark",
+            location: "../../../src/skylark"
+        }]
+    });
+    </script>
+</head>
+
+<body>
+    <h4>Example :  <span>Removes all paragraphs from the DOM.</span></h4>
+    <p>Hello</p>
+    how are
+    <p>you?</p>
+    <button>Call remove() on paragraphs</button>
+    <script>
+    require(["skylark/query", "skylark/finder", "skylark/noder"], function($, finder, noder) {
+        $("button").on("click", function() {
+            noder.remove(finder.find("p"));
+        });
+    });
+    </script>
+</body>
+
+</html>

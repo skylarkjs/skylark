@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+    p {background: yellow;}
+    </style>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js"></script>
+    <script>
+    require.config({
+        baseUrl: "./",
+        packages: [{
+            name: "skylark",
+            location: "../../../src/skylark"
+        }]
+    });
+    </script>
+</head>
+
+<body>
+    <h4>Example : Removes all child nodes (including text nodes) from all paragraphs.</h4>
+    <p>
+        Hello, <span>Person</span> <a href="javascript:;">and person</a>
+    </p>
+    <button>Call empty() on above paragraph</button>
+    <script>
+    require(["skylark/query", "skylark/finder", "skylark/noder"], function($, finder, noder) {
+        $("button").click(function() {
+            noder.empty(finder.find("p"));
+        });
+    });
+    </script>
+</body>
+
+</html>

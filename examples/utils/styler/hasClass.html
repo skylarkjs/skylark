@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+    p {
+        margin: 8px;
+        font-size: 16px;
+    }
+
+    .foo {
+        color: blue;
+    }
+
+    .bar {
+        background: yellow;
+    }
+    </style>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js"></script>
+    <script>
+    require.config({
+        baseUrl: "./",
+        packages: [
+            { name: "skylark", location: "../../../src/skylark" },
+        ]
+    });
+    </script>
+</head>
+
+<body>
+    <p id="target" class="foo bar">This is a hasClass "foo" item </p>
+    <p class="selected"> This is not a hasClass "foo" item </p>
+    <script>
+    require(["skylark/finder", "skylark/styler"], function(finder, styler) {
+        styler.hasClass(finder.byId("target"), "foo");
+    });
+    </script>
+</body>
+
+</html>

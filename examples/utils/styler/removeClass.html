@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+    p {
+        margin: 8px;
+        font-size: 16px;
+    }
+
+    .foo {
+        color: blue;
+    }
+    </style>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js"></script>
+    <script>
+    require.config({
+        baseUrl: "./",
+        packages: [
+            { name: "skylark", location: "../../../src/skylark" },
+        ]
+    });
+    </script>
+</head>
+
+<body>
+    <p id="target" class="foo">This is a removeClass 'foo' item </p>
+    <p class="foo"> This is not a removeClass 'foo' item </p>
+    <script>
+    require(["skylark/finder", "skylark/styler"], function(finder, styler) {
+        styler.removeClass(finder.byId("target"), "foo");
+    });
+    </script>
+</body>
+
+</html>

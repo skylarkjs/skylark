@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js"></script>
+    <script>
+    require.config({
+        baseUrl: "./",
+        packages: [{
+            name: "skylark",
+            location: "../../../src/skylark"
+        }]
+    });
+    </script>
+</head>
+<body>
+<h4>Example : Check if an element is a descendant of another.</h4>
+<span>noder.contains(document.documentElement, document.body) </span>
+<strong></strong>
+<br>
+<span>noder.contains(document.body, document.documentElement)</span>
+<strong></strong>
+    <script>
+    require(["skylark/query", "skylark/noder"], function($, noder) {
+        var div1 = noder.contains(document.documentElement, document.body); // true
+        $("strong:first").text(div1);
+        var div2 = noder.contains(document.body, document.documentElement); // false
+        $("strong:last").text(div2);
+    });
+    </script>
+</body>
+
+</html>

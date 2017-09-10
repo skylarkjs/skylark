@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+    .throb {border: 3px solid #555;height: 50px; width: 50px; margin: 0 auto; position: absolute; top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        -webkit-border-radius: 50%;
+        -webkit-animation: pulsate 2s ease-out;
+        -webkit-animation-iteration-count: infinite;
+        -ms-border-radius: 50%;
+        -ms-animation: pulsate 2s ease-out;
+        -ms-animation-iteration-count: infinite;
+        -moz-border-radius: 50%;
+        -moz-animation: pulsate 2s ease-out;
+        -moz-animation-iteration-count: infinite;
+        -o-border-radius: 50%;
+        -o-animation: pulsate 2s ease-out;
+        -o-animation-iteration-count: infinite;
+        border-radius: 50%;
+        animation: pulsate 2s ease-out;
+        animation-iteration-count: infinite;
+        opacity: 0;
+        z-index: 999;
+    }
+    @-webkit-keyframes pulsate {
+        0% { -webkit-transform: scale(0.1, 0.1);opacity: 0.0;}
+        50% {opacity: 1.0; }
+        100% { -webkit-transform: scale(1.2, 1.2);opacity: 0.0;}
+    }
+    @-moz-keyframes pulsate {
+        0% { -moz-transform: scale(0.1, 0.1);opacity: 0.0; }
+        50% {opacity: 1.0;}
+        100% { -moz-transform: scale(1.2, 1.2);opacity: 0.0;}
+    }
+    @-ms-keyframes pulsate {
+        0% {-ms-transform: scale(0.1, 0.1);opacity: 0.0; }
+        50% {opacity: 1.0;}
+        100% {-ms-transform: scale(1.2, 1.2);opacity: 0.0; }
+    }
+    @-o-keyframes pulsate {
+        0% {-o-transform: scale(0.1, 0.1);opacity: 0.0; }
+        50% {opacity: 1.0; }
+        100% { -o-transform: scale(1.2, 1.2);opacity: 0.0;}
+    }
+    @keyframes pulsate {
+        0% {transform: scale(0.1, 0.1);opacity: 0.0; }
+        50% { opacity: 1.0;}
+        100% { transform: scale(1.2, 1.2);opacity: 0.0;}
+    }
+    .btns {text-align: center;}
+    p {  position: absolute; top: 50%; left: 50%;transform: translate(-50%, -50%);}
+    </style>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js"></script>
+    <script>
+    require.config({
+        baseUrl: "./",
+        packages: [{
+            name: "skylark",
+            location: "../../../src/skylark"
+        }]
+    });
+    </script>
+</head>
+
+<body>
+    <h4>Example : <span>Click the buttons to show processing screen  in  the specified time</span></h4>
+    <div class="btns">
+        <button>1s</button>
+        <button>3s</button>
+        <button>6s</button>
+        <button>9s</button>
+    </div>
+    <p>Hello World!</p>
+    <script>
+    require(["skylark/query", "skylark/noder"], function($, noder) {
+        var elm = $("p")[0];
+        $("button").on("click", function() {
+            elm.style.opacity = 0;
+            var throb = noder.throb(elm, {
+                time: parseInt($(this).text()) * 1000,
+                callback: function() {
+                    throb.remove();
+                    elm.style.opacity = 1;
+                }
+            });
+        });
+    });
+    </script>
+</body>
+
+</html>

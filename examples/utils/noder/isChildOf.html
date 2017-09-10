@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js"></script>
+    <script>
+    require.config({
+        baseUrl: "./",
+        packages: [{
+            name: "skylark",
+            location: "../../../src/skylark"
+        }, ]
+    });
+    </script>
+</head>
+
+<body>
+    <h4>Example : Determine whether the h4 element is a descendant node of div.</h4>
+    <div>
+        <h4>h4</h4>
+        <span></span>
+    </div>
+    <script>
+    require(["skylark/datax", "skylark/finder", "skylark/noder"], function(datax, finder, noder) {
+        var childOf = noder.isChildOf(finder.find("h4"), finder.find("div"));
+        datax.text(finder.find("span"), childOf);
+    });
+    </script>
+</body>
+
+</html>

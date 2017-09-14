@@ -4,10 +4,12 @@
   	  isAmd = (typeof define === 'function' && define.amd),
   	  isCmd = (!isAmd && typeof exports !== 'undefined');
 
-  // Set up Backbone appropriately for the environment. Start with AMD.
   if (!isAmd && !define) {
 	  var map = {};
     function absolute(relative, base) {
+        if (relative[0]!==".") {
+          return relative;
+        }
         var stack = base.split("/"),
             parts = relative.split("/");
         stack.pop(); 
@@ -56,7 +58,7 @@
   factory(define,require);
 
   if (!isAmd) {
- 	  var skylark = require("skylark");
+ 	  var skylark = require("skylarkjs/main");
 
   	if (isCmd) {
   		exports = skylark;

@@ -1,6 +1,6 @@
 define([
-	"skylark/spa",
-	"skylark/query",
+	"skylarkjs/spa",
+	"skylarkjs/query",
 	"text!./templates/sidebar.html"
 ],function(spa,$,tpl){
 

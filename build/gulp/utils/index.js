@@ -17,7 +17,6 @@ module.exports = {
     dest: '../dist/',
     lib: '../lib/',
     banner: banner,
-    allinone: 'skylark/skylark-all',
     allinoneHeader : './scripts/allinone-js.header',
     allinoneFooter : './scripts/allinone-js.footer',
     pkg: pkg

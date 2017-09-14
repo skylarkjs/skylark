@@ -1,5 +1,5 @@
 define([
-    "skylark",
+    "skylarkjs",
 	"text!./templates/home.html"
 ],function(skylark,tpl){
     var spa = skylark.spa,

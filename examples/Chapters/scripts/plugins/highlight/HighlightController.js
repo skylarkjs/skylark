@@ -1,5 +1,5 @@
 define([
-	"skylark"
+	"skylarkjs"
 ],function(skylark){
     var spa = skylark.spa,
         $ = skylark.query;

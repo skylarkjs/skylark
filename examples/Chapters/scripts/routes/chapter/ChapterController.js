@@ -1,5 +1,5 @@
 define([
-	"skylark",
+	"skylarkjs",
     "text!./templates/chapter1.html",
     "text!./templates/chapter2.html",
     "text!./templates/chapter3.html"

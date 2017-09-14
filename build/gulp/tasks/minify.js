@@ -16,9 +16,6 @@ var src = [util.src +  "**/*.js"];
 
 var dest = util.dest;
 
-
-var dest = util.dest;
-
 var requireConfig = {
     baseUrl: util.src,
     out : util.pkg.name + "-all.js",

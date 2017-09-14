@@ -3,14 +3,14 @@ require.config({
   ,packages : [
      { name: "skylark-utils", location: "../../lib/skylark-utils-v0.9.0/uncompressed/skylark-utils" },
      { name: "skylark-router", location: "../../lib/skylark-router-v0.9.0/uncompressed/skylark-router" },
-     { name: "skylark", location: "../../dist/uncompressed/skylark" }
+     { name: "skylarkjs", location: "../../dist/uncompressed/skylarkjs" }
   ]
   , paths: {
 	"text" : "https://cdnjs.cloudflare.com/ajax/libs/require-text/2.0.12/text"
   }
 });
  
-require(["skylark/spa","scripts/config"], function (spa,config) {
+require(["skylarkjs/spa","scripts/config"], function (spa,config) {
   var app = spa(config);
   window.go =  function(path) {
      app.go(path);

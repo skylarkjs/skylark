@@ -1,6 +1,6 @@
 {
   "name": "skylarkjs",
-  "version": "0.9.1",
+  "version": "0.9.0",
   "description": "An Elegant JavaScript Library and HTML5 Application Framework.",
   "main": "-",
   "scripts": {
@@ -22,7 +22,11 @@
   "author": "Hudaokeji Co.,Ltd",
   "license": "MIT",
   "bugs": "https://github.com/skylarkjs/skylark/issues",
-  "dependencies": {},
+  "dependencies": {
+    "skylark-utils": "~0.9.1",
+    "skylark-router": "~0.9.1",
+    "skylark-langx": "~0.9.1"
+  },
   "devDependencies": {
     "del": "^1.2.1",
     "gulp": "^3.9.0",

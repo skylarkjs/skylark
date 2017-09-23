@@ -1,0 +1,22 @@
+0 info it worked if it ends with ok
+1 verbose cli [ '/Users/vitoli/.nvm/versions/node/v6.0.0/bin/node',
+1 verbose cli   '/Users/vitoli/.nvm/versions/node/v6.0.0/bin/npm',
+1 verbose cli   'version',
+1 verbose cli   '0.9.0' ]
+2 info using npm@3.8.6
+3 info using node@v6.0.0
+4 verbose stack Error: Version not changed
+4 verbose stack     at persistVersion (/Users/vitoli/.nvm/versions/node/v6.0.0/lib/node_modules/npm/lib/version.js:91:47)
+4 verbose stack     at /Users/vitoli/.nvm/versions/node/v6.0.0/lib/node_modules/npm/lib/version.js:46:7
+4 verbose stack     at /Users/vitoli/.nvm/versions/node/v6.0.0/lib/node_modules/npm/lib/version.js:118:5
+4 verbose stack     at /Users/vitoli/.nvm/versions/node/v6.0.0/lib/node_modules/npm/node_modules/graceful-fs/graceful-fs.js:78:16
+4 verbose stack     at FSReqWrap.readFileAfterClose [as oncomplete] (fs.js:439:3)
+5 verbose cwd /Users/vitoli/uZone/skylark/skylark
+6 error Darwin 16.7.0
+7 error argv "/Users/vitoli/.nvm/versions/node/v6.0.0/bin/node" "/Users/vitoli/.nvm/versions/node/v6.0.0/bin/npm" "version" "0.9.0"
+8 error node v6.0.0
+9 error npm  v3.8.6
+10 error Version not changed
+11 error If you need help, you may report this error at:
+11 error     <https://github.com/npm/npm/issues>
+12 verbose exit [ 1, true ]

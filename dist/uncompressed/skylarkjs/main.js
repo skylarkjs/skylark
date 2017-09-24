@@ -1,6 +1,5 @@
 define([
-    "./skylark",
-    "./async",
+    "./core",
     "./browser",
     "./css",
     "./datax",
@@ -13,11 +12,8 @@ define([
     "./mover",
     "./noder",
     "./query",
-    "./router",
     "./scripter",
-    "./spa",
     "./styler",
-    "./langx",
     "./velm"
 ], function(skylark) {
     return skylark;

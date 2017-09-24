@@ -58,7 +58,7 @@
   factory(define,require);
 
   if (!isAmd) {
- 	  var skylarkjs = require("skylarkjs/main");
+ 	  var skylarkjs = require("skylarkjs");
 
   	if (isCmd) {
   		exports = skylarkjs;

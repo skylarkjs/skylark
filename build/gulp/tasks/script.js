@@ -16,16 +16,25 @@ var src = [util.src +  "**/*.js"];
 
 var dest = util.dest+"uncompressed/";
 
+
 var requireConfig = {
     baseUrl: util.src,
-    out : util.pkg.name + "-all.js",
+    out : util.pkg.name + ".js",
     packages : [{
-       name : "skylark-utils" ,
-       location :  util.lib+"skylark-utils-v0.9.0/uncompressed/skylark-utils"
+       name : "skylark-langx" ,
+       location :  util.lib_langx+"uncompressed/skylark-langx"
     },
     {
        name : "skylark-router" ,
-       location :  util.lib+"skylark-router-v0.9.0/uncompressed/skylark-router"
+       location :  util.lib_router+"uncompressed/skylark-router"
+    },
+    {
+       name : "skylark-spa" ,
+       location :  util.lib_spa+"uncompressed/skylark-spa"
+    },
+    {
+       name : "skylark-utils" ,
+       location :  util.lib_utils+"uncompressed/skylark-utils",
     },
     {
        name : util.pkg.name ,
@@ -37,9 +46,8 @@ var requireConfig = {
         util.pkg.name + "/main"
     ],
     exclude: [
-    ]
+   ]
 };
-
 
 
 module.exports = function() {

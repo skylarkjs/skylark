@@ -1,5 +1,5 @@
 define([
-    "skylark-utils/langx"
+    "skylark-langx/langx"
 ], function(langx) {
     return langx;
 });

@@ -7,6 +7,8 @@ module.exports = function(callback) {
     	'clean',
     	'script',
     	'minify',
+     	'script-core',
+    	'minify-core',
     	callback
   	);
 };

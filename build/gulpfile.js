@@ -2,5 +2,7 @@ require('./gulp')([
     'default',
     'clean',
     'minify',
-    'script'
+    'script',
+    'minify-core',
+    'script-core'
 ]);

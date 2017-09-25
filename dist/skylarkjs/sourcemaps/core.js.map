@@ -1,0 +1,1 @@
+{"version":3,"sources":["core.js"],"names":["define","skylark"],"mappings":";;;;;;;AAAAA,QACI,YACA,WACA,QACA,WACD,SAASC,GACR,MAAOA","file":"../core.js","sourcesContent":["define([\r\n    \"./skylark\",\r\n    \"./router\",\r\n    \"./spa\",\r\n    \"./langx\"\r\n], function(skylark) {\r\n    return skylark;\r\n})\r\n"]}

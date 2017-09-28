@@ -4,7 +4,9 @@
   "description": "An Elegant JavaScript Library and HTML5 Application Framework.",
   "main": "-",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "sjs ",
+    "browse": "sjs ./dist/"
   },
   "homepage": "www.skylarkjs.org",
   "repository": {
@@ -17,15 +19,21 @@
     "javacript",
     "library",
     "framework",
-    "Single Page Application"
+    "slax"
   ],
   "author": "Hudaokeji Co.,Ltd",
   "license": "MIT",
   "bugs": "https://github.com/skylarkjs/skylark/issues",
   "dependencies": {
-    "skylark-utils": "~0.9.1",
-    "skylark-router": "~0.9.1",
-    "skylark-langx": "~0.9.1"
+    "asar": "^0.13.0",
+    "copy-dir": "^0.3.0",
+    "electron": "^1.7.6",
+    "skylark-browser": "file:../skylark-slax-browser",
+    "skylark-server-node": "file:../skylark-slax-nodeserver"
+  },
+  "bin": {
+    "skylarkjs": "./bin/cli.js",
+    "sjs": "./bin/cli.js"
   },
   "devDependencies": {
     "del": "^1.2.1",
@@ -46,7 +54,11 @@
     "gulp-uglify": "^1.5.4",
     "gulp-usemin": "^0.3.11",
     "gulp-util": "^3.0.6",
-    "run-sequence": "^2.1.0"
+    "run-sequence": "^2.1.0",
+    "skylark-langx": "file:../skylark-langx",
+    "skylark-router": "file:../skylark-router",
+    "skylark-spa": "file:../skylark-spa",
+    "skylark-utils": "file:../skylark-utils"
   },
   "engines": {
     "node": ">=0.8.0"

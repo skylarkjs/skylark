@@ -1,11 +1,11 @@
 (function(factory,globals) {
   var define = globals.define,
-  	  require = globals.require,
-  	  isAmd = (typeof define === 'function' && define.amd),
-  	  isCmd = (!isAmd && typeof exports !== 'undefined');
+      require = globals.require,
+      isAmd = (typeof define === 'function' && define.amd),
+      isCmd = (!isAmd && typeof exports !== 'undefined');
 
   if (!isAmd && !define) {
-	  var map = {};
+    var map = {};
     function absolute(relative, base) {
         if (relative[0]!==".") {
           return relative;
@@ -37,35 +37,98 @@
             resolved[id] = factory;
         }
     };
-    require = globals.require = function(id) {
-        if (!map.hasOwnProperty(id)) {
-            throw new Error('Module ' + id + ' has not been defined');
-        }
-        var module = map[id];
-        if (!module.exports) {
-            var args = [];
+    require = globals.require = function(deps,cb) {
+        function requireOne(id) {
+            if (!map.hasOwnProperty(id)) {
+                throw new Error('Module ' + id + ' has not been defined');
+            }
+            var module = map[id];
+            if (!module.exports) {
+                var args = [];
 
-            module.deps.forEach(function(dep){
-                args.push(require(dep));
-            })
+                module.deps.forEach(function(dep){
+                    args.push(require(dep));
+                })
 
-            module.exports = module.factory.apply(window, args);
+                module.exports = module.factory.apply(window, args);
+            }
+            return module.exports;
         }
-        return module.exports;
+        var onedep = typeof deps === "string";
+        if (!cb && onedep) {
+            return requireOne(deps);
+        }
+        if (onedep) {
+            deps = [deps];
+        }
+        var modules = deps.map(function(id){
+            return requireOne(id);
+        });
+        if (cb) {
+            cb.apply(null,modules);
+        } else {
+            return modules;
+        }
+
     };
   }
 
   factory(define,require);
 
-  if (!isAmd) {
- 	  var skylarkjs = require("skylarkjs");
-
-  	if (isCmd) {
-  		exports = skylarkjs;
-    } else {
-    	globals.skylarkjs = skylarkjs;
+  function xhrGet(url,callback) {
+    var xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = function()   {
+        if (this.readyState == 4) {
+            callback(this.response);
+        } 
     }
+    xhr.open("GET",url,true);
+    xhr.send( null );
+  }
+  if (!isAmd) {
+    var skylarkjs = require("skylarkjs");
+
+    if (isCmd) {
+      exports = skylarkjs;
+    } else {
+      globals.skylarkjs = skylarkjs;
+    }
+  } else {
+    require.config({
+        baseUrl : "./"
+    });
   }
 
-})(function(define,require) {
+require([
+  "skylarkjs"
+], function (skylark,http) { 
+    xhrGet("./slax-config.json",function(res){
+        if (!res) {
+            console.error("can't find the slax-config.json!");
+            return;
+        }
+        var cfg = JSON.parse(res);
+        if (isAmd) {
+            require.config(cfg.runtime);
+        }
+        
+        if (cfg.contextPath) {
+              cfg.baseUrl = cfg.contextPath;
+        }
 
+        var app = skylark.spa(cfg);
+
+        globals.go =  function(path) {
+            app.go(path);
+        };
+
+        app.prepare().then(function(){
+            app.run();
+        })
+
+    });
+
+
+});    
+
+})(function(define,require) {

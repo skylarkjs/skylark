@@ -141,7 +141,6 @@ program.command('serve [slaxApp]')
            port: options.port
          }        
           if (slaxApp) {
-            slaxApp = path.resolve(slaxApp);
             serve(slaxApp,options);
           } else {
               confirm('The slax application is not specified, do you want to open a example application?? [y/N] ', function (ok) {

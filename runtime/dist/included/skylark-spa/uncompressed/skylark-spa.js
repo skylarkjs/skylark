@@ -1,7 +1,7 @@
 /**
  * skylark-spa - An Elegant  HTML5 Single Page Application Framework.
  * @author Hudaokeji Co.,Ltd
- * @version v0.9.0
+ * @version v0.9.1
  * @link www.skylarkjs.org
  * @license MIT
  */
@@ -325,7 +325,7 @@ define('skylark-spa/spa',[
             document.title = config.title;
             var baseUrl = config.baseUrl; 
             if (baseUrl === undefined) {
-                baseUrl = config.baseUrl = require.toUrl("");
+                baseUrl = config.baseUrl = (new langx.URL(document.baseURI)).pathname;
             }
             router.baseUrl(baseUrl);
 

@@ -2,8 +2,7 @@ define([
     "./skylark",
     "./router",
     "./spa",
-    "./langx",
-    "./slax"
+    "./langx"
 ], function(skylark) {
     return skylark;
 })

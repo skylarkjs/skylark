@@ -237,7 +237,7 @@ define([
             document.title = config.title;
             var baseUrl = config.baseUrl; 
             if (baseUrl === undefined) {
-                baseUrl = config.baseUrl = require.toUrl("");
+                baseUrl = config.baseUrl = (new langx.URL(document.baseURI)).pathname;
             }
             router.baseUrl(baseUrl);
 

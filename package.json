@@ -28,8 +28,8 @@
     "asar": "^0.13.0",
     "copy-dir": "^0.3.0",
     "electron": "^1.7.6",
-    "skylark-browser": "file:../skylark-slax-browser",
-    "skylark-server-node": "file:../skylark-slax-nodeserver"
+    "skylark-slax-browser": "file:../skylark-slax-browser",
+    "skylark-slax-nodeserver": "file:../skylark-slax-nodeserver"
   },
   "bin": {
     "skylarkjs": "./bin/cli.js",

@@ -1,31 +1,130 @@
 const path = require('path');
 const del = require('del');
-const copy = require('copy-dir');
+const copydir = require('copy-dir');
 const fs = require('fs');
+const tpl = require('./scaffold/tpl');
+const util = require('./util');
+const sjspkg = require('../package.json');
+const routes = require('./routes');
 
-exports = module.exports = build;
-
-
-function build(slaxAppRoot) {
-	const root = path.resolve(slaxAppRoot);
-	const pkg = require(path.join(root,"package.json"));
-	const appname = pkg.slax && pkg.slax.appname || pkg.name;
-
-	const dist = path.join(root,"dist");
-	const src = path.join(root,"src");
-	const buildGulp =  path.join(root,"build","gulpfile.js");
-	const deploy = path.join(root,"deploy",appname+".slax");
+exports = module.exports = create;
 
 
-    if (fs.existsSync(dist)) {
-        del.sync([dist + '/**/*'], {
-            force: true
-        });       
+const loadTemplate = tpl.loadTemplate;
+const copyTemplate = tpl.copyTemplate;
+const mkdir = util.mkdir;
+const write = util.write;
+
+
+function create(name,root,options) {
+  var wait = 5;
+
+  function complete () {
+    if (--wait) return
+
+    console.log();
+    console.log('   install dependencies:');
+    console.log('     %s cd %s && npm install', prompt, path);
+    console.log();
+    console.log('   run the app:');
+
+    console.log();
+  }
+
+  console.log(root);
+  // index.html
+  var indexHtml = loadTemplate('index.html'),
+      slaxCfgJson = loadTemplate('slax-config.json');
+
+  // App name
+  indexHtml.locals.name = name ;
+  indexHtml.locals.views = [];
+
+  slaxCfgJson.locals.name = name;
+  slaxCfgJson.locals.title = options.title || name;
+  slaxCfgJson.locals.sversion = sjspkg.runtime.version;
+  
+  mkdir(root, function () {
+    mkdir(root + '/src', function () {
+      mkdir(root + '/src/assets',function(){
+        mkdir(root + '/src/assets/images');
+        mkdir(root + '/src/assets/css',function(){
+            switch (options.css) {
+                case 'less':
+                  copyTemplate('assets/css/style.less', root + '/src/assets/css/style.less')
+                  break
+                case 'sass':
+                  copyTemplate('assets/css/style.sass', root + '/src/assets/css/style.sass')
+                  break
+                default:
+                  copyTemplate('assets/css/style.css', root + '/src/assets/css/style.css')
+                  break
+            }
+        });
+      });
+
+
+      mkdir(root + '/src/scripts', function () {
+        mkdir(root + '/src/scripts/plugins');
+        mkdir(root + '/src/scripts/routes');
+      });
+
+    });
+
+
+    mkdir(root + '/lib', function () {
+      copydir.sync(path.join(__dirname,"../runtime/dist"),root+'/lib/skylarkjs',function(stat, filepath, filename){
+        if (stat === 'directory' && filename === 'included') {
+          return false;
+        }
+        return true;
+      });
+    });
+
+    const deployedSlaxFile = './deploy/' + name + '.slax';
+
+    var slaxConfig = JSON.parse(slaxCfgJson.render());
+
+    // package.json
+    var pkg = {
+      name: name,
+      version: '0.0.0',
+      private: true,
+      scripts: {
+        "browse": "sjs browse " + deployedSlaxFile,
+        "serve": "sjs serve " + deployedSlaxFile,
+        "build": "sjs build .",
+        "deploy": "sjs deploy .",
+        "route-add": "sjs routes add . ",
+        "route-list": "sjs routes list . ",
+        "route-delete": "sjs routes delete .",
+        "plugin-add": "sjs plugins add .",
+        "plugin-list": "sjs plugins list .",
+        "plugin-delete": "sjs plugins delete ."
+      },
+      dependencies: {
+      }
     }
 
-    if (fs.existsSync(buildGulp)) {
-    } else {
-    	copydir.sync(src, dist);
+    write(root + '/src/slax-config.json', JSON.stringify(slaxConfig,null,2)+ '\n');
+    var added;
+    if (options.routes) {
+      added = routes.add(root,options.routes);
     }
+
+    // write files
+    write(root + '/package.json', JSON.stringify(pkg, null, 2) + '\n')
+
+    indexHtml.locals.views = added;
+    write(root + '/src/index.html', indexHtml.render())
+
+
+    if (options.git) {
+      copyTemplate('js/gitignore', root + '/.gitignore')
+    }
+
+    complete();
+  })
+
 
 }

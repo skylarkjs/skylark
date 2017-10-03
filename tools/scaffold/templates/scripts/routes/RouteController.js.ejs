@@ -1,0 +1,19 @@
+define([
+    "skylarkjs",
+    "text!scripts/routes/<%=name%>/<%=name%>.html"
+], function(skylarkjs, <%=name%>Tpl) {
+    var spa = skylarkjs.spa,
+        $ = skylarkjs.query;
+    return spa.RouteController.inherit({
+        klassName: "<%=name.charAt(0).toUpperCase() + name.slice(1)%>Controller",
+
+        rendering: function(e) {
+            e.content = <%=name%>Tpl;
+        },
+
+        entered: function() {
+        },
+        exited: function() {
+        }
+    });
+});

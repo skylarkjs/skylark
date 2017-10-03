@@ -13,7 +13,7 @@ function deploy(slaxPrjRoot) {
 	const deploy = path.join(root,"deploy",appname+".slax");
 
 	asar.createPackage(dist,deploy,function(err){
-       if (error) {
+       if (err) {
          console.error(error.stack)
          process.exit(1)
        }

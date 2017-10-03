@@ -1,0 +1,13 @@
+define([
+    "skylarkjs"
+], function(skylarkjs) {
+    var spa = skylarkjs.spa,
+        $ = skylarkjs.query;
+
+    return spa.PluginController.inherit({
+        klassName: "<%=name.charAt(0).toUpperCase() + name.slice(1)%>Controller",
+        starting: function(evt) {
+        },
+        routed: function() {}
+    });
+});

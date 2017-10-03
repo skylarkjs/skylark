@@ -10,8 +10,7 @@ exports = module.exports = browse;
 function browse(slaxApp) {
 // spawn Electron
 
- const child = proc.spawn(electron,[skylarker,slaxApp]);
-
+ proc.spawn(electron,[skylarker,slaxApp]);
 
 }
 

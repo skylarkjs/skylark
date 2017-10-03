@@ -2,11 +2,18 @@
 var program = require('commander');
 const path = require('path');
 const readline = require('readline')
+const util = require('../tools/util');
 
 const browse = require('../tools/browse');
 const serve = require('../tools/serve');
 const archiver = require('../tools/archiver');
+const build = require('../tools/build');
 const deploy = require('../tools/deploy');
+const create = require('../tools/create');
+const routes = require('../tools/routes');
+const plugins = require('../tools/plugins');
+
+
 
 const DEFAULT_PORT = 8086;
 const DEFAULT_FOLLOW_SYMLINKS = false;
@@ -91,21 +98,45 @@ program.version('v' + require('../package.json').version)
 
 
 program.command('create <projectName>')
-       .alias('i')
+       .alias('c')
        .description('generate a new project from a template')
-       .action(function (prj) {
-         var files = asar.listPackage(archive)
-         for (var i in files) {
-           console.log(files[i])
-         }
+       .option('--routes <adding>', 'add routes')
+       .option('--force', 'force on non-empty directory')
+       .action(function (projectName,options) {
+          var destinationPath = path.join(".",projectName);
+          console.log(destinationPath);
+          util.emptyDirectory(destinationPath, function (empty) {
+            if (empty || options.force) {
+              console.log(options);
+              create(projectName, destinationPath,options);
+            } else {
+              confirm('destination is not empty, continue? [y/N] ', function (ok) {
+                if (ok) {
+                  process.stdin.destroy();
+                  create(projectName, destinationPath,options);
+                } else {
+                  console.error('aborting');
+                  exit(1);
+                }
+              });
+            }
+          });
+       });
+
+program.command('build [slxPrjRoot]')
+       .alias('u')
+       .description('build the project src to /dist')
+       .action(function (slxPrjRoot) {
+          slxPrjRoot = slxPrjRoot || '.';
+          build(slxPrjRoot);
        });
 
 program.command('deploy [slxPrjRoot]')
-       .alias('i')
-       .description('delploy  a new project from a template')
+       .alias('d')
+       .description('package a .slax archive to /deploy')
        .action(function (slxPrjRoot) {
           slxPrjRoot = slxPrjRoot || '.';
-          deploy(projectDir);
+          deploy(slxPrjRoot);
        });
 
 program.command('browse [slaxApp]')
@@ -171,9 +202,43 @@ program.command('unpack <slaxApp> <outputDir>')
           archiver.unpack(path.resolve(slaxApp),path.resolve(outputDir));
        });
 
+program.command('routes <subcommand> <slxPrjRoot> [param]')
+       .alias('r')
+       .description('add or delete route ')
+       .action(function (subcommand, slxPrjRoot,param) {
+           switch (subcommand) {
+            case "add" : routes.add(slxPrjRoot,param) ;
+                    break;
+            case "remove" : routes.remove(slxPrjRoot,param);
+                    break;
+            case "list" : routes.list(slxPrjRoot) ;
+                    break;
+            default : console.error("The subcommand:" + subcommand + " is unknown");
+              break;
+           }
+
+       });
+
+program.command('plugins <subcommand> <slxPrjRoot> [param]')
+       .alias('g')
+       .description('add or delete plugin ')
+       .action(function (subcommand, slxPrjRoot,param) {
+           switch (subcommand) {
+            case "add" : plugins.add(slxPrjRoot,param) ;
+                    break;
+            case "remove" : plugins.remove(slxPrjRoot,param);
+                    break;
+            case "list" : plugins.list(slxPrjRoot) ;
+                    break;
+            default : console.error("The subcommand:" + subcommand + " is unknown");
+              break;
+           }
+
+       });
+
 program.command('*')
        .action(function (cmd) {
-         console.log('asar: \'%s\' is not an skylarkjs command. See \'skylarkjsss --help\'.', cmd)
+         console.log('skylarkjs: \'%s\' is not an skylarkjs command. See \'skylarkjs --help\'.', cmd)
        })
 
 program.parse(process.argv)

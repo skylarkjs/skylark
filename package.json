@@ -1,6 +1,9 @@
 {
   "name": "skylarkjs",
   "version": "0.9.3",
+  "runtime": {
+    "version": "0.9.3"
+  },
   "description": "An Elegant JavaScript Library and HTML5 Application Framework.",
   "main": "-",
   "scripts": {
@@ -27,7 +30,9 @@
   "dependencies": {
     "asar": "^0.13.0",
     "copy-dir": "^0.3.0",
+    "ejs": "^2.5.7",
     "electron": "^1.7.6",
+    "rmdir": "^1.2.0",
     "skylark-slax-browser": "file:../skylark-slax-browser",
     "skylark-slax-nodeserver": "file:../skylark-slax-nodeserver"
   },

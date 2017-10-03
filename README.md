@@ -26,6 +26,39 @@ The skylark single application framework has high extensibility, and easy to int
 | [skylark-jquery](https://github.com/skylarkjs/skylark-jquery)|an extension library fully compatible with jquery api|optional, installed by the developer as needed|
 | [skylark-backbone](https://github.com/skylarkjs/skylark-backbone)|an extension library fully compatible with backbone api|optional, installed by the developer as needed|
 
+##  Runtime
+###  Different builds
+|  | build | Description |
+|---------|--------|-------------|
+| full | skylarkjs.js | included skylark-utils |
+|  core | skylarkjs-core.js | not included skylark-utils |
+| full （development） | uncompressed/skylarkjs.js | included skylark-utils |
+| core （development）| uncompressed/skylarkjs-core.js | not included skylark-utils |
+
+
+### Installation
+There are multiple ways to install the skylark-router library. 
+- cdn 
+http://registry.skylarkjs.org/packages/skylarkjs/v0.9.3/skylarkjs.js    or  
+http://registry.skylarkjs.org/packages/skylarkjs/v0.9.3/uncompressed/skylarkjs.js 
+- bower  
+bower install skylarkjs
+- skylark.js development tool  
+
+### Usage
+
+- Using the skylarkjs library for a AMD module.  
+```js
+<script type="text/javascript" 
+            src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js"
+            data-main="http://registry.skylarkjs.org/packages/skylarkjs/v0.9.3/uncompressed/skylarkjs.js">
+</script>
+<script>
+  require(["skylarkjs"],funciton(skylarkjs){
+  skylarkjs.xxx();
+  });
+</script>
+```
 
 ## Bugs and feature requests
 

@@ -1,8 +1,8 @@
 # skylark.js
-An unified framework for building cross-platform modern html5 application. http://www.skylarkjs.org
+An unified framework for building modern html5 applications across web and desktop. http://www.skylarkjs.org
 
 ## Introduction
-Skylark.js is an unified framework for building cross-platform modern html5 application, including the runtime library and many  development tools.
+Skylark.js is an unified framework for building modern html5 applications across web and desktop, including the runtime library and many  development tools.
 ### summary
 
 - Concise  

@@ -68,6 +68,28 @@ Skylark.js sdk is released as npm package, so first make sure the nodejs and npm
 npm install skylarkjs -g
 ```
 ### quick start
+- enter into the workspace root directory  
+- create skylark slax application skeleton  
+```js
+sjs create slaxApp1 --routes home:/,view1:/view1,view2:/view2
+```
+- enter into the workspace root directory  
+- build application  
+```js
+npm run build
+```
+- deploy application  
+```js
+npm run deploy
+```
+- run the application as desktop application  
+```js
+npm run browse
+```
+- start server to run the slax application  
+```js
+npm run serve
+```  
 
 ## Bugs and feature requests
 

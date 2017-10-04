@@ -27,7 +27,7 @@ The skylark single application framework has high extensibility, and easy to int
 | [skylark-backbone](https://github.com/skylarkjs/skylark-backbone)|an extension library fully compatible with backbone api|optional, installed by the developer as needed|
 
 ##  Runtime
-###  Different builds
+###  different builds
 |  | build | Description |
 |---------|--------|-------------|
 | full | skylarkjs.js | included skylark-utils |
@@ -36,16 +36,16 @@ The skylark single application framework has high extensibility, and easy to int
 | core （development）| uncompressed/skylarkjs-core.js | not included skylark-utils |
 
 
-### Installation
+### installation
 There are multiple ways to install the skylark-router library. 
-- cdn 
+- cdn  
 http://registry.skylarkjs.org/packages/skylarkjs/v0.9.3/skylarkjs.js    or  
 http://registry.skylarkjs.org/packages/skylarkjs/v0.9.3/uncompressed/skylarkjs.js 
 - bower  
 bower install skylarkjs
 - skylark.js development tool  
 
-### Usage
+### usage
 
 - Using the skylarkjs library for a AMD module.  
 ```js
@@ -60,11 +60,20 @@ bower install skylarkjs
 </script>
 ```
 
+## Developping
+
+### installation
+Skylark.js sdk is released as npm package, so first make sure the nodejs and npm have been installed.
+```js
+npm install skylarkjs -g
+```
+### quick start
+
 ## Bugs and feature requests
 
 Have a bug or a feature request? Please first search for existing and closed issues. If your problem or idea is not addressed yet, [please open a new issue](https://github.com/skylarkjs/skylark/issues/new).
 
-## license
+## License
 
 The code is released under the [MIT License](https://github.com/skylarkjs/skylark/blob/master/LICENSE).
 

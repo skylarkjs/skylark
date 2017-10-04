@@ -8,7 +8,7 @@ Skylark.js is an unified framework for building cross-platform modern html5 appl
 - Concise  
 Skylark.js framework is very simple and powerful, the code is only 7k (core library,gzip) or 22k (including a powerful utility library), and easy to read and easy to debug.
 - Anywhere  
-s application is archived a single .slax file. The slax archive can be deployed to web server, and  you can also run it directly on the local desktop.
+Skyalrk.js application is archived a single .slax file. The slax archive can be deployed to web server, and  you can also run it directly on the local desktop.
 - Integratable  
 Skylark.js core framework focus  functional structure of an application, easy to integrate with jquery, backbone, vue, react and other popular UI framework.
 - Unified  

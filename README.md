@@ -1,17 +1,26 @@
 # skylark.js
 An unified framework for building cross-platform modern html5 application. http://www.skylarkjs.org
 
-## Features
+## Introduction
+Skylark.js is an unified framework for building cross-platform modern html5 application, including the runtime library and many  development tools.
+### summary
 
-- Powerful  
-Skyalrk.js provides a comprehensive utility functions and a complete and powerful single-page application framework, let you to develop a HTML5 applications more simpler and more able to focus on the application logic itself.
 - Concise  
-Skylark.js pursues a high modularity and high reusability， and was written to be straightforward and easy to read. Naturally, when the bug occurs, the program will be easier to debug.  
-If you've ever had to learn JavaScript then you'll certainly appreciate Skylark's smart coding style.
-- Compatible  
-Skylark.js has a high compatibility with other javascript libraries.  
-The skylark/query module provides a fully compatible API with jquery, and the code is simpler and more productive, JQuery plugins and applications can run directly on skylark without jquery library.   
-The skylark single application framework has high extensibility, and easy to integrate with bootstrap, backbone and other GUI libraries
+Skylark.js framework is very simple and powerful, the code is only 7k (core library,gzip) or 22k (including a powerful utility library), and easy to read and easy to debug.
+- Anywhere  
+s application is archived a single .slax file. The slax archive can be deployed to web server, and  you can also run it directly on the local desktop.
+- Integratable  
+Skylark.js core framework focus  functional structure of an application, easy to integrate with jquery, backbone, vue, react and other popular UI framework.
+- Unified  
+Skylark.js is easy to unify other framework resources. Using skylark-jquery, jquery plugins and applications can run directly on skylarkjs without jquery.  
+In addition, there are skylark-backbone, skylark-vue (in developping) and so on.
+- Configable  
+All constituent elements of the application (such as paths, plugins, dependents, and so on)  are configed in  slax-config.json file.
+- Modular  
+Highly modular with very little opinion of how things should be done, removing bloat and unecessary overhead.
+
+### browser compatibility
+Skylark.js supports all browsers that are ES5-compliant (IE8 and below are not supported).
 
 ## Ecosystem 
 

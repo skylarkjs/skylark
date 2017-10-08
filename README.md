@@ -82,7 +82,6 @@ npm install skylarkjs -g
 ```js
 sjs create slaxApp1 --routes home:/,view1:/view1,view2:/view2
 ```
-- enter into the workspace root directory  
 - build application  
 ```js
 npm run build

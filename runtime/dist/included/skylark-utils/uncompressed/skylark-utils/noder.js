@@ -32,7 +32,7 @@ define([
                 return node.cloneNode(true);
             });
         }
-        return nodes;
+        return langx.flatten(nodes);
     }
 
     function nodeName(elm, chkName) {
@@ -102,8 +102,8 @@ define([
         // A special case optimization for a single tag
         if (singleTagRE.test(html)) {
             return [createElement(RegExp.$1)];
-        } 
-       
+        }
+
         var name = fragmentRE.test(html) && RegExp.$1
         if (!(name in containers)) {
             name = "*"
@@ -111,8 +111,8 @@ define([
         var container = containers[name];
         container.innerHTML = "" + html;
         dom = slice.call(container.childNodes);
-        
-        dom.forEach(function(node){
+
+        dom.forEach(function(node) {
             container.removeChild(node);
         })
 
@@ -223,8 +223,8 @@ define([
         return this;
     }
 
-    function overlay(elm,params) {
-        var overlayDiv = createElement("div",params);
+    function overlay(elm, params) {
+        var overlayDiv = createElement("div", params);
         styler.css(overlayDiv, {
             position: "absolute",
             top: 0,
@@ -238,7 +238,7 @@ define([
         return overlayDiv;
 
     }
-    
+
 
 
     function remove(node) {
@@ -261,9 +261,12 @@ define([
             time = params.time,
             callback = params.callback,
             timer,
-            throbber = overlay(elm, {
+            throbber = this.createElement("div", {
                 className: params.className || "throbber",
                 style: style
+            }),
+            _overlay = overlay(throbber, {
+                className: 'overlay fade'
             }),
             throb = this.createElement("div", {
                 className: "throb"
@@ -286,13 +289,14 @@ define([
             };
         throb.appendChild(textNode);
         throbber.appendChild(throb);
+        elm.appendChild(throbber);
         var end = function() {
             remove();
             if (callback) callback();
         };
         if (time) {
             timer = setTimeout(end, time);
-        } 
+        }
 
         return {
             remove: remove,
@@ -347,7 +351,7 @@ define([
         return noder;
     }
 
-    langx.mixin(noder , {
+    langx.mixin(noder, {
         clone: clone,
         contents: contents,
 

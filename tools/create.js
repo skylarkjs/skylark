@@ -65,7 +65,11 @@ function create(name,root,options) {
 
 
       mkdir(root + '/src/scripts', function () {
-        mkdir(root + '/src/scripts/plugins');
+        mkdir(root + '/src/scripts/plugins',function(){
+          mkdir(root + '/src/scripts/plugins/app',function(){
+            copyTemplate('scripts/plugins/AppController.js', root + '/src/scripts/plugins/app/AppController.js');
+          });
+        });
         mkdir(root + '/src/scripts/routes');
       });
 
@@ -106,11 +110,24 @@ function create(name,root,options) {
       }
     }
 
+    if (options.routes) {
+          mkdir(root + '/src/scripts/plugins/highlight',function(){
+            copyTemplate('scripts/plugins/HighlightController.js', root + '/src/scripts/plugins/highlight/HighlightController.js');
+          });
+          slaxConfig.plugins.highlight = {
+            hookers: "routing routed",
+            controller : {
+              type  : "scripts/plugins/highlight/HighlightController"
+            }
+          };
+    }
+
     write(root + '/src/slax-config.json', JSON.stringify(slaxConfig,null,2)+ '\n');
     var added;
     if (options.routes) {
       added = routes.add(root,options.routes);
     }
+
 
     // write files
     write(root + '/package.json', JSON.stringify(pkg, null, 2) + '\n')

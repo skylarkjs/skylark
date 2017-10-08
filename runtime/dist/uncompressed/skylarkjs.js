@@ -1256,10 +1256,10 @@ define('skylark-router/router',[
     // refresh the current route
     function dispatch(ctx) {
 
-        if (_prevCtx) {
-            var ret = _prevCtx.route.exit({
-                path: _prevCtx.path,
-                params: _prevCtx.params
+        if (_curCtx) {
+            var ret = _curCtx.route.exit({
+                path: _curCtx.path,
+                params: _curCtx.params
             }, true);
             if (!ret) {
                 return;
@@ -1592,6 +1592,7 @@ define('skylark-spa/spa',[
                 content = setting.content,
                 contentPath = setting.contentPath;
 
+            
             if (controllerSetting && !controller) {
                 require([controllerSetting.type], function(type) {
                     controller = self.controller = new type(controllerSetting);
@@ -1607,11 +1608,7 @@ define('skylark-spa/spa',[
                     result: true
                 });
                 self.trigger(e);
-
                 return Deferred.when(e.result).then(function() {
-                    router.trigger(createEvent("prepared", {
-                        route: self
-                    }));
                     self._prepared = true;
                 });
             });
@@ -1671,7 +1668,7 @@ define('skylark-spa/spa',[
             this._rvc = document.querySelector(params.routeViewer);
             this._router = router;
 
-            router.on("routing", langx.proxy(this, "refresh"));
+            router.on("routed", langx.proxy(this, "refresh"));
         },
 
         prepare: function() {
@@ -1689,10 +1686,9 @@ define('skylark-spa/spa',[
                 this._rvc.innerHTML = "";
                 this._rvc.appendChild(content);
             }
-            //eventer.trigger(curCtx.route, "rendered", {
-            //    route: curCtx.route,
-            //    node: this._$rvc.domNode
-            //});
+            curCtx.route.trigger(createEvent("rendered", {
+                content: content
+            }));
         }
     });
 
@@ -1701,8 +1697,9 @@ define('skylark-spa/spa',[
 
         init: function(name, setting) {
             this.name = name;
-            this._setting = setting;
+            this._setting = setting; 
         },
+
 
         prepare: function() {
             var d = new Deferred(),
@@ -1729,13 +1726,7 @@ define('skylark-spa/spa',[
             }
 
             return d.then(function() {
-                var e = createEvent("preparing", {
-                    result: true
-                });
-                self.trigger(e);
-                return Deferred.when(e.result).then(function() {
-                    self._prepared = true;
-                });
+                self._prepared = true;
             });
         }
     });
@@ -1807,7 +1798,13 @@ define('skylark-spa/spa',[
         },
 
         prepare: function() {
+            if (this._prepared) {
+                return Deferred.resolve();
+            }
             var self = this;
+            router.trigger(createEvent("starting", {
+                spa: self
+            }));
             var promises1 = langx.map(router.routes(), function(route, name) {
                     if (route.lazy === false) {
                         return route.prepare();
@@ -1818,15 +1815,16 @@ define('skylark-spa/spa',[
                 });
 
 
-            return Deferred.all(promises1.concat(promises2)).then(function() {
-                return router.trigger(createEvent("starting", {
-                    spa: self
-                }));
+            return Deferred.all(promises1.concat(promises2)).then(function(){
+                this._prepared = true;
             });
         },
 
         run: function() {
             this._router.start();
+            router.trigger(createEvent("started", {
+                spa: this
+            }));
         }
     });
 
@@ -2205,7 +2203,7 @@ define('skylark-utils/noder',[
                 return node.cloneNode(true);
             });
         }
-        return nodes;
+        return langx.flatten(nodes);
     }
 
     function nodeName(elm, chkName) {
@@ -2275,8 +2273,8 @@ define('skylark-utils/noder',[
         // A special case optimization for a single tag
         if (singleTagRE.test(html)) {
             return [createElement(RegExp.$1)];
-        } 
-       
+        }
+
         var name = fragmentRE.test(html) && RegExp.$1
         if (!(name in containers)) {
             name = "*"
@@ -2284,8 +2282,8 @@ define('skylark-utils/noder',[
         var container = containers[name];
         container.innerHTML = "" + html;
         dom = slice.call(container.childNodes);
-        
-        dom.forEach(function(node){
+
+        dom.forEach(function(node) {
             container.removeChild(node);
         })
 
@@ -2396,8 +2394,8 @@ define('skylark-utils/noder',[
         return this;
     }
 
-    function overlay(elm,params) {
-        var overlayDiv = createElement("div",params);
+    function overlay(elm, params) {
+        var overlayDiv = createElement("div", params);
         styler.css(overlayDiv, {
             position: "absolute",
             top: 0,
@@ -2411,7 +2409,7 @@ define('skylark-utils/noder',[
         return overlayDiv;
 
     }
-    
+
 
 
     function remove(node) {
@@ -2434,9 +2432,12 @@ define('skylark-utils/noder',[
             time = params.time,
             callback = params.callback,
             timer,
-            throbber = overlay(elm, {
+            throbber = this.createElement("div", {
                 className: params.className || "throbber",
                 style: style
+            }),
+            _overlay = overlay(throbber, {
+                className: 'overlay fade'
             }),
             throb = this.createElement("div", {
                 className: "throb"
@@ -2459,13 +2460,14 @@ define('skylark-utils/noder',[
             };
         throb.appendChild(textNode);
         throbber.appendChild(throb);
+        elm.appendChild(throbber);
         var end = function() {
             remove();
             if (callback) callback();
         };
         if (time) {
             timer = setTimeout(end, time);
-        } 
+        }
 
         return {
             remove: remove,
@@ -2520,7 +2522,7 @@ define('skylark-utils/noder',[
         return noder;
     }
 
-    langx.mixin(noder , {
+    langx.mixin(noder, {
         clone: clone,
         contents: contents,
 
@@ -2571,6 +2573,7 @@ define('skylark-utils/noder',[
 
     return skylark.noder = noder;
 });
+
 define('skylark-utils/css',[
     "./skylark",
     "./langx",
@@ -5806,6 +5809,294 @@ define('skylarkjs/geom',[
     return geom;
 });
 
+define('skylark-utils/http',[
+    "./skylark",
+    "./langx"
+],function(skylark, langx){
+    var Deferred = langx.Deferred,
+        blankRE = /^\s*$/,
+        scriptTypeRE = /^(?:text|application)\/javascript/i,
+        xmlTypeRE = /^(?:text|application)\/xml/i;
+
+
+    function empty() {}
+
+    var ajaxSettings = {
+        // Default type of request
+        type: 'GET',
+        // Callback that is executed before request
+        beforeSend: empty,
+        // Callback that is executed if the request succeeds
+        success: empty,
+        // Callback that is executed the the server drops error
+        error: empty,
+        // Callback that is executed on request complete (both: error and success)
+        complete: empty,
+        // The context for the callbacks
+        context: null,
+        // Whether to trigger "global" Ajax events
+        global: true,
+        // Transport
+        xhr: function() {
+            return new window.XMLHttpRequest();
+        },
+        // MIME types mapping
+        // IIS returns Javascript as "application/x-javascript"
+        accepts: {
+            script: 'text/javascript, application/javascript, application/x-javascript',
+            json: 'application/json',
+            xml: 'application/xml, text/xml',
+            html: 'text/html',
+            text: 'text/plain'
+        },
+        // Whether the request is to another domain
+        crossDomain: false,
+        // Default timeout
+        timeout: 0,
+        // Whether data should be serialized to string
+        processData: true,
+        // Whether the browser should be allowed to cache GET responses
+        cache: true
+    }
+
+    function mimeToDataType(mime) {
+        if (mime) {
+            mime = mime.split(';', 2)[0];
+        }
+        return mime && (mime == 'text/html' ? 'html' :
+            mime == 'application/json' ? 'json' :
+            scriptTypeRE.test(mime) ? 'script' :
+            xmlTypeRE.test(mime) && 'xml') || 'text';
+    }
+
+    function appendQuery(url, query) {
+        if (query == '') {
+            return url;
+        }
+        return (url + '&' + query).replace(/[&?]{1,2}/, '?');
+    }
+
+    function serialize(params, obj, traditional, scope) {
+        var type, array = langx.isArray(obj),
+            hash = langx.isPlainObject(obj)
+        langx.each(obj, function(key, value) {
+            type = langx.type(value);
+            if (scope) {
+                key = traditional ? scope :
+                        scope + '[' + (hash || type == 'object' || type == 'array' ? key : '') + ']' ;
+            }
+            // handle data in serializeArray() format
+            if (!scope && array) {
+                params.add(value.name, value.value);
+            // recurse into nested objects
+            } else if (type == "array" || (!traditional && type == "object")) {
+                serialize(params, value, traditional, key);
+            } else {
+                params.add(key, value);
+            }
+        })
+    }    
+
+    function param(obj, traditional) {
+        var params = []
+        params.add = function(key, value) {
+            if (langx.isFunction(value)) {
+                value = value();
+            }
+            if (value == null) {
+                value = "";
+            }
+            this.push(escape(key) + '=' + escape(value));
+        }
+        
+        serialize(params, obj, traditional);
+
+        return params.join('&').replace(/%20/g, '+')
+    }
+
+    // serialize payload and append it to the URL for GET requests
+    function serializeData(options) {
+        if (options.processData && options.data && !langx.isString(options.data)) {
+            options.data = $.param(options.data, options.traditional)
+        }
+        if (options.data && (!options.type || options.type.toUpperCase() == 'GET')) {
+            options.url = appendQuery(options.url, options.data);
+            options.data = undefined;
+        }
+    }
+
+    function ajaxSuccess(data, xhr, settings, deferred) {
+        var context = settings.context,
+            status = 'success'
+        settings.success.call(context, data, status, xhr)
+        //if (deferred) deferred.resolveWith(context, [data, status, xhr])
+        //triggerGlobal(settings, context, 'ajaxSuccess', [xhr, settings, data])
+        ajaxComplete(status, xhr, settings)
+    }
+    // type: "timeout", "error", "abort", "parsererror"
+    function ajaxError(error, type, xhr, settings, deferred) {
+        var context = settings.context
+        settings.error.call(context, xhr, type, error)
+        //if (deferred) deferred.rejectWith(context, [xhr, type, error])
+        //triggerGlobal(settings, context, 'ajaxError', [xhr, settings, error || type])
+        ajaxComplete(type, xhr, settings)
+    }
+    // status: "success", "notmodified", "error", "timeout", "abort", "parsererror"
+    function ajaxComplete(status, xhr, settings) {
+        var context = settings.context
+        settings.complete.call(context, xhr, status)
+        //triggerGlobal(settings, context, 'ajaxComplete', [xhr, settings])
+        //ajaxStop(settings)
+    }    
+
+    function ajax(options) {
+        var settings = langx.mixin({}, options),
+            deferred = new Deferred();
+
+        langx.safeMixin(settings,ajaxSettings);
+
+        //ajaxStart(settings)
+        if (!settings.crossDomain) {
+        //    settings.crossDomain = !langx.isSameOrigin(settings.url);
+        }
+
+        serializeData(settings);
+        var dataType = settings.dataType;
+
+        var mime = settings.accepts[dataType],
+            headers = {},
+            setHeader = function(name, value) { headers[name.toLowerCase()] = [name, value] },
+            protocol = /^([\w-]+:)\/\//.test(settings.url) ? RegExp.$1 : window.location.protocol,
+            xhr = settings.xhr(),
+            nativeSetHeader = xhr.setRequestHeader,
+            abortTimeout;
+
+        //if (deferred) deferred.promise(xhr)
+
+        if (!settings.crossDomain) {
+            setHeader('X-Requested-With', 'XMLHttpRequest');
+        }
+        setHeader('Accept', mime || '*/*')
+        if (mime = settings.mimeType || mime) {
+            if (mime.indexOf(',') > -1) mime = mime.split(',', 2)[0]
+            xhr.overrideMimeType && xhr.overrideMimeType(mime)
+        }
+        if (settings.contentType || (settings.contentType !== false && settings.data && settings.type.toUpperCase() != 'GET')) {
+            setHeader('Content-Type', settings.contentType || 'application/x-www-form-urlencoded')
+        }
+
+        if (settings.headers) {
+            for (name in settings.headers) {
+                setHeader(name, settings.headers[name]);
+            }    
+        }
+        xhr.setRequestHeader = setHeader;
+
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState == 4) {
+                xhr.onreadystatechange = empty
+                clearTimeout(abortTimeout)
+                var result, error = false
+                if ((xhr.status >= 200 && xhr.status < 300) || xhr.status == 304 || (xhr.status == 0 && protocol == 'file:')) {
+                    dataType = dataType || mimeToDataType(settings.mimeType || xhr.getResponseHeader('content-type'))
+                    result = xhr.responseText
+
+                    try {
+                        // http://perfectionkills.com/global-eval-what-are-the-options/
+                        if (dataType == 'script') {
+                            (1, eval)(result);
+                        } else if (dataType == 'xml') {
+                            result = xhr.responseXML
+                        } else if (dataType == 'json') {
+                            result = blankRE.test(result) ? null : JSON.parse(result);
+                        }
+                    } catch (e) { 
+                        error = e 
+                    }
+
+                    if (error) {
+                        ajaxError(error, 'parsererror', xhr, settings, deferred);
+                    } else {
+                        ajaxSuccess(result, xhr, settings, deferred);
+                    }
+                } else {
+                    ajaxError(xhr.statusText || null, xhr.status ? 'error' : 'abort', xhr, settings, deferred);
+                }
+            }
+        }
+
+        /*
+        if (ajaxBeforeSend(xhr, settings) === false) {
+            xhr.abort()
+            ajaxError(null, 'abort', xhr, settings, deferred)
+            return xhr
+        }
+
+        if (settings.xhrFields)
+            for (name in settings.xhrFields) xhr[name] = settings.xhrFields[name]
+        */
+        var async = 'async' in settings ? settings.async : true
+        xhr.open(settings.type, settings.url, async, settings.username, settings.password)
+
+        for (name in headers) {
+            nativeSetHeader.apply(xhr, headers[name]);
+        }
+
+        if (settings.timeout > 0) {
+            abortTimeout = setTimeout(function() {
+                xhr.onreadystatechange = empty;
+                xhr.abort();
+                ajaxError(null, 'timeout', xhr, settings, deferred);
+            }, settings.timeout);
+        }
+
+        // avoid sending empty string (#319)
+        xhr.send(settings.data ? settings.data : null)
+        return xhr;
+    }
+
+
+    function get( /* url, data, success, dataType */ ) {
+        return ajax(parseArguments.apply(null, arguments))
+    }
+
+    function post( /* url, data, success, dataType */ ) {
+        var options = parseArguments.apply(null, arguments);
+        options.type = 'POST';
+        return ajax(options);
+    }
+
+    function getJSON( /* url, data, success */ ) {
+        var options = parseArguments.apply(null, arguments);
+        options.dataType = 'json';
+        return ajax(options);
+    }    
+
+
+    function http(){
+      return http;
+    }
+
+    langx.mixin(http, {
+        ajax: ajax,
+
+        get: get,
+        
+        gtJSON: getJSON,
+
+        post: post
+
+    });
+
+    return skylark.http = http;
+});
+
+define('skylarkjs/http',[
+    "skylark-utils/http"
+], function(http) {
+    return http;
+});
+
 define('skylark-utils/mover',[
     "./skylark",
     "./langx",
@@ -7082,6 +7373,7 @@ define('skylarkjs/main',[
     "./finder",
     "./fx",
     "./geom",
+    "./http",
     "./mover",
     "./noder",
     "./query",

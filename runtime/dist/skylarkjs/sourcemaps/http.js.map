@@ -1,0 +1,1 @@
+{"version":3,"sources":["http.js"],"names":["define","http"],"mappings":";;;;;;;AAAAA,QACI,sBACD,SAASC,GACR,MAAOA","file":"../http.js","sourcesContent":["define([\r\n    \"skylark-utils/http\"\r\n], function(http) {\r\n    return http;\r\n});\r\n"]}

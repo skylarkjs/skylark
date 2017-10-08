@@ -1256,10 +1256,10 @@ define('skylark-router/router',[
     // refresh the current route
     function dispatch(ctx) {
 
-        if (_prevCtx) {
-            var ret = _prevCtx.route.exit({
-                path: _prevCtx.path,
-                params: _prevCtx.params
+        if (_curCtx) {
+            var ret = _curCtx.route.exit({
+                path: _curCtx.path,
+                params: _curCtx.params
             }, true);
             if (!ret) {
                 return;
@@ -1592,6 +1592,7 @@ define('skylark-spa/spa',[
                 content = setting.content,
                 contentPath = setting.contentPath;
 
+            
             if (controllerSetting && !controller) {
                 require([controllerSetting.type], function(type) {
                     controller = self.controller = new type(controllerSetting);
@@ -1607,11 +1608,7 @@ define('skylark-spa/spa',[
                     result: true
                 });
                 self.trigger(e);
-
                 return Deferred.when(e.result).then(function() {
-                    router.trigger(createEvent("prepared", {
-                        route: self
-                    }));
                     self._prepared = true;
                 });
             });
@@ -1671,7 +1668,7 @@ define('skylark-spa/spa',[
             this._rvc = document.querySelector(params.routeViewer);
             this._router = router;
 
-            router.on("routing", langx.proxy(this, "refresh"));
+            router.on("routed", langx.proxy(this, "refresh"));
         },
 
         prepare: function() {
@@ -1689,10 +1686,9 @@ define('skylark-spa/spa',[
                 this._rvc.innerHTML = "";
                 this._rvc.appendChild(content);
             }
-            //eventer.trigger(curCtx.route, "rendered", {
-            //    route: curCtx.route,
-            //    node: this._$rvc.domNode
-            //});
+            curCtx.route.trigger(createEvent("rendered", {
+                content: content
+            }));
         }
     });
 
@@ -1701,8 +1697,9 @@ define('skylark-spa/spa',[
 
         init: function(name, setting) {
             this.name = name;
-            this._setting = setting;
+            this._setting = setting; 
         },
+
 
         prepare: function() {
             var d = new Deferred(),
@@ -1729,13 +1726,7 @@ define('skylark-spa/spa',[
             }
 
             return d.then(function() {
-                var e = createEvent("preparing", {
-                    result: true
-                });
-                self.trigger(e);
-                return Deferred.when(e.result).then(function() {
-                    self._prepared = true;
-                });
+                self._prepared = true;
             });
         }
     });
@@ -1807,7 +1798,13 @@ define('skylark-spa/spa',[
         },
 
         prepare: function() {
+            if (this._prepared) {
+                return Deferred.resolve();
+            }
             var self = this;
+            router.trigger(createEvent("starting", {
+                spa: self
+            }));
             var promises1 = langx.map(router.routes(), function(route, name) {
                     if (route.lazy === false) {
                         return route.prepare();
@@ -1818,15 +1815,16 @@ define('skylark-spa/spa',[
                 });
 
 
-            return Deferred.all(promises1.concat(promises2)).then(function() {
-                return router.trigger(createEvent("starting", {
-                    spa: self
-                }));
+            return Deferred.all(promises1.concat(promises2)).then(function(){
+                this._prepared = true;
             });
         },
 
         run: function() {
             this._router.start();
+            router.trigger(createEvent("started", {
+                spa: this
+            }));
         }
     });
 

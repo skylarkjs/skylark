@@ -9,6 +9,7 @@ define([
     "./finder",
     "./fx",
     "./geom",
+    "./http",
     "./mover",
     "./noder",
     "./query",

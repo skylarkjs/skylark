@@ -99,8 +99,8 @@ program.version('v' + require('../package.json').version)
 
 program.command('create <projectName>')
        .alias('c')
-       .description('generate a new project from a template')
-       .option('--routes <adding>', 'add routes')
+       .description('generate a new project')
+       .option('--routes <routes>', 'add routes')
        .option('--force', 'force on non-empty directory')
        .action(function (projectName,options) {
           var destinationPath = path.join(".",projectName);
@@ -124,8 +124,8 @@ program.command('create <projectName>')
        });
 
 program.command('build [slxPrjRoot]')
-       .alias('u')
-       .description('build the project src to /dist')
+       .alias('b')
+       .description('build slax project, files builded will be output to the /dist directory of project')
        .action(function (slxPrjRoot) {
           slxPrjRoot = slxPrjRoot || '.';
           build(slxPrjRoot);
@@ -133,14 +133,14 @@ program.command('build [slxPrjRoot]')
 
 program.command('deploy [slxPrjRoot]')
        .alias('d')
-       .description('package a .slax archive to /deploy')
+       .description('package slax project, .slax archive created will be output to the /deploy directory of project')
        .action(function (slxPrjRoot) {
           slxPrjRoot = slxPrjRoot || '.';
           deploy(slxPrjRoot);
        });
 
 program.command('browse [slaxApp]')
-       .alias('b')
+       .alias('w')
        .description('start slax browser and run the app')
        .action(function(slaxApp){
           if (slaxApp) {
@@ -204,7 +204,7 @@ program.command('unpack <slaxApp> <outputDir>')
 
 program.command('routes <subcommand> <slxPrjRoot> [param]')
        .alias('r')
-       .description('add or delete route ')
+       .description('add or delete route')
        .action(function (subcommand, slxPrjRoot,param) {
            switch (subcommand) {
             case "add" : routes.add(slxPrjRoot,param) ;
@@ -216,7 +216,6 @@ program.command('routes <subcommand> <slxPrjRoot> [param]')
             default : console.error("The subcommand:" + subcommand + " is unknown");
               break;
            }
-
        });
 
 program.command('plugins <subcommand> <slxPrjRoot> [param]')

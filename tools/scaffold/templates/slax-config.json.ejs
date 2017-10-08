@@ -12,7 +12,14 @@
   "page": {
     "routeViewer": "#main"
   },
-  "plugins": {},
+  "plugins": {
+      "app" : {
+          "hookers": "starting started",
+          "controller" : {
+            "type"  : "scripts/plugins/app/AppController"
+          }
+      }
+  },
   "routes": {
   }
 }

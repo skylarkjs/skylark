@@ -160,10 +160,10 @@ define([
     // refresh the current route
     function dispatch(ctx) {
 
-        if (_prevCtx) {
-            var ret = _prevCtx.route.exit({
-                path: _prevCtx.path,
-                params: _prevCtx.params
+        if (_curCtx) {
+            var ret = _curCtx.route.exit({
+                path: _curCtx.path,
+                params: _curCtx.params
             }, true);
             if (!ret) {
                 return;

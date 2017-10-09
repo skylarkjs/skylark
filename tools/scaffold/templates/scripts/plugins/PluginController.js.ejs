@@ -5,9 +5,13 @@ define([
         $ = skylarkjs.query;
 
     return spa.PluginController.inherit({
-        klassName: "<%=name.charAt(0).toUpperCase() + name.slice(1)%>Controller",
-        starting: function(evt) {
-        },
-        routed: function() {}
+		<% for (var i =0;i<hookers.length;i++){ %>
+        	<%=hookers[i]%>(e) {
+        		// handle the <%=hookers[i]%> event
+        	},
+		<% } %>        
+
+        klassName: "<%=name.charAt(0).toUpperCase() + name.slice(1)%>Controller"
+
     });
 });

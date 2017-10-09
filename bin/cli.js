@@ -104,10 +104,8 @@ program.command('create <projectName>')
        .option('--force', 'force on non-empty directory')
        .action(function (projectName,options) {
           var destinationPath = path.join(".",projectName);
-          console.log(destinationPath);
           util.emptyDirectory(destinationPath, function (empty) {
             if (empty || options.force) {
-              console.log(options);
               create(projectName, destinationPath,options);
             } else {
               confirm('destination is not empty, continue? [y/N] ', function (ok) {

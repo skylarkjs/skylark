@@ -27,7 +27,7 @@ function add(root,addingPlugins) {
 	addingPlugins.split(",").forEach(function(onePlugin) {
        let a = onePlugin.split(":"),
             name = a[0],
-            path = a[1];
+            hookers = a[1] ? a[1].split("+") : [];
  
 
 		if (plugins[name]) {
@@ -36,6 +36,7 @@ function add(root,addingPlugins) {
 		}
 	    var pluginJs = loadTemplate('scripts/plugins/PluginController.js');
 	    pluginJs.locals.name = name;
+	    pluginJs.locals.hookers = hookers;
 
 	    var controllerName = name.charAt(0).toUpperCase() + name.slice(1)+"Controller";
 	    mkdir(root+'/src/scripts/plugins/'+name,function(){
@@ -43,7 +44,7 @@ function add(root,addingPlugins) {
 	    });
 
 	    plugins[name] = {
-	    	pathto : path,
+	    	hookers : hookers.join(" "),
 	    	controller : {
 	    		type : "scripts/plugins/" + name + "/" + controllerName
 	    	} 

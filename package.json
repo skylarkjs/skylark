@@ -33,8 +33,8 @@
     "ejs": "^2.5.7",
     "electron": "^1.7.6",
     "rmdir": "^1.2.0",
-    "skylark-slax-browser": "file:../skylark-slax-browser",
-    "skylark-slax-nodeserver": "file:../skylark-slax-nodeserver"
+    "skylark-slax-browser": "^0.9.0",
+    "skylark-slax-nodeserver": "^0.9.0"
   },
   "bin": {
     "skylarkjs": "./bin/cli.js",

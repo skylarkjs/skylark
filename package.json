@@ -1,8 +1,8 @@
 {
   "name": "skylarkjs",
-  "version": "0.9.4",
+  "version": "0.9.5",
   "runtime": {
-    "version": "0.9.4"
+    "version": "0.9.5"
   },
   "description": "An Elegant JavaScript Library and HTML5 Application Framework.",
   "main": "-",

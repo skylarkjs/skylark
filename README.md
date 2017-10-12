@@ -1,6 +1,5 @@
 # skylark.js
 An unified framework for building modern html5 applications across web and desktop. http://www.skylarkjs.org
-![architecure](https://github.com/skylarkjs/skylark/blob/master/assets/architecure_001.jpg "architecure")
 
 ## Introduction
 Skylark.js is an unified framework for building modern html5 applications across web and desktop, including the runtime library and many  development tools.
@@ -37,6 +36,9 @@ Skylark.js supports all browsers that are ES5-compliant (IE8 and below are not s
 | [skylark-backbone](https://github.com/skylarkjs/skylark-backbone)|an extension library fully compatible with backbone api|optional, installed by the developer as needed|
 
 ##  Runtime
+###  architecure
+![architecure](https://github.com/skylarkjs/skylark/blob/master/assets/architecure_001.jpg "architecure")
+
 ###  different builds
 |  | build | Description |
 |---------|--------|-------------|

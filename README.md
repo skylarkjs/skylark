@@ -1,5 +1,6 @@
 # skylark.js
 An unified framework for building modern html5 applications across web and desktop. http://www.skylarkjs.org
+![architecure](https://github.com/skylarkjs/skylark/blob/master/assets/architecure_001.jpg "architecure")
 
 ## Introduction
 Skylark.js is an unified framework for building modern html5 applications across web and desktop, including the runtime library and many  development tools.
@@ -94,10 +95,15 @@ npm run deploy
 ```js
 npm run browse
 ```
+![desktopapp](https://github.com/skylarkjs/skylark/blob/master/assets/quickstart_rundeskapp_002.jpg "desktopapp")
+
+
 - start server to run the slax application  
 ```js
 npm run serve
 ```  
+![webapp](https://github.com/skylarkjs/skylark/blob/master/assets/quickstart_runwebapp_002.jpg "webapp")
+
 
 ## Bugs and feature requests
 

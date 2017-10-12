@@ -36,6 +36,9 @@ Skylark.js supports all browsers that are ES5-compliant (IE8 and below are not s
 | [skylark-backbone](https://github.com/skylarkjs/skylark-backbone)|an extension library fully compatible with backbone api|optional, installed by the developer as needed|
 
 ##  Runtime
+###  architecure
+![architecure](https://github.com/skylarkjs/skylark/blob/master/assets/architecure_001.jpg "architecure")
+
 ###  different builds
 |  | build | Description |
 |---------|--------|-------------|
@@ -94,10 +97,15 @@ npm run deploy
 ```js
 npm run browse
 ```
+![desktopapp](https://github.com/skylarkjs/skylark/blob/master/assets/quickstart_rundeskapp_002.jpg "desktopapp")
+
+
 - start server to run the slax application  
 ```js
 npm run serve
 ```  
+![webapp](https://github.com/skylarkjs/skylark/blob/master/assets/quickstart_runwebapp_002.jpg "webapp")
+
 
 ## Bugs and feature requests
 

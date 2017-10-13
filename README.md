@@ -106,6 +106,12 @@ npm run serve
 ```  
 ![webapp](https://github.com/skylarkjs/skylark/blob/master/assets/quickstart_runwebapp_002.jpg "webapp")
 
+## Documentation
+- [Guide](http://skylarkjs.org/guide)
+- [API](http://skylarkjs.org/api)
+
+## Stay In Touch
+- [Twitter](https://twitter.com/jsskylark)
 
 ## Bugs and feature requests
 

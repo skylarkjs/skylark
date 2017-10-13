@@ -36,8 +36,8 @@ Skylark.js supports all browsers that are ES5-compliant (IE8 and below are not s
 | [skylark-backbone](https://github.com/skylarkjs/skylark-backbone)|an extension library fully compatible with backbone api|optional, installed by the developer as needed|
 
 ##  Runtime
-###  architecure
-![architecure](https://github.com/skylarkjs/skylark/blob/master/assets/architecure_001.jpg "architecure")
+###  architecture
+![architecture](https://github.com/skylarkjs/skylark/blob/master/assets/architecure_001.jpg "architecture")
 
 ###  different builds
 |  | build | Description |

@@ -112,6 +112,8 @@ npm run serve
 
 ## Stay In Touch
 - [Twitter](https://twitter.com/jsskylark)
+- QQ  
+418640032  
 
 ## Bugs and feature requests
 

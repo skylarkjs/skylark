@@ -20,10 +20,10 @@ define([
             }
         },
 
-        starting(e) {
+        starting : function(e) {
             this._showProcessing();
         },
-        started(e) {
+        started : function(e) {
             this._hideProcessing();
         }
     });

@@ -8,9 +8,9 @@ define([
 	return spa.PluginController.inherit({
         klassName: "HighlightController",
 
-        routing(e) {
+        routing : function(e) {
         },
-        routed (e) {
+        routed : function(e) {
             var links = $("a.active");
 
             links.removeClass("active");

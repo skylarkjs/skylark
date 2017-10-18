@@ -3,6 +3,9 @@ var program = require('commander');
 const path = require('path');
 const readline = require('readline')
 const util = require('../tools/util');
+const gulp = require('gulp');
+require('../runtime/build/gulpfile');
+const run = require('gulp-run');
 
 const browse = require('../tools/browse');
 const serve = require('../tools/serve');
@@ -168,7 +171,7 @@ program.command('serve [slaxApp]')
        .action(function(slaxApp,options){
          options = {
            port: options.port
-         }        
+         }
           if (slaxApp) {
             serve(slaxApp,options);
           } else {
@@ -207,6 +210,8 @@ program.command('routes <subcommand> <slxPrjRoot> [param]')
            switch (subcommand) {
             case "add" : routes.add(slxPrjRoot,param) ;
                     break;
+            case "delete" : routes.remove(slxPrjRoot,param);
+                    break;
             case "remove" : routes.remove(slxPrjRoot,param);
                     break;
             case "list" : routes.list(slxPrjRoot) ;
@@ -222,6 +227,8 @@ program.command('plugins <subcommand> <slxPrjRoot> [param]')
        .action(function (subcommand, slxPrjRoot,param) {
            switch (subcommand) {
             case "add" : plugins.add(slxPrjRoot,param) ;
+                    break;
+            case "delete" : plugins.remove(slxPrjRoot,param);
                     break;
             case "remove" : plugins.remove(slxPrjRoot,param);
                     break;

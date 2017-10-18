@@ -51,8 +51,8 @@ Skylark.js supports all browsers that are ES5-compliant (IE8 and below are not s
 ### installation
 There are multiple ways to install the skylark-router library. 
 - cdn  
-http://registry.skylarkjs.org/packages/skylarkjs/v0.9.3/skylarkjs.js    or  
-http://registry.skylarkjs.org/packages/skylarkjs/v0.9.3/uncompressed/skylarkjs.js 
+http://registry.skylarkjs.org/packages/skylarkjs/v0.9.6/skylarkjs.js    or  
+http://registry.skylarkjs.org/packages/skylarkjs/v0.9.6/uncompressed/skylarkjs.js 
 - bower  
 bower install skylarkjs
 - skylark.js development tool  

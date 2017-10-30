@@ -3,24 +3,22 @@
 <head lang="en">
     <meta charset="UTF-8">
     <title>spa</title>
-    <script type="text/javascript" 
+    <script type="text/javascript"
             src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js"
             data-main="./lib/skylarkjs/skylarkjs.js"
     ></script>
-    <link rel="stylesheet" href="./assets/css/style.css">
+    <link rel="stylesheet" href="./assets/stylesheets/main.css">
 </head>
 
 <body>
-
-<nav>        
-<% for (var vn in views){ %>
-    <a href="javascript:go('<%=views[vn].pathto%>')"><%=vn%></a>
-<% } %>        
-</nav>
-<div id="main">
-</div>
-<footer>
-    This is a skylark application named as <%=name%>
-</footer>
+    <nav>
+    <% for (var vn in views){ %>
+        <a href="javascript:go('<%=views[vn].pathto%>')"><%=vn%></a>
+    <% } %>
+    </nav>
+    <div id="main"></div>
+    <footer>
+        This is a skylark application named as <%=name%>
+    </footer>
 </body>
 </html>

@@ -18,11 +18,10 @@ function build(slaxAppRoot) {
 	const buildGulp =  path.join(root,"build","gulpfile.js");
 	const deploy = path.join(root,"deploy",appname+".slax");
 
-
     if (fs.existsSync(dist)) {
         del.sync([dist + '/**/*'], {
             force: true
-        });       
+        });
     }
 
     if (fs.existsSync(buildGulp)) {

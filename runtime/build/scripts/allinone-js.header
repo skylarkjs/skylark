@@ -12,7 +12,7 @@
         }
         var stack = base.split("/"),
             parts = relative.split("/");
-        stack.pop(); 
+        stack.pop();
         for (var i=0; i<parts.length; i++) {
             if (parts[i] == ".")
                 continue;
@@ -80,7 +80,7 @@
     xhr.onreadystatechange = function()   {
         if (this.readyState == 4) {
             callback(this.response);
-        } 
+        }
     }
     xhr.open("GET",url,true);
     xhr.send( null );
@@ -101,7 +101,7 @@
 
 require([
   "skylarkjs"
-], function (skylark,http) { 
+], function (skylark,http) {
     xhrGet("./slax-config.json",function(res){
         if (!res) {
             console.error("can't find the slax-config.json!");
@@ -111,24 +111,31 @@ require([
         if (isAmd) {
             require.config(cfg.runtime);
         }
-        
+
         if (cfg.contextPath) {
               cfg.baseUrl = cfg.contextPath;
         }
+        var initApp = function(spa) {
+            var app = spa(cfg);
 
-        var app = skylark.spa(cfg);
+            globals.go =  function(path, force) {
+                app.go(path, force);
+            };
 
-        globals.go =  function(path) {
-            app.go(path);
+            app.prepare().then(function(){
+                app.run();
+            })
         };
-
-        app.prepare().then(function(){
-            app.run();
-        })
-
+        if(cfg.spaModule) {
+            require([cfg.spaModule], function(spa) {
+                initApp(spa);
+            });
+        } else {
+            initApp(skylark.spa);
+        }
     });
 
 
-});    
+});
 
 })(function(define,require) {

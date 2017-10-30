@@ -12,6 +12,7 @@ define([
                 this._throbber = noder.throb(document.body);
             }
         },
+
         _hideProcessing: function() {
             if (this._throbber) {
                 this._throbber.remove();
@@ -22,6 +23,7 @@ define([
         starting: function(e) {
             this._showProcessing();
         },
+
         started: function(e) {
             this._hideProcessing();
         }

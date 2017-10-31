@@ -79,6 +79,10 @@ Skylark.js sdk is released as npm package, so first make sure the nodejs and npm
 ```js
 npm install skylarkjs -g
 ```
+China:
+```js
+ELECTRON_MIRROR=https://npm.taobao.org/mirrors/electron/ npm install skylarkjs -g --verbose
+```
 ### quick start
 - enter into the workspace root directory  
 - create skylark slax application skeleton  

@@ -1,6 +1,6 @@
 {
   "name": "skylarkjs",
-  "version": "0.9.6",
+  "version": "0.9.6-beta",
   "runtime": {
     "version": "0.9.6"
   },
@@ -30,11 +30,13 @@
   "dependencies": {
     "asar": "^0.13.0",
     "copy-dir": "^0.3.0",
+    "del": "^1.2.1",
     "ejs": "^2.5.7",
     "electron": "^1.7.6",
     "rmdir": "^1.2.0",
     "skylark-slax-browser": "^0.9.0",
-    "skylark-slax-nodeserver": "^0.9.0"
+    "skylark-slax-nodeserver": "^0.9.0",
+    "zip-local": "^0.3.4"
   },
   "bin": {
     "skylarkjs": "./bin/cli.js",

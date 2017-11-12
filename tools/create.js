@@ -48,16 +48,16 @@ function create(name, root, options) {
         mkdir(root + '/src', function() {
             mkdir(root + '/src/assets', function() {
                 mkdir(root + '/src/assets/images');
-                mkdir(root + '/src/assets/css', function() {
+                mkdir(root + '/src/assets/stylesheets', function() {
                     switch (options.css) {
                         case 'less':
-                            copyTemplate('assets/css/style.less', root + '/src/assets/css/style.less')
+                            copyTemplate('assets/stylesheets/main.less', root + '/src/assets/stylesheets/main.less')
                             break
                         case 'sass':
-                            copyTemplate('assets/css/style.sass', root + '/src/assets/css/style.sass')
+                            copyTemplate('assets/stylesheets/main.sass', root + '/src/assets/stylesheets/main.sass')
                             break
                         default:
-                            copyTemplate('assets/css/style.css', root + '/src/assets/css/style.css')
+                            copyTemplate('assets/stylesheets/main.css', root + '/src/assets/stylesheets/main.css')
                             break
                     }
                 });

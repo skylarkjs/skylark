@@ -3,9 +3,6 @@ var program = require('commander');
 const path = require('path');
 const readline = require('readline')
 const util = require('../tools/util');
-const gulp = require('gulp');
-require('../runtime/build/gulpfile');
-const run = require('gulp-run');
 
 const browse = require('../tools/browse');
 const serve = require('../tools/serve');

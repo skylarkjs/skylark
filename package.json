@@ -2,7 +2,7 @@
   "name": "skylarkjs",
   "version": "0.9.6-beta",
   "runtime": {
-    "version": "0.9.6"
+    "version": "0.9.6-beta"
   },
   "description": "An Elegant JavaScript Library and HTML5 Application Framework.",
   "main": "-",

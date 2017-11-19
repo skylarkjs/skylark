@@ -1,7 +1,7 @@
 /**
  * skylarkjs - An Elegant JavaScript Library and HTML5 Application Framework.
  * @author Hudaokeji Co.,Ltd
- * @version v0.9.6
+ * @version v0.9.6-beta
  * @link www.skylarkjs.org
  * @license MIT
  */
@@ -19,7 +19,7 @@
         }
         var stack = base.split("/"),
             parts = relative.split("/");
-        stack.pop(); 
+        stack.pop();
         for (var i=0; i<parts.length; i++) {
             if (parts[i] == ".")
                 continue;
@@ -86,8 +86,8 @@
     var xhr = new XMLHttpRequest();
     xhr.onreadystatechange = function()   {
         if (this.readyState == 4) {
-            callback(this.response);
-        } 
+            callback(this.response || this.responseText);
+        }
     }
     xhr.open("GET",url,true);
     xhr.send( null );
@@ -108,7 +108,7 @@
 
 require([
   "skylarkjs"
-], function (skylark,http) { 
+], function (skylark,http) {
     xhrGet("./slax-config.json",function(res){
         if (!res) {
             console.error("can't find the slax-config.json!");
@@ -118,25 +118,32 @@ require([
         if (isAmd) {
             require.config(cfg.runtime);
         }
-        
+
         if (cfg.contextPath) {
               cfg.baseUrl = cfg.contextPath;
         }
+        var initApp = function(spa) {
+            var app = spa(cfg);
 
-        var app = skylark.spa(cfg);
+            globals.go =  function(path, force) {
+                app.go(path, force);
+            };
 
-        globals.go =  function(path) {
-            app.go(path);
+            app.prepare().then(function(){
+                app.run();
+            })
         };
-
-        app.prepare().then(function(){
-            app.run();
-        })
-
+        if(cfg.spaModule) {
+            require([cfg.spaModule], function(spa) {
+                initApp(spa);
+            });
+        } else {
+            initApp(skylark.spa);
+        }
     });
 
 
-});    
+});
 
 })(function(define,require) {
 define('skylark-langx/skylark',[], function() {
@@ -1097,7 +1104,7 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
 /**
  * skylark-router - An Elegant HTML5 Routing Framework.
  * @author Hudaokeji Co.,Ltd
- * @version v0.9.2
+ * @version v0.9.3-beta
  * @link www.skylarkjs.org
  * @license MIT
  */
@@ -1419,7 +1426,7 @@ define('skylark-router/router',[
     //starts routing urls
     function start() {
         if (router.useHashbang == null && router.useHistoryApi == null) {
-            if (window.location.host) {
+            if (window.location.host  && window.history.pushState) {
                 //web access
                 router.useHistoryApi = true;
             } else {
@@ -1582,6 +1589,10 @@ define('skylark-spa/spa',[
             return key ? this.data[key] : this.data;
         },
 
+        getNamedValue: function() {
+            return window.location.pathname.match(this.regex);
+        },
+
         prepare: function() {
             var d = new Deferred(),
                 setting = this._setting,
@@ -1700,7 +1711,7 @@ define('skylark-spa/spa',[
             this._setting = setting;
         },
 
-        isHooked : function(eventName) {
+        isHooked: function(eventName) {
             var hookers = this._setting.hookers || [];
             return hookers.indexOf(eventName) > -1;
         },
@@ -1797,8 +1808,8 @@ define('skylark-spa/spa',[
             return key ? this._config[key] : this._config;
         },
 
-        go: function(path) {
-            router.go(path);
+        go: function(path, force) {
+            router.go(path, force);
             return this;
         },
 
@@ -1813,10 +1824,10 @@ define('skylark-spa/spa',[
             var self = this;
 
             var promises0 = langx.map(this._plugins, function(plugin, name) {
-                    if (plugin.isHooked("starting")) {
-                        return plugin.prepare();
-                    }
-                });
+                if (plugin.isHooked("starting")) {
+                    return plugin.prepare();
+                }
+            });
 
             return Deferred.all(promises0).then(function() {
                 router.trigger(createEvent("starting", {

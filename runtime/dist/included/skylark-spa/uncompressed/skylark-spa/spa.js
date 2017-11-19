@@ -37,6 +37,10 @@ define([
             return key ? this.data[key] : this.data;
         },
 
+        getNamedValue: function() {
+            return window.location.pathname.match(this.regex);
+        },
+
         prepare: function() {
             var d = new Deferred(),
                 setting = this._setting,
@@ -155,7 +159,7 @@ define([
             this._setting = setting;
         },
 
-        isHooked : function(eventName) {
+        isHooked: function(eventName) {
             var hookers = this._setting.hookers || [];
             return hookers.indexOf(eventName) > -1;
         },
@@ -252,8 +256,8 @@ define([
             return key ? this._config[key] : this._config;
         },
 
-        go: function(path) {
-            router.go(path);
+        go: function(path, force) {
+            router.go(path, force);
             return this;
         },
 
@@ -268,10 +272,10 @@ define([
             var self = this;
 
             var promises0 = langx.map(this._plugins, function(plugin, name) {
-                    if (plugin.isHooked("starting")) {
-                        return plugin.prepare();
-                    }
-                });
+                if (plugin.isHooked("starting")) {
+                    return plugin.prepare();
+                }
+            });
 
             return Deferred.all(promises0).then(function() {
                 router.trigger(createEvent("starting", {

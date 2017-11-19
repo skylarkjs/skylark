@@ -79,7 +79,7 @@
     var xhr = new XMLHttpRequest();
     xhr.onreadystatechange = function()   {
         if (this.readyState == 4) {
-            callback(this.response);
+            callback(this.response || this.responseText);
         }
     }
     xhr.open("GET",url,true);

@@ -1,7 +1,7 @@
 /**
  * skylark-router - An Elegant HTML5 Routing Framework.
  * @author Hudaokeji Co.,Ltd
- * @version v0.9.2
+ * @version v0.9.3-beta
  * @link www.skylarkjs.org
  * @license MIT
  */
@@ -323,7 +323,7 @@ define([
     //starts routing urls
     function start() {
         if (router.useHashbang == null && router.useHistoryApi == null) {
-            if (window.location.host) {
+            if (window.location.host  && window.history.pushState) {
                 //web access
                 router.useHistoryApi = true;
             } else {

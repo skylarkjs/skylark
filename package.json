@@ -1,8 +1,8 @@
 {
   "name": "skylarkjs",
-  "version": "0.9.6-beta",
+  "version": "0.9.6",
   "runtime": {
-    "version": "0.9.6-beta"
+    "version": "0.9.6"
   },
   "description": "An Elegant JavaScript Library and HTML5 Application Framework.",
   "main": "-",
@@ -62,10 +62,10 @@
     "gulp-usemin": "^0.3.11",
     "gulp-util": "^3.0.6",
     "run-sequence": "^2.1.0",
-    "skylark-langx": "^0.9.2",
-    "skylark-router": "^0.9.2",
-    "skylark-spa": "^0.9.1",
-    "skylark-utils": "^0.9.2"
+    "skylark-langx": "^0.9.3",
+    "skylark-router": "^0.9.3",
+    "skylark-spa": "^0.9.3",
+    "skylark-utils": "^0.9.3"
   },
   "engines": {
     "node": ">=0.8.0"

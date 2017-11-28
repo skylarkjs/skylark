@@ -13,6 +13,15 @@ define([
         fileSelected,
         maxFileSize = 1 / 0;
 
+    function dataURLtoBlob(dataurl) {
+        var arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+            bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+        while(n--){
+            u8arr[n] = bstr.charCodeAt(n);
+        }
+        return new Blob([u8arr], {type:mime});
+    }
+
     function selectFile(callback) {
         fileSelected = callback;
         if (!fileInput) {
@@ -298,13 +307,18 @@ define([
             return d.promise;
         },
 
-        writeFile : function(dataUri,name) {
+        writeFile : function(data,name) {
             if (window.navigator.msSaveBlob) { 
-             　　var blob = dataURItoBlob(dataUri);
-               window.navigator.msSaveBlob(blob, name);
+               if (langx.isString(data)) {
+                   data = dataURItoBlob(data);
+               }
+               window.navigator.msSaveBlob(data, name);
             } else {
                 var a = document.createElement('a');
-                a.href = dataUri;
+                if (data instanceof Blob) {
+                    data = langx.URL.createObjectURL(data);
+                }
+                a.href = data;
                 a.setAttribute('download', name || 'noname');
                 a.dispatchEvent(new CustomEvent('click'));
             }              

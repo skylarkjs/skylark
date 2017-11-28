@@ -170,6 +170,11 @@ define([
         return elm.ownerDocument;
     }
 
+    function ownerWindow(elm) {
+        var doc = ownerDoc(elm);
+        return  doc.defaultView || doc.parentWindow;
+    } 
+
     function after(node, placing, copyByClone) {
         var refNode = node,
             parent = refNode.parentNode;
@@ -374,6 +379,8 @@ define([
         isDoc: isDoc,
 
         ownerDoc: ownerDoc,
+
+        ownerWindow : ownerWindow,
 
         after: after,
 

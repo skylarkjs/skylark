@@ -265,7 +265,7 @@ define([
         },
 
         eq: function(elm, idx, nodes, value) {
-            return (idx === value);
+            return (idx == value);
         },
 
         'focus': function(elm) {
@@ -276,9 +276,14 @@ define([
             return (idx === 0);
         },
 
+        gt: function(elm, idx, nodes, value) {
+            return (idx > value);
+        },
+
         has: function(elm, idx, nodes, sel) {
             return local.querySelector(elm, sel).length > 0;
         },
+
 
         hidden: function(elm) {
             return !local.pseudos["visible"](elm);
@@ -286,6 +291,14 @@ define([
 
         last: function(elm, idx, nodes) {
             return (idx === nodes.length - 1);
+        },
+
+        lt: function(elm, idx, nodes, value) {
+            return (idx < value);
+        },
+
+        not: function(elm, idx, nodes, sel) {
+            return local.match(elm, sel);
         },
 
         parent: function(elm) {
@@ -321,8 +334,8 @@ define([
         }
         if (attributes = cond.attributes) {
             for (var i = 0; i < attributes.length; i++) {
-                if (attributes[i].Operator) {
-                    nativeSelector += ("[" + attributes[i].key + attributes[i].Operator + JSON.stringify(attributes[i].value) + +"]");
+                if (attributes[i].operator) {
+                    nativeSelector += ("[" + attributes[i].key + attributes[i].operator + JSON.stringify(attributes[i].value)  +"]");
                 } else {
                     nativeSelector += ("[" + attributes[i].key + "]");
                 }
@@ -334,7 +347,7 @@ define([
                 if (this.pseudos[part.key]) {
                     customPseudos.push(part);
                 } else {
-                    if (part.value !== undefine) {
+                    if (part.value !== undefined) {
                         nativeSelector += (":" + part.key + "(" + JSON.stringify(part))
                     }
                 }
@@ -368,7 +381,7 @@ define([
             if (tag == '*') {
                 if (nodeName < '@') return false; // Fix for comment nodes and closed nodes
             } else {
-                if (nodeName != tag) return false;
+                if (nodeName != (tag || "").toUpperCase()) return false;
             }
         }
 
@@ -555,26 +568,41 @@ define([
 
 
     function ancestor(node, selector, root) {
+        var rootIsSelector = root && langx.isString(root);
         while (node = node.parentNode) {
             if (matches(node, selector)) {
                 return node;
             }
-            if (node == root) {
-                break;
-            }
+            if (root) {
+                if (rootIsSelector) {
+                    if (matches(node,root)) {
+                        break;
+                    }
+                } else if (node == root) {
+                    break;
+                }
+            } 
         }
         return null;
     }
 
-    function ancestors(node, selector) {
-        var ret = [];
+    function ancestors(node, selector,root) {
+        var ret = [],
+            rootIsSelector = root && langx.isString(root);
         while (node = node.parentNode) {
             if (matches(node, selector)) {
                 ret.push(node);
             }
-            if (node == ret) {
-                break;
-            }
+            if (root) {
+                if (rootIsSelector) {
+                    if (matches(node,root)) {
+                        break;
+                    }
+                } else if (node == root) {
+                    break;
+                }
+            } 
+
         }
         return ret;
     }
@@ -687,9 +715,13 @@ define([
             } catch (matchError) {
                 //console.log(matchError);
             }
-            return local.match(elm, selector)
-        } else {
+            return local.match(elm, selector);
+        } else if (langx.isArrayLike(selector)) {
+            return langx.inArray(elm,selector);
+        } else if (langx.isPlainObject(selector)){    
             return local.check(elm, selector);
+        } else {
+            return elm === selector;
         }
 
     }
@@ -793,7 +825,7 @@ define([
         children: children,
 
         closest: closest,
-        
+
         descendant: descendant,
 
         descendants: descendants,

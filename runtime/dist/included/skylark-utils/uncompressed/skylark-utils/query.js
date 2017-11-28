@@ -73,6 +73,26 @@ define([
         }
     }
 
+    function wrapper_selector_until(func, context, last) {
+        return function(util,selector) {
+            var self = this,
+                params = slice.call(arguments);
+            if (selector === undefined) {
+                selector = util;
+                util = undefined;
+            }
+            var result = this.map(function(idx, elem) {
+                return func.apply(context, last ? [elem,util] : [elem, selector,util]);
+            });
+            if (last && selector) {
+                return result.filter(selector);
+            } else {
+                return result;
+            }
+        }
+    }
+
+
     function wrapper_every_act(func, context) {
         return function() {
             var self = this,
@@ -343,6 +363,9 @@ define([
 
             parents: wrapper_selector(finder.ancestors, finder),
 
+            parentsUntil: wrapper_selector_until(finder.ancestors, finder),
+
+
             parent: wrapper_selector(finder.parent, finder),
 
             children: wrapper_selector(finder.children, finder),
@@ -525,6 +548,9 @@ define([
 
                 if (value === undefined) {
                     var el = this[0];
+                    if (!el) {
+                        return undefined;
+                    }
                     var cb = geom.size(el);
                     if (margin) {
                         var me = geom.marginExtents(el);

@@ -14,6 +14,7 @@ define([
         return parent;
     }
 
+
     function borderExtents(elm) {
         var s = getComputedStyle(elm);
         return {
@@ -293,8 +294,7 @@ define([
             return { x: x, y: y };
         }
 
-        var elm = this.getEl(),
-            parentElm = elm.parentNode;
+        var parentElm = elm.parentNode;
         var x, y, width, height, parentWidth, parentHeight;
         var pos = getOffset(elm, parentElm);
 

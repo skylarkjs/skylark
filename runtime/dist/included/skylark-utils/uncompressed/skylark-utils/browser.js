@@ -76,7 +76,10 @@ define([
 
         location: function() {
             return window.location;
-        }
+        },
+
+        support : {}
+
     });
 
     testEl = null;

@@ -138,22 +138,27 @@ define([
     }
 
     function removeClass(elm, name) {
-        var cls = className(elm),
-            names;
-        if (langx.isString(name)) {
-            names = name.split(/\s+/g);
-        } else {
-            names = name;
-        }
+        if (name) {
+            var cls = className(elm),
+                names;
 
-        names.forEach(function(klass) {
-            var re = classRE(klass);
-            if (cls.match(re)) {
-                cls = cls.replace(re, " ");
+            if (langx.isString(name)) {
+                names = name.split(/\s+/g);
+            } else {
+                names = name;
             }
-        });
 
-        className(elm, cls.trim());
+            names.forEach(function(klass) {
+                var re = classRE(klass);
+                if (cls.match(re)) {
+                    cls = cls.replace(re, " ");
+                }
+            });
+
+            className(elm, cls.trim());
+        } else {
+            className(elm,"");
+        }
 
         return this;
     }

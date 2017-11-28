@@ -1,7 +1,7 @@
 /**
  * skylark-utils - An Elegant HTML5 JavaScript Library.
  * @author Hudaokeji Co.,Ltd
- * @version v0.9.2
+ * @version v0.9.3
  * @link www.skylarkjs.org
  * @license MIT
  */
@@ -168,7 +168,10 @@ define('skylark-utils/browser',[
 
         location: function() {
             return window.location;
-        }
+        },
+
+        support : {}
+
     });
 
     testEl = null;
@@ -316,22 +319,27 @@ define('skylark-utils/styler',[
     }
 
     function removeClass(elm, name) {
-        var cls = className(elm),
-            names;
-        if (langx.isString(name)) {
-            names = name.split(/\s+/g);
-        } else {
-            names = name;
-        }
+        if (name) {
+            var cls = className(elm),
+                names;
 
-        names.forEach(function(klass) {
-            var re = classRE(klass);
-            if (cls.match(re)) {
-                cls = cls.replace(re, " ");
+            if (langx.isString(name)) {
+                names = name.split(/\s+/g);
+            } else {
+                names = name;
             }
-        });
 
-        className(elm, cls.trim());
+            names.forEach(function(klass) {
+                var re = classRE(klass);
+                if (cls.match(re)) {
+                    cls = cls.replace(re, " ");
+                }
+            });
+
+            className(elm, cls.trim());
+        } else {
+            className(elm,"");
+        }
 
         return this;
     }
@@ -545,6 +553,11 @@ define('skylark-utils/noder',[
         return elm.ownerDocument;
     }
 
+    function ownerWindow(elm) {
+        var doc = ownerDoc(elm);
+        return  doc.defaultView || doc.parentWindow;
+    } 
+
     function after(node, placing, copyByClone) {
         var refNode = node,
             parent = refNode.parentNode;
@@ -749,6 +762,8 @@ define('skylark-utils/noder',[
         isDoc: isDoc,
 
         ownerDoc: ownerDoc,
+
+        ownerWindow : ownerWindow,
 
         after: after,
 
@@ -1229,7 +1244,7 @@ define('skylark-utils/finder',[
         },
 
         eq: function(elm, idx, nodes, value) {
-            return (idx === value);
+            return (idx == value);
         },
 
         'focus': function(elm) {
@@ -1240,9 +1255,14 @@ define('skylark-utils/finder',[
             return (idx === 0);
         },
 
+        gt: function(elm, idx, nodes, value) {
+            return (idx > value);
+        },
+
         has: function(elm, idx, nodes, sel) {
             return local.querySelector(elm, sel).length > 0;
         },
+
 
         hidden: function(elm) {
             return !local.pseudos["visible"](elm);
@@ -1250,6 +1270,14 @@ define('skylark-utils/finder',[
 
         last: function(elm, idx, nodes) {
             return (idx === nodes.length - 1);
+        },
+
+        lt: function(elm, idx, nodes, value) {
+            return (idx < value);
+        },
+
+        not: function(elm, idx, nodes, sel) {
+            return local.match(elm, sel);
         },
 
         parent: function(elm) {
@@ -1285,8 +1313,8 @@ define('skylark-utils/finder',[
         }
         if (attributes = cond.attributes) {
             for (var i = 0; i < attributes.length; i++) {
-                if (attributes[i].Operator) {
-                    nativeSelector += ("[" + attributes[i].key + attributes[i].Operator + JSON.stringify(attributes[i].value) + +"]");
+                if (attributes[i].operator) {
+                    nativeSelector += ("[" + attributes[i].key + attributes[i].operator + JSON.stringify(attributes[i].value)  +"]");
                 } else {
                     nativeSelector += ("[" + attributes[i].key + "]");
                 }
@@ -1298,7 +1326,7 @@ define('skylark-utils/finder',[
                 if (this.pseudos[part.key]) {
                     customPseudos.push(part);
                 } else {
-                    if (part.value !== undefine) {
+                    if (part.value !== undefined) {
                         nativeSelector += (":" + part.key + "(" + JSON.stringify(part))
                     }
                 }
@@ -1332,7 +1360,7 @@ define('skylark-utils/finder',[
             if (tag == '*') {
                 if (nodeName < '@') return false; // Fix for comment nodes and closed nodes
             } else {
-                if (nodeName != tag) return false;
+                if (nodeName != (tag || "").toUpperCase()) return false;
             }
         }
 
@@ -1519,26 +1547,41 @@ define('skylark-utils/finder',[
 
 
     function ancestor(node, selector, root) {
+        var rootIsSelector = root && langx.isString(root);
         while (node = node.parentNode) {
             if (matches(node, selector)) {
                 return node;
             }
-            if (node == root) {
-                break;
-            }
+            if (root) {
+                if (rootIsSelector) {
+                    if (matches(node,root)) {
+                        break;
+                    }
+                } else if (node == root) {
+                    break;
+                }
+            } 
         }
         return null;
     }
 
-    function ancestors(node, selector) {
-        var ret = [];
+    function ancestors(node, selector,root) {
+        var ret = [],
+            rootIsSelector = root && langx.isString(root);
         while (node = node.parentNode) {
             if (matches(node, selector)) {
                 ret.push(node);
             }
-            if (node == ret) {
-                break;
-            }
+            if (root) {
+                if (rootIsSelector) {
+                    if (matches(node,root)) {
+                        break;
+                    }
+                } else if (node == root) {
+                    break;
+                }
+            } 
+
         }
         return ret;
     }
@@ -1651,9 +1694,13 @@ define('skylark-utils/finder',[
             } catch (matchError) {
                 //console.log(matchError);
             }
-            return local.match(elm, selector)
-        } else {
+            return local.match(elm, selector);
+        } else if (langx.isArrayLike(selector)) {
+            return langx.inArray(elm,selector);
+        } else if (langx.isPlainObject(selector)){    
             return local.check(elm, selector);
+        } else {
+            return elm === selector;
         }
 
     }
@@ -1757,7 +1804,7 @@ define('skylark-utils/finder',[
         children: children,
 
         closest: closest,
-        
+
         descendant: descendant,
 
         descendants: descendants,
@@ -1789,6 +1836,7 @@ define('skylark-utils/finder',[
 
     return skylark.finder = finder;
 });
+
 define('skylark-utils/datax',[
     "./skylark",
     "./langx",
@@ -2003,6 +2051,7 @@ define('skylark-utils/geom',[
         }
         return parent;
     }
+
 
     function borderExtents(elm) {
         var s = getComputedStyle(elm);
@@ -2283,8 +2332,7 @@ define('skylark-utils/geom',[
             return { x: x, y: y };
         }
 
-        var elm = this.getEl(),
-            parentElm = elm.parentNode;
+        var parentElm = elm.parentNode;
         var x, y, width, height, parentWidth, parentHeight;
         var pos = getOffset(elm, parentElm);
 
@@ -2595,7 +2643,7 @@ define('skylark-utils/eventer',[
             type = parsed.type;
 
             props = langx.mixin({
-                bubbles: false,
+                bubbles: true,
                 cancelable: true
             }, props);
 
@@ -2656,7 +2704,7 @@ define('skylark-utils/eventer',[
                         var elm = this,
                             e = createProxy(domEvt),
                             args = domEvt._args,
-                            binding = self._bindings,
+                            bindings = self._bindings,
                             ns = e.namespace;
 
                         if (langx.isDefined(args)) {
@@ -2665,10 +2713,10 @@ define('skylark-utils/eventer',[
                             args = [e];
                         }
 
-                        bindings.some(function(binding) {
+                        langx.each(bindings,function(idx,binding) {
                             var match = elm;
                             if (e.isImmediatePropagationStopped && e.isImmediatePropagationStopped()) {
-                                return true;
+                                return false;
                             }
                             var fn = binding.fn,
                                 options = binding.options || {},
@@ -2677,7 +2725,7 @@ define('skylark-utils/eventer',[
                                 data = options.data;
 
                             if (ns && ns != options.ns) {
-                                return false;
+                                return ;
                             }
                             if (selector) {
                                 match = finder.closest(e.target, selector);
@@ -2687,7 +2735,7 @@ define('skylark-utils/eventer',[
                                         liveFired: elm
                                     });
                                 } else {
-                                    return false;
+                                    return ;
                                 }
                             }
 
@@ -2705,7 +2753,6 @@ define('skylark-utils/eventer',[
                                 e.preventDefault();
                                 e.stopPropagation();
                             }
-                            return false;
                         });;
                     };
 
@@ -2764,15 +2811,16 @@ define('skylark-utils/eventer',[
             // selector Optional
             register: function(event, callback, options) {
                 // Seperate the event from the namespace
-                var parsed = parse(event);
-
-                event = parsed.type;
+                var parsed = parse(event),
+                    event = parsed.type,
+                    specialEvent = specialEvents[event],
+                    bindingEvent = specialEvent && (specialEvent.bindType || specialEvent.bindEventName);
 
                 var events = this._handler;
 
                 // Check if there is already a handler for this event
                 if (events[event] === undefined) {
-                    events[event] = new EventBindings(this._target, event);
+                    events[event] = new EventBindings(this._target, bindingEvent || event);
                 }
 
                 // Register the new callback function
@@ -3023,9 +3071,11 @@ define('skylark-utils/eventer',[
 
         shortcuts: shortcuts,
 
+        special : specialEvents,
+
         stop: stop,
 
-        trigger: trigger,
+        trigger: trigger
 
     });
 
@@ -3037,10 +3087,11 @@ define('skylark-utils/dnd',[
     "./langx",
     "./noder",
     "./datax",
+    "./finder",
     "./geom",
     "./eventer",
     "./styler"
-],function(skylark, langx,noder,datax,geom,eventer,styler){
+],function(skylark, langx,noder,datax,finder,geom,eventer,styler){
     var on = eventer.on,
         off = eventer.off,
         attr = datax.attr,
@@ -3057,6 +3108,15 @@ define('skylark-utils/dnd',[
 
       },
 
+      prepare : function(draggable) {
+          var e = eventer.create("preparing",{
+             dragSource : draggable.elm,
+             handleElm : draggable.handleElm
+          });
+          draggable.trigger(e);
+          draggable.dragSource = e.dragSource;
+      },
+
       start : function(draggable,event) {
 
         var p = geom.pagePosition(draggable.elm);
@@ -3064,14 +3124,24 @@ define('skylark-utils/dnd',[
         this.draggingOffsetY = parseInt(event.pageY - p.top)
 
         var e = eventer.create("started",{
+          elm : draggable.elm,
+          dragSource : draggable.dragSource,
+          handleElm : draggable.handleElm,
           ghost : null,
+
           transfer : {
           }
         });
 
         draggable.trigger(e);
 
+
         this.dragging = draggable;
+
+        if (draggable.draggingClass) {
+          styler.addClass(draggable.dragSource,draggable.draggingClass);
+        }
+
         this.draggingGhost = e.ghost;
         if (!this.draggingGhost) {
           this.draggingGhost = draggable.elm;
@@ -3092,10 +3162,22 @@ define('skylark-utils/dnd',[
         this.trigger(e);
       },
 
-      end : function() {
+      over : function() {
+
+      },
+
+      end : function(dropped) {
+        var dragging = this.dragging;
+        if (dragging) {
+          if (dragging.draggingClass) {
+            styler.removeClass(dragging.dragSource,dragging.draggingClass);
+          }
+        }
+
         var e = eventer.create("ended",{
         });        
         this.trigger(e);
+
 
         this.dragging = null;
         this.draggingTransfer = null;
@@ -3115,14 +3197,13 @@ define('skylark-utils/dnd',[
       klassName : "Draggable",
 
       init : function (elm,params) {
-        var self = this,
-            draggingClass = params.draggingClass || "dragging",
-            allowed = false;
+        var self = this;
 
         self.elm = elm;
+        self.draggingClass = params.draggingClass || "dragging",
         self._params = params;
 
-        ["started", "ended", "moving"].forEach(function(eventName) {
+        ["preparing","started", "ended", "moving"].forEach(function(eventName) {
             if (langx.isFunction(params[eventName])) {
                 self.on(eventName, params[eventName]);
             }
@@ -3131,18 +3212,29 @@ define('skylark-utils/dnd',[
 
         eventer.on(elm,{
           "mousedown" : function(e) {
-            if (allowed === true) {
-              datax.prop(self.elm, "draggable", true);
+            if (params.handle) {
+              self.handleElm = finder.closest(e.target,params.handle);
+              if (!self.handleElm) {
+                return;
+              }
+            }
+            manager.prepare(self);
+            if (self.dragSource) {
+              datax.prop(self.dragSource, "draggable", true);
             }
           },
 
           "mouseup" :   function(e) {
-            datax.prop(self.elm, "draggable", false);
+            if (self.dragSource) {
+              datax.prop(self.dragSource, "draggable", false);
+              self.dragSource = null;
+              self.handleElm = null;
+            }
           },
 
           "dragstart":  function(e) {
+            datax.prop(self.dragSource, "draggable", false);
             manager.start(self, e);
-            styler.addClass(self.elm,draggingClass);
           },
 
           "dragend":   function(e){
@@ -3152,24 +3244,9 @@ define('skylark-utils/dnd',[
               return;
             }
 
-            styler.removeClass(self.elm,draggingClass);
-
-            manager.end();
+            manager.end(false);
           }
         });
-
-        if (params.handle) {
-          eventer.on(elm,{
-            "mouseenter" : function(e) {
-              allowed = true;
-            },
-            "mouseleave" : function(e) {
-              allowed = false;
-            }
-          },params.handle);
-        } else {
-          allowed = true;
-        }
 
       }
 
@@ -3189,7 +3266,7 @@ define('skylark-utils/dnd',[
         self.elm = elm;
         self._params = params;
 
-        ["started","ended","entered", "leaved", "dropped","overing"].forEach(function(eventName) {
+        ["started","entered", "leaved", "dropped","overing"].forEach(function(eventName) {
             if (langx.isFunction(params[eventName])) {
                 self.on(eventName, params[eventName]);
             }
@@ -3204,13 +3281,17 @@ define('skylark-utils/dnd',[
             }
 
             var e2 = eventer.create("overing",{
-                transfer : manager.draggingTransfer
+                overElm : e.target,
+                transfer : manager.draggingTransfer,
+                acceptable : true
             });
             self.trigger(e2);
 
-            e.preventDefault() // allow drop
+            if (e2.acceptable) {
+              e.preventDefault() // allow drop
 
-            e.dataTransfer.dropEffect = "copyMove";
+              e.dataTransfer.dropEffect = "copyMove";
+            }
 
           },
 
@@ -3269,7 +3350,7 @@ define('skylark-utils/dnd',[
 
             self.trigger(e2);
 
-            manager.end()
+            manager.end(true)
           }
         });
 
@@ -3360,6 +3441,113 @@ define('skylark-utils/dnd',[
     return skylark.dnd = dnd;
 });
 
+define('skylark-utils/_devices/usermedia',[
+    "../langx"
+], function(langx) {
+    navigator.getUserMedia = navigator.getUserMedia
+                        || navigator.webkitGetUserMedia
+                        || navigator.mozGetUserMedia
+                        || navigator.msGetUserMedia;
+   
+    var Deferred = langx.Deferred,
+        localStream  = null;
+
+    function usermedia() {
+        return usermedia;
+    }
+
+    langx.mixin(usermedia, {
+        isSupported : function() {
+            return !!navigator.getUserMedia;
+        },
+
+        start : function(video,audio) {
+
+            var d = new Deferred();
+            navigator.getUserMedia (
+                {video: true,audio: true},
+                // successCallback
+                function(stream) {
+                    localStream = stream;
+                    video.src = window.URL.createObjectURL(localMediaStream);
+                    video.onloadedmetadata = function(e) {
+                         // Do something with the video here.
+                    };
+                    d.resolve();
+                },
+
+                // errorCallback
+                function(err) {
+                  d.reject(err);
+                }
+            );
+
+            return d.promise;
+        },
+
+        stop : function() {
+            if (localStream) {
+                localStream.stop();
+                localStream = null; 
+            }
+        }
+    });
+
+
+    return  usermedia;
+});
+
+define('skylark-utils/_devices/vibrate',[
+    "../langx"
+], function(langx) {
+    navigator.vibrate = navigator.vibrate
+                        || navigator.webkitVibrate
+                        || navigator.mozVibrate
+                        || navigator.msVibrate;
+    
+
+    function vibrate() {
+        return vibrate;
+    }
+
+    langx.mixin(vibrate, {
+        isSupported : function() {
+            return !!navigator.vibrate;
+        },
+
+        start : function(duration) {
+            navigator.vibrate(duration);
+        },
+
+        stop : function() {
+            navigator.vibrate(0);
+        }
+    });
+
+
+    return  vibrate;
+});
+
+define('skylark-utils/devices',[
+    "./skylark",
+    "./langx",
+    "./_devices/usermedia",
+    "./_devices/vibrate"
+], function(skylark,langx,usermedia,vibrate) {
+
+    function devices() {
+        return devices;
+    }
+
+    langx.mixin(devices, {
+        usermedia: usermedia,
+        vibrate : vibrate
+    });
+
+
+    return skylark.devices = devices;
+});
+
 define('skylark-utils/filer',[
     "./skylark",
     "./langx",
@@ -3374,6 +3562,15 @@ define('skylark-utils/filer',[
         fileInputForm,
         fileSelected,
         maxFileSize = 1 / 0;
+
+    function dataURLtoBlob(dataurl) {
+        var arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+            bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+        while(n--){
+            u8arr[n] = bstr.charCodeAt(n);
+        }
+        return new Blob([u8arr], {type:mime});
+    }
 
     function selectFile(callback) {
         fileSelected = callback;
@@ -3660,13 +3857,18 @@ define('skylark-utils/filer',[
             return d.promise;
         },
 
-        writeFile : function(dataUri,name) {
+        writeFile : function(data,name) {
             if (window.navigator.msSaveBlob) { 
-             　　var blob = dataURItoBlob(dataUri);
-               window.navigator.msSaveBlob(blob, name);
+               if (langx.isString(data)) {
+                   data = dataURItoBlob(data);
+               }
+               window.navigator.msSaveBlob(data, name);
             } else {
                 var a = document.createElement('a');
-                a.href = dataUri;
+                if (data instanceof Blob) {
+                    data = langx.URL.createObjectURL(data);
+                }
+                a.href = data;
                 a.setAttribute('download', name || 'noname');
                 a.dispatchEvent(new CustomEvent('click'));
             }              
@@ -4262,8 +4464,310 @@ define('skylark-utils/mover',[
         removeAttr = datax.removeAttr,
         offset = geom.pagePosition,
         addClass = styler.addClass,
-        height = geom.height;
+        height = geom.height,
+        some = Array.prototype.some,
+        map = Array.prototype.map;
 
+    function _place(/*DomNode*/ node, choices, layoutNode, aroundNodeCoords){
+        // summary:
+        //      Given a list of spots to put node, put it at the first spot where it fits,
+        //      of if it doesn't fit anywhere then the place with the least overflow
+        // choices: Array
+        //      Array of elements like: {corner: 'TL', pos: {x: 10, y: 20} }
+        //      Above example says to put the top-left corner of the node at (10,20)
+        // layoutNode: Function(node, aroundNodeCorner, nodeCorner, size)
+        //      for things like tooltip, they are displayed differently (and have different dimensions)
+        //      based on their orientation relative to the parent.   This adjusts the popup based on orientation.
+        //      It also passes in the available size for the popup, which is useful for tooltips to
+        //      tell them that their width is limited to a certain amount.   layoutNode() may return a value expressing
+        //      how much the popup had to be modified to fit into the available space.   This is used to determine
+        //      what the best placement is.
+        // aroundNodeCoords: Object
+        //      Size of aroundNode, ex: {w: 200, h: 50}
+
+        // get {x: 10, y: 10, w: 100, h:100} type obj representing position of
+        // viewport over document
+
+        var doc = noder.ownerDoc(node),
+            win = noder.ownerWindow(doc),
+            view = geom.size(win);
+
+        view.left = 0;
+        view.top = 0;
+
+        if(!node.parentNode || String(node.parentNode.tagName).toLowerCase() != "body"){
+            doc.body.appendChild(node);
+        }
+
+        var best = null;
+
+        some.apply(choices, function(choice){
+            var corner = choice.corner;
+            var pos = choice.pos;
+            var overflow = 0;
+
+            // calculate amount of space available given specified position of node
+            var spaceAvailable = {
+                w: {
+                    'L': view.left + view.width - pos.x,
+                    'R': pos.x - view.left,
+                    'M': view.width
+                }[corner.charAt(1)],
+
+                h: {
+                    'T': view.top + view.height - pos.y,
+                    'B': pos.y - view.top,
+                    'M': view.height
+                }[corner.charAt(0)]
+            };
+
+            if(layoutNode){
+                var res = layoutNode(node, choice.aroundCorner, corner, spaceAvailable, aroundNodeCoords);
+                overflow = typeof res == "undefined" ? 0 : res;
+            }
+
+            var bb = geom.size(node);
+
+            // coordinates and size of node with specified corner placed at pos,
+            // and clipped by viewport
+            var
+                startXpos = {
+                    'L': pos.x,
+                    'R': pos.x - bb.width,
+                    'M': Math.max(view.left, Math.min(view.left + view.width, pos.x + (bb.width >> 1)) - bb.width) // M orientation is more flexible
+                }[corner.charAt(1)],
+
+                startYpos = {
+                    'T': pos.y,
+                    'B': pos.y - bb.height,
+                    'M': Math.max(view.top, Math.min(view.top + view.height, pos.y + (bb.height >> 1)) - bb.height)
+                }[corner.charAt(0)],
+
+                startX = Math.max(view.left, startXpos),
+                startY = Math.max(view.top, startYpos),
+                endX = Math.min(view.left + view.width, startXpos + bb.width),
+                endY = Math.min(view.top + view.height, startYpos + bb.height),
+                width = endX - startX,
+                height = endY - startY;
+
+            overflow += (bb.width - width) + (bb.height - height);
+
+            if(best == null || overflow < best.overflow){
+                best = {
+                    corner: corner,
+                    aroundCorner: choice.aroundCorner,
+                    left: startX,
+                    top: startY,
+                    width: width,
+                    height: height,
+                    overflow: overflow,
+                    spaceAvailable: spaceAvailable
+                };
+            }
+
+            return !overflow;
+        });
+
+        // In case the best position is not the last one we checked, need to call
+        // layoutNode() again.
+        if(best.overflow && layoutNode){
+            layoutNode(node, best.aroundCorner, best.corner, best.spaceAvailable, aroundNodeCoords);
+        }
+
+
+        geom.boundingPosition(node,best);
+
+        return best;
+    }
+
+    function at(node, pos, corners, padding, layoutNode){
+        var choices = map.apply(corners, function(corner){
+            var c = {
+                corner: corner,
+                aroundCorner: reverse[corner],  // so TooltipDialog.orient() gets aroundCorner argument set
+                pos: {x: pos.x,y: pos.y}
+            };
+            if(padding){
+                c.pos.x += corner.charAt(1) == 'L' ? padding.x : -padding.x;
+                c.pos.y += corner.charAt(0) == 'T' ? padding.y : -padding.y;
+            }
+            return c;
+        });
+
+        return _place(node, choices, layoutNode);
+    }
+
+    function around(
+        /*DomNode*/     node,
+        /*DomNode|__Rectangle*/ anchor,
+        /*String[]*/    positions,
+        /*Boolean*/     leftToRight,
+        /*Function?*/   layoutNode){
+
+        // summary:
+        //      Position node adjacent or kitty-corner to anchor
+        //      such that it's fully visible in viewport.
+        // description:
+        //      Place node such that corner of node touches a corner of
+        //      aroundNode, and that node is fully visible.
+        // anchor:
+        //      Either a DOMNode or a rectangle (object with x, y, width, height).
+        // positions:
+        //      Ordered list of positions to try matching up.
+        //
+        //      - before: places drop down to the left of the anchor node/widget, or to the right in the case
+        //          of RTL scripts like Hebrew and Arabic; aligns either the top of the drop down
+        //          with the top of the anchor, or the bottom of the drop down with bottom of the anchor.
+        //      - after: places drop down to the right of the anchor node/widget, or to the left in the case
+        //          of RTL scripts like Hebrew and Arabic; aligns either the top of the drop down
+        //          with the top of the anchor, or the bottom of the drop down with bottom of the anchor.
+        //      - before-centered: centers drop down to the left of the anchor node/widget, or to the right
+        //          in the case of RTL scripts like Hebrew and Arabic
+        //      - after-centered: centers drop down to the right of the anchor node/widget, or to the left
+        //          in the case of RTL scripts like Hebrew and Arabic
+        //      - above-centered: drop down is centered above anchor node
+        //      - above: drop down goes above anchor node, left sides aligned
+        //      - above-alt: drop down goes above anchor node, right sides aligned
+        //      - below-centered: drop down is centered above anchor node
+        //      - below: drop down goes below anchor node
+        //      - below-alt: drop down goes below anchor node, right sides aligned
+        // layoutNode: Function(node, aroundNodeCorner, nodeCorner)
+        //      For things like tooltip, they are displayed differently (and have different dimensions)
+        //      based on their orientation relative to the parent.   This adjusts the popup based on orientation.
+        // leftToRight:
+        //      True if widget is LTR, false if widget is RTL.   Affects the behavior of "above" and "below"
+        //      positions slightly.
+        // example:
+        //  |   placeAroundNode(node, aroundNode, {'BL':'TL', 'TR':'BR'});
+        //      This will try to position node such that node's top-left corner is at the same position
+        //      as the bottom left corner of the aroundNode (ie, put node below
+        //      aroundNode, with left edges aligned).   If that fails it will try to put
+        //      the bottom-right corner of node where the top right corner of aroundNode is
+        //      (ie, put node above aroundNode, with right edges aligned)
+        //
+
+        // If around is a DOMNode (or DOMNode id), convert to coordinates.
+        var aroundNodePos;
+        if(typeof anchor == "string" || "offsetWidth" in anchor || "ownerSVGElement" in anchor){
+            aroundNodePos = domGeometry.position(anchor, true);
+
+            // For above and below dropdowns, subtract width of border so that popup and aroundNode borders
+            // overlap, preventing a double-border effect.  Unfortunately, difficult to measure the border
+            // width of either anchor or popup because in both cases the border may be on an inner node.
+            if(/^(above|below)/.test(positions[0])){
+                var anchorBorder = domGeometry.getBorderExtents(anchor),
+                    anchorChildBorder = anchor.firstChild ? domGeometry.getBorderExtents(anchor.firstChild) : {t:0,l:0,b:0,r:0},
+                    nodeBorder =  domGeometry.getBorderExtents(node),
+                    nodeChildBorder = node.firstChild ? domGeometry.getBorderExtents(node.firstChild) : {t:0,l:0,b:0,r:0};
+                aroundNodePos.y += Math.min(anchorBorder.t + anchorChildBorder.t, nodeBorder.t + nodeChildBorder.t);
+                aroundNodePos.h -=  Math.min(anchorBorder.t + anchorChildBorder.t, nodeBorder.t+ nodeChildBorder.t) +
+                    Math.min(anchorBorder.b + anchorChildBorder.b, nodeBorder.b + nodeChildBorder.b);
+            }
+        }else{
+            aroundNodePos = anchor;
+        }
+
+        // Compute position and size of visible part of anchor (it may be partially hidden by ancestor nodes w/scrollbars)
+        if(anchor.parentNode){
+            // ignore nodes between position:relative and position:absolute
+            var sawPosAbsolute = domStyle.getComputedStyle(anchor).position == "absolute";
+            var parent = anchor.parentNode;
+            while(parent && parent.nodeType == 1 && parent.nodeName != "BODY"){  //ignoring the body will help performance
+                var parentPos = domGeometry.position(parent, true),
+                    pcs = domStyle.getComputedStyle(parent);
+                if(/relative|absolute/.test(pcs.position)){
+                    sawPosAbsolute = false;
+                }
+                if(!sawPosAbsolute && /hidden|auto|scroll/.test(pcs.overflow)){
+                    var bottomYCoord = Math.min(aroundNodePos.y + aroundNodePos.h, parentPos.y + parentPos.h);
+                    var rightXCoord = Math.min(aroundNodePos.x + aroundNodePos.w, parentPos.x + parentPos.w);
+                    aroundNodePos.x = Math.max(aroundNodePos.x, parentPos.x);
+                    aroundNodePos.y = Math.max(aroundNodePos.y, parentPos.y);
+                    aroundNodePos.h = bottomYCoord - aroundNodePos.y;
+                    aroundNodePos.w = rightXCoord - aroundNodePos.x;
+                }
+                if(pcs.position == "absolute"){
+                    sawPosAbsolute = true;
+                }
+                parent = parent.parentNode;
+            }
+        }           
+
+        var x = aroundNodePos.x,
+            y = aroundNodePos.y,
+            width = "w" in aroundNodePos ? aroundNodePos.w : (aroundNodePos.w = aroundNodePos.width),
+            height = "h" in aroundNodePos ? aroundNodePos.h : (kernel.deprecated("place.around: dijit/place.__Rectangle: { x:"+x+", y:"+y+", height:"+aroundNodePos.height+", width:"+width+" } has been deprecated.  Please use { x:"+x+", y:"+y+", h:"+aroundNodePos.height+", w:"+width+" }", "", "2.0"), aroundNodePos.h = aroundNodePos.height);
+
+        // Convert positions arguments into choices argument for _place()
+        var choices = [];
+        function push(aroundCorner, corner){
+            choices.push({
+                aroundCorner: aroundCorner,
+                corner: corner,
+                pos: {
+                    x: {
+                        'L': x,
+                        'R': x + width,
+                        'M': x + (width >> 1)
+                    }[aroundCorner.charAt(1)],
+                    y: {
+                        'T': y,
+                        'B': y + height,
+                        'M': y + (height >> 1)
+                    }[aroundCorner.charAt(0)]
+                }
+            })
+        }
+        array.forEach(positions, function(pos){
+            var ltr =  leftToRight;
+            switch(pos){
+                case "above-centered":
+                    push("TM", "BM");
+                    break;
+                case "below-centered":
+                    push("BM", "TM");
+                    break;
+                case "after-centered":
+                    ltr = !ltr;
+                    // fall through
+                case "before-centered":
+                    push(ltr ? "ML" : "MR", ltr ? "MR" : "ML");
+                    break;
+                case "after":
+                    ltr = !ltr;
+                    // fall through
+                case "before":
+                    push(ltr ? "TL" : "TR", ltr ? "TR" : "TL");
+                    push(ltr ? "BL" : "BR", ltr ? "BR" : "BL");
+                    break;
+                case "below-alt":
+                    ltr = !ltr;
+                    // fall through
+                case "below":
+                    // first try to align left borders, next try to align right borders (or reverse for RTL mode)
+                    push(ltr ? "BL" : "BR", ltr ? "TL" : "TR");
+                    push(ltr ? "BR" : "BL", ltr ? "TR" : "TL");
+                    break;
+                case "above-alt":
+                    ltr = !ltr;
+                    // fall through
+                case "above":
+                    // first try to align left borders, next try to align right borders (or reverse for RTL mode)
+                    push(ltr ? "TL" : "TR", ltr ? "BL" : "BR");
+                    push(ltr ? "TR" : "TL", ltr ? "BR" : "BL");
+                    break;
+                default:
+                    // To assist dijit/_base/place, accept arguments of type {aroundCorner: "BL", corner: "TL"}.
+                    // Not meant to be used directly.  Remove for 2.0.
+                    push(pos.aroundCorner, pos.corner);
+            }
+        });
+
+        var position = _place(node, choices, layoutNode, {w: width, h: height});
+        position.aroundNodePos = aroundNodePos;
+
+        return position;
+    }
 
     function movable(elm, params) {
         function updateWithTouchData(e) {
@@ -4400,6 +4904,9 @@ define('skylark-utils/mover',[
     }
 
     langx.mixin(mover, {
+        around : around,
+
+        at: at, 
 
         movable: movable
 
@@ -4482,6 +4989,26 @@ define('skylark-utils/query',[
             }
         }
     }
+
+    function wrapper_selector_until(func, context, last) {
+        return function(util,selector) {
+            var self = this,
+                params = slice.call(arguments);
+            if (selector === undefined) {
+                selector = util;
+                util = undefined;
+            }
+            var result = this.map(function(idx, elem) {
+                return func.apply(context, last ? [elem,util] : [elem, selector,util]);
+            });
+            if (last && selector) {
+                return result.filter(selector);
+            } else {
+                return result;
+            }
+        }
+    }
+
 
     function wrapper_every_act(func, context) {
         return function() {
@@ -4753,6 +5280,9 @@ define('skylark-utils/query',[
 
             parents: wrapper_selector(finder.ancestors, finder),
 
+            parentsUntil: wrapper_selector_until(finder.ancestors, finder),
+
+
             parent: wrapper_selector(finder.parent, finder),
 
             children: wrapper_selector(finder.children, finder),
@@ -4935,6 +5465,9 @@ define('skylark-utils/query',[
 
                 if (value === undefined) {
                     var el = this[0];
+                    if (!el) {
+                        return undefined;
+                    }
                     var cb = geom.size(el);
                     if (margin) {
                         var me = geom.marginExtents(el);
@@ -5243,6 +5776,488 @@ define('skylark-utils/scripter',[
     });
 
     return skylark.scripter = scripter;
+});
+
+define('skylark-utils/_storages/cookies',[
+    "../langx"
+], function(langx) {
+    function cookies() {
+        return cookies;
+    }
+
+    langx.mixin(cookies, {
+		get : function(name) {
+		    if (!sKey || !this.has(name)) { return null; }
+				return unescape(document.cookie.replace(new RegExp("(?:^|.*;\\s*)" + escape(name).replace(/[\-\.\+\*]/g, "\\$&") + "\\s*\\=\\s*((?:[^;](?!;))*[^;]?).*"),"$1"));
+
+		},
+
+		has : function(name) {
+			return (new RegExp("(?:^|;\\s*)" + escape(name).replace(/[\-\.\+\*]/g, "\\$&") + "\\s*\\=")).test(document.cookie);
+		},
+
+
+		list : function() {
+		    var cookies = document.cookie.replace(/((?:^|\s*;)[^\=]+)(?=;|$)|^\s*|\s*(?:\=[^;]*)?(?:\1|$)/g, "").split(/\s*(?:\=[^;]*)?;\s*/);
+		    for (var i = 0; i < cookies.length; i++) { 
+		    	cookies[i] = unescape(cookies[i]); 
+		    }
+		    return cookies;
+		},
+
+		remove : function(name,path) {
+		    if (!name || !this.has(name)) { 
+		    	return; 
+		   	}
+		    document.cookie = escape(name) + "=; expires=Thu, 01 Jan 1970 00:00:00 GMT" + (path ? "; path=" + path : "");
+		},
+
+		set: function (name, value, expires, path, domain, secure) {
+		    if (!name || /^(?:expires|max\-age|path|domain|secure)$/i.test(name)) { return; }
+		    var sExpires = "";
+		    if (expires) {
+		      switch (expires.constructor) {
+		        case Number:
+		          sExpires = vEnd === Infinity ? "; expires=Tue, 19 Jan 2038 03:14:07 GMT" : "; max-age=" + expires;
+		          break;
+		        case String:
+		          sExpires = "; expires=" + expires;
+		          break;
+		        case Date:
+		          sExpires = "; expires=" + expires.toGMTString();
+		          break;
+		      }
+		    }
+		    document.cookie = escape(name) + "=" + escape(value) + sExpires + (domain ? "; domain=" + domain : "") + (path ? "; path=" + path : "") + (secure ? "; secure" : "");
+		  }	
+    });
+
+
+    return  cookies;
+
+});
+
+
+/**
+ *
+ * Copyright (c) 2013 psteam Inc.(http://www.psteam.co.jp)
+ * http://www.psteam.co.jp/qface/license
+ * 
+ * @Author: liwenfeng
+ * @Date: 2014/02/28
+ */
+define('skylark-utils/_storages/localfs',[
+    "../langx"
+], function(langx){
+	var Deferred = langx.Deferred,
+		requestFileSystem =  window.requestFileSystem || window.webkitRequestFileSystem,
+		resolveLocalFileSystemURL = window.resolveLocalFileSystemURL || window.webkitResolveLocalFileSystemURL,
+     	BlobBuilder = window.MozBlobBuilder || window.WebKitBlobBuilder || window.BlobBuilder;
+
+
+	function errorHandler(e) {
+	  var msg = '';
+
+	  switch (e.code) {
+	    case FileError.QUOTA_EXCEEDED_ERR:
+	      msg = 'QUOTA_EXCEEDED_ERR';
+	      break;
+	    case FileError.NOT_FOUND_ERR:
+	      msg = 'NOT_FOUND_ERR';
+	      break;
+	    case FileError.SECURITY_ERR:
+	      msg = 'SECURITY_ERR';
+	      break;
+	    case FileError.INVALID_MODIFICATION_ERR:
+	      msg = 'INVALID_MODIFICATION_ERR';
+	      break;
+	    case FileError.INVALID_STATE_ERR:
+	      msg = 'INVALID_STATE_ERR';
+	      break;
+	    default:
+	      msg = 'Unknown Error';
+	      break;
+	  };
+
+	  return msg;
+	}
+	
+	var FileSystem = langx.Evented.inherit({
+		_fs : null,
+		_isPersisted : true,
+		_cwd : null,
+
+		init:	function (fs) {
+			this._fs = fs;
+			this._cwd = fs.root;
+		},
+			
+
+		readfileAsArrayBuffer :  function (path,callback,errback) {
+		    this._cwd.getFile(path, {}, function (fileEntry) {
+		      fileEntry.file(function (file) {
+		        var reader = new FileReader();
+		        reader.onloadend = function () {
+		          callback(null, this.result);
+		        };
+		        reader.readAsArrayBuffer(file);
+		      }, errback);
+		    }, errback);
+		},
+
+		readfileAsDataURL :  function (path,callback,errback) {
+		    this._cwd.getFile(path, {}, function (fileEntry) {
+		      fileEntry.file(function (file) {
+		        var reader = new FileReader();
+		        reader.onloadend = function () {
+		          callback(null, this.result);
+		        };
+		        reader.readAsDataURL(file);
+		      }, errback);
+		    }, errback);
+		},
+
+		readfileAsText :  function (path,callback,errback) {
+		    this._cwd.getFile(path, {}, function (fileEntry) {
+		      fileEntry.file(function (file) {
+		        var reader = new FileReader();
+		        reader.onloadend = function () {
+		          callback(null, this.result);
+		        };
+		        reader.readAsText(file);
+		      }, errback);
+		    }, errback);
+		},
+
+		writefile : function (path, contents, callback,errback) {
+		    var self = this,
+		    	folders = path.split('/');
+		    folders = folders.slice(0, folders.length - 1);
+
+		    this.mkdir(folders.join('/'),function(){
+			    self._cwd.getFile(path, {create: true}, function (fileEntry) {
+			      fileEntry.createWriter(function (fileWriter) {
+			        var truncated = false;
+			        fileWriter.onwriteend = function () {
+			          if (!truncated) {
+			            truncated = true;
+			            this.truncate(this.position);
+			            return;
+			          }
+			          callback && callback();
+			        };
+			        fileWriter.onerror = errback;
+			        // TODO: find a way to write as binary too
+			        var blob = contents;
+			        if (!blob instanceof Blob) {
+			        	blob = new Blob([contents], {type: 'text/plain'});
+			        } 
+			        fileWriter.write(blob);
+			      }, errback);
+			    }, errback);
+
+		    });
+		},
+
+		rmfile : function (path, callback,errback) {
+		    this._cwd.getFile(path, {}, function (fileEntry) {
+		      fileEntry.remove(function () {
+		        callback();
+		      }, errback);
+		    }, errback);
+		},
+
+		readdir : function (path, callback,errback) {
+		    this._cwd.getDirectory(path, {}, function (dirEntry) {
+		      var dirReader = dirEntry.createReader();
+		      var entries = [];
+		      readEntries();
+		      function readEntries() {
+		        dirReader.readEntries(function (results) {
+		          if (!results.length) {
+		            callback(null, entries);
+		          }
+		          else {
+		            entries = entries.concat(
+		            	Array.prototype.slice.call(results).map(
+		            		function (entry) {
+		              			return entry.name + (entry.isDirectory ? "/" : "");
+		            		}
+		            	)
+		            );
+		            readEntries();
+		          }
+		        }, errback);
+		      }
+		    }, errback);
+		},
+
+		mkdir : function (path, callback,errback) {
+		    var folderParts = path.split('/');
+
+		    var createDir = function(rootDir, folders) {
+		      // Throw out './' or '/' and move on. Prevents: '/foo/.//bar'.
+		      if (folders[0] == '.' || folders[0] == '') {
+		        folders = folders.slice(1);
+		      }
+
+		      if (folders.length ==0) {
+		      	callback(rootDir);
+		      	return;
+		      }
+		      rootDir.getDirectory(folders[0], {create: true, exclusive: false},
+		        function (dirEntry) {
+		          if (dirEntry.isDirectory) { // TODO: check shouldn't be necessary.
+		            // Recursively add the new subfolder if we have more to create and
+		            // There was more than one folder to create.
+		            if (folders.length && folderParts.length != 1) {
+		              createDir(dirEntry, folders.slice(1));
+		            } else {
+		              // Return the last directory that was created.
+		              if (callback) callback(dirEntry);
+		            }
+		          } else {
+		            var e = new Error(path + ' is not a directory');
+		            if (errback) {
+		              errback(e);
+		            } else {
+		              throw e;
+		            }
+		          }
+		        },
+		        function(e) {
+		            if (errback) {
+		              errback(e);
+		            } else {
+		              throw e;
+		            }
+		        }
+		      );
+		    };
+
+		    createDir(this._cwd, folderParts);
+
+		},
+
+		rmdir : function (path, callback,errback) {
+		    this._cwd.getDirectory(path, {}, function (dirEntry) {
+		      dirEntry.removeRecursively(function () {
+		        callback();
+		      }, errback);
+		    }, errback);
+		  },
+
+		copy : function (src, dest, callback) {
+		    // TODO: make sure works for cases where dest includes and excludes file name.
+		    this._cwd.getFile(src, {}, function(fileEntry) {
+		      cwd.getDirectory(dest, {}, function(dirEntry) {
+		        fileEntry.copyTo(dirEntry, function () {
+		          callback();
+		        }, callback);
+		      }, callback);
+		    }, callback);
+		},
+
+		move : function(src, dest, callback) {
+		    // TODO: handle more cases like file renames and moving/renaming directories
+		    this._cwd.getFile(src, {}, function(fileEntry) {
+		      cwd.getDirectory(dest, {}, function(dirEntry) {
+		        fileEntry.moveTo(dirEntry, function () {
+		          callback();
+		        }, callback);
+		      }, callback);
+		    }, callback);
+		},
+
+		chdir : function (path, callback) {
+		    this._cwd.getDirectory(path, {}, function (dirEntry) {
+		      cwd = dirEntry;
+		      if (fs.onchdir) {
+		        fs.onchdir(cwd.fullPath);
+		      }
+		      callback();
+		    }, callback);
+		},
+
+		importFromHost : function(files) {
+		    // Duplicate each file the user selected to the app's fs.
+		    var deferred = new Deferred();
+		    for (var i = 0, file; file = files[i]; ++i) {
+		        (function(f) {
+			        cwd.getFile(file.name, {create: true, exclusive: true}, function(fileEntry) {
+			          fileEntry.createWriter(function(fileWriter) {
+			            fileWriter.write(f); // Note: write() can take a File or Blob object.
+			          }, errorHandler);
+			        }, errorHandler);
+		     	})(file);
+ 	   	 	}
+  		    return deferred.promise;
+		  },
+
+		  exportToHost : function() {
+
+		  }
+	
+	});
+	
+
+
+    function localfs() {
+        return localfs;
+    }
+
+    langx.mixin(localfs, {
+        isSupported : function() {
+            return !!requestFileSystem;
+        },
+        request : function(size,isPersisted){
+        	size = size || 1024 * 1024 * 10;
+        	var typ = isPersisted ? PERSISTENT : TEMPORARY,
+        		d = new Deferred();
+            requestFileSystem(typ, size, function(_fs) {
+                var fs = new FileSystem(_fs,!!isPersisted);
+                d.resolve(fs);
+            }, function(e) {
+            	d.reject(e);
+            });
+
+            return d.promise;
+        },
+
+        FileSystem : FileSystem
+    });
+    
+	return localfs;
+});
+define('skylark-utils/_storages/localStorage',[
+    "../langx"
+], function(langx) {
+    var storage  = null;
+
+    try {
+        storage = window["localStorage"];
+    } catch (e){
+
+    }
+
+    function localStorage() {
+        return localStorage;
+    }
+
+    langx.mixin(localStorage, {
+        isSupported : function() {
+            return !!storage;
+        },
+
+        set : function(key, val) {
+            if (val === undefined) { 
+                return this.remove(key) 
+            }
+            storage.setItem(key, langx.serializeValue(val));
+            return val
+        },
+
+        get : function(key, defaultVal) {
+            var val = langx.deserializeValue(storage.getItem(key))
+            return (val === undefined ? defaultVal : val)
+        },
+
+        remove : function(key) { 
+            storage.removeItem(key) 
+        },
+
+        clear : function() { 
+            storage.clear() 
+        },
+
+        forEach : function(callback) {
+            for (var i=0; i<storage.length; i++) {
+                var key = storage.key(i)
+                callback(key, store.get(key))
+            }
+        }
+    });
+
+    return  localStorage;
+
+});
+
+
+define('skylark-utils/_storages/sessionStorage',[
+    "../langx"
+], function(langx) {
+    var storage  = null;
+
+    try {
+        storage = window["sessiionStorage"];
+    } catch (e){
+
+    }
+
+    function sessiionStorage() {
+        return sessiionStorage;
+    }
+
+    langx.mixin(sessiionStorage, {
+        isSupported : function() {
+            return !!storage;
+        },
+
+        set : function(key, val) {
+            if (val === undefined) { 
+                return this.remove(key) 
+            }
+            storage.setItem(key, langx.serializeValue(val));
+            return val
+        },
+
+        get : function(key, defaultVal) {
+            var val = langx.deserializeValue(storage.getItem(key))
+            return (val === undefined ? defaultVal : val)
+        },
+
+        remove : function(key) { 
+            storage.removeItem(key) 
+        },
+
+        clear : function() { 
+            storage.clear() 
+        },
+
+        forEach : function(callback) {
+            for (var i=0; i<storage.length; i++) {
+                var key = storage.key(i)
+                callback(key, store.get(key))
+            }
+        }
+    });
+
+    return  sessiionStorage;
+
+});
+
+
+define('skylark-utils/storages',[
+    "./skylark",
+    "./langx",
+    "./_storages/cookies",
+    "./_storages/localfs",
+    "./_storages/localStorage",
+    "./_storages/sessionStorage"
+], function(skylark,langx,cookies,localfs,localStorage,sessionStorage) {
+    function storages() {
+        return storages;
+    }
+
+    langx.mixin(storages, {
+        cookies: cookies,
+        localfs : localfs,
+        localStorage : localStorage,
+        sessionStorage : sessionStorage
+    });
+
+
+    return skylark.storages = storages;
 });
 
 define('skylark-utils/touchx',[], function() {
@@ -5902,6 +6917,7 @@ define('skylark-utils/main',[
     "./css",
     "./datax",
     "./dnd",
+    "./devices",
     "./eventer",
     "./filer",
     "./finder",
@@ -5912,6 +6928,7 @@ define('skylark-utils/main',[
     "./noder",
     "./query",
     "./scripter",
+    "./storages",
     "./styler",
     "./touchx",
     "./langx",

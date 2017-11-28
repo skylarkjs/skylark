@@ -152,7 +152,7 @@ define([
             type = parsed.type;
 
             props = langx.mixin({
-                bubbles: false,
+                bubbles: true,
                 cancelable: true
             }, props);
 
@@ -213,7 +213,7 @@ define([
                         var elm = this,
                             e = createProxy(domEvt),
                             args = domEvt._args,
-                            binding = self._bindings,
+                            bindings = self._bindings,
                             ns = e.namespace;
 
                         if (langx.isDefined(args)) {
@@ -222,10 +222,10 @@ define([
                             args = [e];
                         }
 
-                        bindings.some(function(binding) {
+                        langx.each(bindings,function(idx,binding) {
                             var match = elm;
                             if (e.isImmediatePropagationStopped && e.isImmediatePropagationStopped()) {
-                                return true;
+                                return false;
                             }
                             var fn = binding.fn,
                                 options = binding.options || {},
@@ -234,7 +234,7 @@ define([
                                 data = options.data;
 
                             if (ns && ns != options.ns) {
-                                return false;
+                                return ;
                             }
                             if (selector) {
                                 match = finder.closest(e.target, selector);
@@ -244,7 +244,7 @@ define([
                                         liveFired: elm
                                     });
                                 } else {
-                                    return false;
+                                    return ;
                                 }
                             }
 
@@ -262,7 +262,6 @@ define([
                                 e.preventDefault();
                                 e.stopPropagation();
                             }
-                            return false;
                         });;
                     };
 
@@ -321,15 +320,16 @@ define([
             // selector Optional
             register: function(event, callback, options) {
                 // Seperate the event from the namespace
-                var parsed = parse(event);
-
-                event = parsed.type;
+                var parsed = parse(event),
+                    event = parsed.type,
+                    specialEvent = specialEvents[event],
+                    bindingEvent = specialEvent && (specialEvent.bindType || specialEvent.bindEventName);
 
                 var events = this._handler;
 
                 // Check if there is already a handler for this event
                 if (events[event] === undefined) {
-                    events[event] = new EventBindings(this._target, event);
+                    events[event] = new EventBindings(this._target, bindingEvent || event);
                 }
 
                 // Register the new callback function
@@ -580,9 +580,11 @@ define([
 
         shortcuts: shortcuts,
 
+        special : specialEvents,
+
         stop: stop,
 
-        trigger: trigger,
+        trigger: trigger
 
     });
 

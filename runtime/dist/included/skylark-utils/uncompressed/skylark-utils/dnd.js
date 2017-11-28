@@ -3,10 +3,11 @@ define([
     "./langx",
     "./noder",
     "./datax",
+    "./finder",
     "./geom",
     "./eventer",
     "./styler"
-],function(skylark, langx,noder,datax,geom,eventer,styler){
+],function(skylark, langx,noder,datax,finder,geom,eventer,styler){
     var on = eventer.on,
         off = eventer.off,
         attr = datax.attr,
@@ -23,6 +24,15 @@ define([
 
       },
 
+      prepare : function(draggable) {
+          var e = eventer.create("preparing",{
+             dragSource : draggable.elm,
+             handleElm : draggable.handleElm
+          });
+          draggable.trigger(e);
+          draggable.dragSource = e.dragSource;
+      },
+
       start : function(draggable,event) {
 
         var p = geom.pagePosition(draggable.elm);
@@ -30,14 +40,24 @@ define([
         this.draggingOffsetY = parseInt(event.pageY - p.top)
 
         var e = eventer.create("started",{
+          elm : draggable.elm,
+          dragSource : draggable.dragSource,
+          handleElm : draggable.handleElm,
           ghost : null,
+
           transfer : {
           }
         });
 
         draggable.trigger(e);
 
+
         this.dragging = draggable;
+
+        if (draggable.draggingClass) {
+          styler.addClass(draggable.dragSource,draggable.draggingClass);
+        }
+
         this.draggingGhost = e.ghost;
         if (!this.draggingGhost) {
           this.draggingGhost = draggable.elm;
@@ -58,10 +78,22 @@ define([
         this.trigger(e);
       },
 
-      end : function() {
+      over : function() {
+
+      },
+
+      end : function(dropped) {
+        var dragging = this.dragging;
+        if (dragging) {
+          if (dragging.draggingClass) {
+            styler.removeClass(dragging.dragSource,dragging.draggingClass);
+          }
+        }
+
         var e = eventer.create("ended",{
         });        
         this.trigger(e);
+
 
         this.dragging = null;
         this.draggingTransfer = null;
@@ -81,14 +113,13 @@ define([
       klassName : "Draggable",
 
       init : function (elm,params) {
-        var self = this,
-            draggingClass = params.draggingClass || "dragging",
-            allowed = false;
+        var self = this;
 
         self.elm = elm;
+        self.draggingClass = params.draggingClass || "dragging",
         self._params = params;
 
-        ["started", "ended", "moving"].forEach(function(eventName) {
+        ["preparing","started", "ended", "moving"].forEach(function(eventName) {
             if (langx.isFunction(params[eventName])) {
                 self.on(eventName, params[eventName]);
             }
@@ -97,18 +128,29 @@ define([
 
         eventer.on(elm,{
           "mousedown" : function(e) {
-            if (allowed === true) {
-              datax.prop(self.elm, "draggable", true);
+            if (params.handle) {
+              self.handleElm = finder.closest(e.target,params.handle);
+              if (!self.handleElm) {
+                return;
+              }
+            }
+            manager.prepare(self);
+            if (self.dragSource) {
+              datax.prop(self.dragSource, "draggable", true);
             }
           },
 
           "mouseup" :   function(e) {
-            datax.prop(self.elm, "draggable", false);
+            if (self.dragSource) {
+              datax.prop(self.dragSource, "draggable", false);
+              self.dragSource = null;
+              self.handleElm = null;
+            }
           },
 
           "dragstart":  function(e) {
+            datax.prop(self.dragSource, "draggable", false);
             manager.start(self, e);
-            styler.addClass(self.elm,draggingClass);
           },
 
           "dragend":   function(e){
@@ -118,24 +160,9 @@ define([
               return;
             }
 
-            styler.removeClass(self.elm,draggingClass);
-
-            manager.end();
+            manager.end(false);
           }
         });
-
-        if (params.handle) {
-          eventer.on(elm,{
-            "mouseenter" : function(e) {
-              allowed = true;
-            },
-            "mouseleave" : function(e) {
-              allowed = false;
-            }
-          },params.handle);
-        } else {
-          allowed = true;
-        }
 
       }
 
@@ -155,7 +182,7 @@ define([
         self.elm = elm;
         self._params = params;
 
-        ["started","ended","entered", "leaved", "dropped","overing"].forEach(function(eventName) {
+        ["started","entered", "leaved", "dropped","overing"].forEach(function(eventName) {
             if (langx.isFunction(params[eventName])) {
                 self.on(eventName, params[eventName]);
             }
@@ -170,13 +197,17 @@ define([
             }
 
             var e2 = eventer.create("overing",{
-                transfer : manager.draggingTransfer
+                overElm : e.target,
+                transfer : manager.draggingTransfer,
+                acceptable : true
             });
             self.trigger(e2);
 
-            e.preventDefault() // allow drop
+            if (e2.acceptable) {
+              e.preventDefault() // allow drop
 
-            e.dataTransfer.dropEffect = "copyMove";
+              e.dataTransfer.dropEffect = "copyMove";
+            }
 
           },
 
@@ -235,7 +266,7 @@ define([
 
             self.trigger(e2);
 
-            manager.end()
+            manager.end(true)
           }
         });
 

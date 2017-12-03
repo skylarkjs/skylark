@@ -146,6 +146,13 @@ define([
         return this;
     }
 
+    function removeProp(elm, name) {
+        name.split(' ').forEach(function(prop) {
+            delete elm[prop];
+        });
+        return this;
+    }
+
     function text(elm, txt) {
         if (txt === undefined) {
             return elm.textContent;
@@ -188,6 +195,8 @@ define([
         removeAttr: removeAttr,
 
         removeData: removeData,
+
+        removeProp: removeProp,
 
         text: text,
 

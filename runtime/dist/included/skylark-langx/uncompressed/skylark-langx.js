@@ -1,7 +1,7 @@
 /**
  * skylark-langx - A simple JavaScript language extension library, including class support, Evented class, Deferred class and some commonly used tool functions.
  * @author Hudaokeji Co.,Ltd
- * @version v0.9.3
+ * @version v0.9.2
  * @link www.skylarkjs.org
  * @license MIT
  */
@@ -187,30 +187,6 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
     })();
 
 
-   function clone( /*anything*/ src) {
-        var copy;
-        if (src === undefined || src === null) {
-            copy =  src;
-        } else if (src.clone){
-            copy = src.clone();
-        } else if (isArray(src)) {
-            copy = [];
-            for (var i = 0;i<src.length;i++) {
-                copy.push(clone(src[i]));
-            }
-        } else if (isPlainObject(src)){
-            copy = {};
-            for (var key in src){
-                copy[key] = clone(src[key]);
-            } 
-        } else {
-            copy = src;
-        }
-
-        return copy;
-
-    }
-
     function debounce(fn, wait) {
         var timeout,
             args,
@@ -224,21 +200,6 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
             timeout = setTimeout(later, wait);
         };
     }
-
-    var delegate = (function(){
-            // boodman/crockford delegation w/ cornford optimization
-            function TMP(){}
-            return function(obj, props){
-                TMP.prototype = obj;
-                var tmp = new TMP();
-                TMP.prototype = null;
-                if(props){
-                    mixin(tmp, props);
-                }
-                return tmp; // Object
-            };
-    })();
-
 
     var Deferred = function() {
         this.promise = new Promise(function(resolve, reject) {
@@ -660,17 +621,17 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
         var i;
 
         if (array.indexOf) {
-            return array.indexOf(item) > -1;
+            return array.indexOf(item);
         }
 
         i = array.length;
         while (i--) {
             if (array[i] === item) {
-                return true;
+                return i;
             }
         }
 
-        return false;
+        return -1;
     }
 
     function inherit(ctor, base) {
@@ -718,10 +679,6 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
 
     function isDefined(obj) {
         return typeof obj !== 'undefined';
-    }
-
-    function isHtmlNode(obj) {
-        return obj && (obj instanceof Node);
     }
 
     function isNumber(obj) {
@@ -966,15 +923,12 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
                 return a.toUpperCase().replace('-', '');
             });
         },
-        clone: clone,
 
         compact: compact,
 
         dasherize: dasherize,
 
         debounce: debounce,
-
-        delegate: delegate,
 
         Deferred: Deferred,
 
@@ -1007,8 +961,6 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
         isEmptyObject: isEmptyObject,
 
         isFunction: isFunction,
-
-        isHtmlNode : isHtmlNode,
 
         isObject: isObject,
 
@@ -1051,10 +1003,6 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
         },
 
         safeMixin: safeMixin,
-
-        serializeValue : function(value) {
-            return JSON.stringify(value)
-        },
 
         substitute: substitute,
 

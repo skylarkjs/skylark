@@ -1,1 +1,1 @@
-{"version":3,"sources":["main.js"],"names":["define","skylark"],"mappings":";;;;;;;AAAAA,QACI,wBACA,SACD,SAASC,GACR,MAAOA","file":"../main.js","sourcesContent":["define([\n    \"skylark-langx/skylark\",\n    \"./spa\"\n], function(skylark) {\n    return skylark;\n});\n"]}
+{"version":3,"sources":["main.js"],"names":["define","skylark"],"mappings":";;;;;;;AAAAA,QACI,wBACA,SACD,SAASC,GACR,MAAOA","file":"../main.js","sourcesContent":["define([\r\n    \"skylark-langx/skylark\",\r\n    \"./spa\"\r\n], function(skylark) {\r\n    return skylark;\r\n});\r\n"]}

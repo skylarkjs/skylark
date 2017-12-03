@@ -1,1 +1,1 @@
-{"version":3,"sources":["langx.js"],"names":["define","langx"],"mappings":";;;;;;;AAAAA,QACI,uBACD,SAASC,GACR,MAAOA","file":"../langx.js","sourcesContent":["define([\n    \"skylark-langx/langx\"\n], function(langx) {\n    return langx;\n});\n"]}
+{"version":3,"sources":["langx.js"],"names":["define","langx"],"mappings":";;;;;;;AAAAA,QACI,uBACD,SAASC,GACR,MAAOA","file":"../langx.js","sourcesContent":["define([\r\n    \"skylark-langx/langx\"\r\n], function(langx) {\r\n    return langx;\r\n});\r\n"]}

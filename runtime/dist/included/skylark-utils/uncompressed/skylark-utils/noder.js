@@ -100,6 +100,7 @@ define([
 
     function createFragment(html) {
         // A special case optimization for a single tag
+        html = langx.trim(html);
         if (singleTagRE.test(html)) {
             return [createElement(RegExp.$1)];
         }

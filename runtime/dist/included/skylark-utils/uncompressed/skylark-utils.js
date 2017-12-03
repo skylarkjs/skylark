@@ -1,7 +1,7 @@
 /**
  * skylark-utils - An Elegant HTML5 JavaScript Library.
  * @author Hudaokeji Co.,Ltd
- * @version v0.9.3
+ * @version v0.9.5-beta
  * @link www.skylarkjs.org
  * @license MIT
  */
@@ -483,6 +483,7 @@ define('skylark-utils/noder',[
 
     function createFragment(html) {
         // A special case optimization for a single tag
+        html = langx.trim(html);
         if (singleTagRE.test(html)) {
             return [createElement(RegExp.$1)];
         }
@@ -1985,6 +1986,13 @@ define('skylark-utils/datax',[
         return this;
     }
 
+    function removeProp(elm, name) {
+        name.split(' ').forEach(function(prop) {
+            delete elm[prop];
+        });
+        return this;
+    }
+
     function text(elm, txt) {
         if (txt === undefined) {
             return elm.textContent;
@@ -2027,6 +2035,8 @@ define('skylark-utils/datax',[
         removeAttr: removeAttr,
 
         removeData: removeData,
+
+        removeProp: removeProp,
 
         text: text,
 
@@ -5223,7 +5233,7 @@ define('skylark-utils/query',[
             },
 
             add: function(selector, context) {
-                return $(uniq(this.concat($(selector, context))))
+                return $(uniq(this.toArray().concat($(selector, context).toArray())));
             },
 
             is: function(selector) {
@@ -5389,6 +5399,8 @@ define('skylark-utils/query',[
             removeAttr: wrapper_every_act(datax.removeAttr, datax),
 
             prop: wrapper_name_value(datax.prop, datax, datax.prop),
+
+            removeProp: wrapper_every_act(datax.removeProp, datax),
 
             data: wrapper_name_value(datax.data, datax, datax.data),
 

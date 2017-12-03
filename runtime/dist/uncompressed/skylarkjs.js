@@ -1,7 +1,7 @@
 /**
  * skylarkjs - An Elegant JavaScript Library and HTML5 Application Framework.
  * @author Hudaokeji Co.,Ltd
- * @version v0.9.6
+ * @version v0.9.7
  * @link www.skylarkjs.org
  * @license MIT
  */
@@ -261,30 +261,6 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
     })();
 
 
-   function clone( /*anything*/ src) {
-        var copy;
-        if (src === undefined || src === null) {
-            copy =  src;
-        } else if (src.clone){
-            copy = src.clone();
-        } else if (isArray(src)) {
-            copy = [];
-            for (var i = 0;i<src.length;i++) {
-                copy.push(clone(src[i]));
-            }
-        } else if (isPlainObject(src)){
-            copy = {};
-            for (var key in src){
-                copy[key] = clone(src[key]);
-            } 
-        } else {
-            copy = src;
-        }
-
-        return copy;
-
-    }
-
     function debounce(fn, wait) {
         var timeout,
             args,
@@ -298,21 +274,6 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
             timeout = setTimeout(later, wait);
         };
     }
-
-    var delegate = (function(){
-            // boodman/crockford delegation w/ cornford optimization
-            function TMP(){}
-            return function(obj, props){
-                TMP.prototype = obj;
-                var tmp = new TMP();
-                TMP.prototype = null;
-                if(props){
-                    mixin(tmp, props);
-                }
-                return tmp; // Object
-            };
-    })();
-
 
     var Deferred = function() {
         this.promise = new Promise(function(resolve, reject) {
@@ -734,17 +695,17 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
         var i;
 
         if (array.indexOf) {
-            return array.indexOf(item) > -1;
+            return array.indexOf(item);
         }
 
         i = array.length;
         while (i--) {
             if (array[i] === item) {
-                return true;
+                return i;
             }
         }
 
-        return false;
+        return -1;
     }
 
     function inherit(ctor, base) {
@@ -792,10 +753,6 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
 
     function isDefined(obj) {
         return typeof obj !== 'undefined';
-    }
-
-    function isHtmlNode(obj) {
-        return obj && (obj instanceof Node);
     }
 
     function isNumber(obj) {
@@ -1040,15 +997,12 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
                 return a.toUpperCase().replace('-', '');
             });
         },
-        clone: clone,
 
         compact: compact,
 
         dasherize: dasherize,
 
         debounce: debounce,
-
-        delegate: delegate,
 
         Deferred: Deferred,
 
@@ -1081,8 +1035,6 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
         isEmptyObject: isEmptyObject,
 
         isFunction: isFunction,
-
-        isHtmlNode : isHtmlNode,
 
         isObject: isObject,
 
@@ -1126,10 +1078,6 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
 
         safeMixin: safeMixin,
 
-        serializeValue : function(value) {
-            return JSON.stringify(value)
-        },
-
         substitute: substitute,
 
         toPixel: toPixel,
@@ -1156,7 +1104,7 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
 /**
  * skylark-router - An Elegant HTML5 Routing Framework.
  * @author Hudaokeji Co.,Ltd
- * @version v0.9.5
+ * @version v0.9.3-beta
  * @link www.skylarkjs.org
  * @license MIT
  */
@@ -1334,7 +1282,6 @@ define('skylark-router/router',[
         }
 
         var r = _curCtx.route.enter({
-            force: _curCtx.force,
             path: _curCtx.path,
             params: _curCtx.params
         },true);
@@ -1374,7 +1321,6 @@ define('skylark-router/router',[
 
             if (router.useHistoryApi) {
                 var state = {
-                    force: force,
                     path: path
                 }
 
@@ -1622,7 +1568,6 @@ define('skylark-spa/spa',[
         init: function(name, setting) {
             this.overrided(name, setting);
             this.content = setting.content;
-            this.forceRefresh = setting.forceRefresh;
             this.data = setting.data;
             //this.lazy = !!setting.lazy;
             var self = this;
@@ -1634,7 +1579,7 @@ define('skylark-spa/spa',[
         },
 
         _entering: function(ctx) {
-            if (this.forceRefresh || ctx.force || !this._prepared) {
+            if (!this._prepared) {
                 return this.prepare();
             }
             return this;
@@ -2365,6 +2310,7 @@ define('skylark-utils/noder',[
 
     function createFragment(html) {
         // A special case optimization for a single tag
+        html = langx.trim(html);
         if (singleTagRE.test(html)) {
             return [createElement(RegExp.$1)];
         }
@@ -3873,6 +3819,13 @@ define('skylark-utils/datax',[
         return this;
     }
 
+    function removeProp(elm, name) {
+        name.split(' ').forEach(function(prop) {
+            delete elm[prop];
+        });
+        return this;
+    }
+
     function text(elm, txt) {
         if (txt === undefined) {
             return elm.textContent;
@@ -3915,6 +3868,8 @@ define('skylark-utils/datax',[
         removeAttr: removeAttr,
 
         removeData: removeData,
+
+        removeProp: removeProp,
 
         text: text,
 
@@ -7064,7 +7019,7 @@ define('skylark-utils/query',[
             },
 
             add: function(selector, context) {
-                return $(uniq(this.concat($(selector, context))))
+                return $(uniq(this.toArray().concat($(selector, context).toArray())));
             },
 
             is: function(selector) {
@@ -7230,6 +7185,8 @@ define('skylark-utils/query',[
             removeAttr: wrapper_every_act(datax.removeAttr, datax),
 
             prop: wrapper_name_value(datax.prop, datax, datax.prop),
+
+            removeProp: wrapper_every_act(datax.removeProp, datax),
 
             data: wrapper_name_value(datax.data, datax, datax.data),
 

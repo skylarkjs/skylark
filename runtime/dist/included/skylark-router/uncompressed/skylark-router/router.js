@@ -1,7 +1,7 @@
 /**
  * skylark-router - An Elegant HTML5 Routing Framework.
  * @author Hudaokeji Co.,Ltd
- * @version v0.9.5
+ * @version v0.9.3-beta
  * @link www.skylarkjs.org
  * @license MIT
  */
@@ -179,7 +179,6 @@ define([
         }
 
         var r = _curCtx.route.enter({
-            force: _curCtx.force,
             path: _curCtx.path,
             params: _curCtx.params
         },true);
@@ -219,7 +218,6 @@ define([
 
             if (router.useHistoryApi) {
                 var state = {
-                    force: force,
                     path: path
                 }
 

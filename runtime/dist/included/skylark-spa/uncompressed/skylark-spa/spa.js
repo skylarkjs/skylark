@@ -16,7 +16,6 @@ define([
         init: function(name, setting) {
             this.overrided(name, setting);
             this.content = setting.content;
-            this.forceRefresh = setting.forceRefresh;
             this.data = setting.data;
             //this.lazy = !!setting.lazy;
             var self = this;
@@ -28,7 +27,7 @@ define([
         },
 
         _entering: function(ctx) {
-            if (this.forceRefresh || ctx.force || !this._prepared) {
+            if (!this._prepared) {
                 return this.prepare();
             }
             return this;

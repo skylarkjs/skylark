@@ -1,7 +1,7 @@
 /**
  * skylark-utils - An Elegant HTML5 JavaScript Library.
  * @author Hudaokeji Co.,Ltd
- * @version v0.9.3
+ * @version v0.9.5-beta
  * @link www.skylarkjs.org
  * @license MIT
  */

@@ -248,11 +248,14 @@ define([
 
     local.pseudos = {
         // custom pseudos
-        checked: function(elm) {
+        'checkbox': function(elm){
+            return elm.type === "checkbox";
+        },
+        'checked': function(elm) {
             return !!elm.checked;
         },
 
-        contains: function(elm, idx, nodes, text) {
+        'contains': function(elm, idx, nodes, text) {
             if ($(this).text().indexOf(text) > -1) return this
         },
 
@@ -264,7 +267,7 @@ define([
             return !elm.disabled;
         },
 
-        eq: function(elm, idx, nodes, value) {
+        'eq': function(elm, idx, nodes, value) {
             return (idx == value);
         },
 
@@ -272,47 +275,55 @@ define([
             return document.activeElement === elm && (elm.href || elm.type || elm.tabindex);
         },
 
-        first: function(elm, idx) {
+        'first': function(elm, idx) {
             return (idx === 0);
         },
 
-        gt: function(elm, idx, nodes, value) {
+        'gt': function(elm, idx, nodes, value) {
             return (idx > value);
         },
 
-        has: function(elm, idx, nodes, sel) {
+        'has': function(elm, idx, nodes, sel) {
             return local.querySelector(elm, sel).length > 0;
         },
 
 
-        hidden: function(elm) {
+        'hidden': function(elm) {
             return !local.pseudos["visible"](elm);
         },
 
-        last: function(elm, idx, nodes) {
+        'last': function(elm, idx, nodes) {
             return (idx === nodes.length - 1);
         },
 
-        lt: function(elm, idx, nodes, value) {
+        'lt': function(elm, idx, nodes, value) {
             return (idx < value);
         },
 
-        not: function(elm, idx, nodes, sel) {
+        'not': function(elm, idx, nodes, sel) {
             return local.match(elm, sel);
         },
 
-        parent: function(elm) {
+        'parent': function(elm) {
             return !!elm.parentNode;
         },
 
-        selected: function(elm) {
+        'radio': function(elm){
+            return elm.type === "radio";
+        },
+
+        'selected': function(elm) {
             return !!elm.selected;
         },
 
-        visible: function(elm) {
+        'visible': function(elm) {
             return elm.offsetWidth && elm.offsetWidth
         }
     };
+
+    ["first","eq","last"].forEach(function(item){
+        local.pseudos[item].isArrayFilter = true;
+    });
 
     local.divide = function(cond) {
         var nativeSelector = "",
@@ -369,51 +380,59 @@ define([
 
     };
 
-    local.check = function(node, cond, idx, nodes) {
+    local.check = function(node, cond, idx, nodes,arrayFilte) {
         var tag,
             id,
             classes,
             attributes,
-            pseudos;
+            pseudos,
 
-        if (tag = cond.tag) {
-            var nodeName = node.nodeName.toUpperCase();
-            if (tag == '*') {
-                if (nodeName < '@') return false; // Fix for comment nodes and closed nodes
-            } else {
-                if (nodeName != (tag || "").toUpperCase()) return false;
+            i, part, cls, pseudo;
+
+        if (!arrayFilte) {
+            if (tag = cond.tag) {
+                var nodeName = node.nodeName.toUpperCase();
+                if (tag == '*') {
+                    if (nodeName < '@') return false; // Fix for comment nodes and closed nodes
+                } else {
+                    if (nodeName != (tag || "").toUpperCase()) return false;
+                }
             }
+
+            if (id = cond.id) {
+                if (node.getAttribute('id') != id) {
+                    return false;
+                }
+            }
+
+
+            if (classes = cond.classes) {
+                for (i = classes.length; i--;) {
+                    cls = node.getAttribute('class');
+                    if (!(cls && classes[i].regexp.test(cls))) return false;
+                }
+            }
+
+            if (attributes) {
+                for (i = attributes.length; i--;) {
+                    part = attributes[i];
+                    if (part.operator ? !part.test(node.getAttribute(part.key)) : !node.hasAttribute(part.key)) return false;
+                }
+
+            }
+
         }
-
-        if (id = cond.id) {
-            if (node.getAttribute('id') != id) {
-                return false;
-            }
-        }
-
-        var i, part, cls, pseudo;
-
-        if (classes = cond.classes) {
-            for (i = classes.length; i--;) {
-                cls = node.getAttribute('class');
-                if (!(cls && classes[i].regexp.test(cls))) return false;
-            }
-        }
-
-        if (attributes)
-            for (i = attributes.length; i--;) {
-                part = attributes[i];
-                if (part.operator ? !part.test(node.getAttribute(part.key)) : !node.hasAttribute(part.key)) return false;
-            }
         if (pseudos = cond.pseudos) {
             for (i = pseudos.length; i--;) {
                 part = pseudos[i];
                 if (pseudo = this.pseudos[part.key]) {
-                    if (!pseudo(node, idx, nodes, part.value)) {
-                        return false;
+                    if ((arrayFilte && pseudo.isArrayFilter) || (!arrayFilte && !pseudo.isArrayFilter)) {
+                        if (!pseudo(node, idx, nodes, part.value)) {
+                            return false;
+                        }
                     }
                 } else {
-                    if (!nativeMatchesSelector.call(node, part.key)) {
+                    if (!arrayFilte && !nativeMatchesSelector.call(node, part.key)) {
                         return false;
                     }
                 }
@@ -424,7 +443,14 @@ define([
 
     local.match = function(node, selector) {
 
-        var parsed = local.Slick.parse(selector);
+        var parsed ;
+
+        if (langx.isString(selector)) {
+            parsed = local.Slick.parse(selector);
+        } else {
+            parsed = selector;            
+        }
+        
         if (!parsed) {
             return true;
         }
@@ -432,12 +458,13 @@ define([
         // simple (single) selectors
         var expressions = parsed.expressions,
             simpleExpCounter = 0,
-            i;
+            i,
+            currentExpression;
         for (i = 0;
             (currentExpression = expressions[i]); i++) {
             if (currentExpression.length == 1) {
                 var exp = currentExpression[0];
-                if (this.check(node, exp)) {
+                if (this.check(node,exp)) {
                     return true;
                 }
                 simpleExpCounter++;
@@ -457,6 +484,39 @@ define([
         }
         return false;
     };
+
+
+    local.filter = function(nodes, selector) {
+        var parsed = local.Slick.parse(selector);
+
+
+        // simple (single) selectors
+        var expressions = parsed.expressions,
+            i,
+            currentExpression,
+            ret = [];
+        for (i = 0;
+            (currentExpression = expressions[i]); i++) {
+            if (currentExpression.length == 1) {
+                var exp = currentExpression[0];
+
+                var matchs = filter.call(nodes, function(node, idx) {
+                    return local.check(node, exp, idx, nodes,false);
+                });    
+
+                matchs = filter.call(matchs, function(node, idx) {
+                    return local.check(node, exp, idx, matchs,true);
+                });    
+
+                ret = langx.uniq(ret.concat(matchs));
+            } else {
+                throw new Error("not supported selector:" + selector);
+            }
+        }
+
+        return ret;
+ 
+    };    
 
     local.combine = function(elm, bit) {
         var op = bit.combinator,
@@ -525,8 +585,14 @@ define([
                         nodes = filter.call(nodes, function(item, idx) {
                             return local.check(item, {
                                 pseudos: [divided.customPseudos[i]]
-                            }, idx, nodes)
+                            }, idx, nodes,false)
                         });
+
+                        nodes = filter.call(nodes, function(item, idx) {
+                            return local.check(item, {
+                                pseudos: [divided.customPseudos[i]]
+                            }, idx, nodes,true)
+                        });                        
                     }
                 }
                 break;
@@ -590,9 +656,7 @@ define([
         var ret = [],
             rootIsSelector = root && langx.isString(root);
         while (node = node.parentNode) {
-            if (matches(node, selector)) {
                 ret.push(node);
-            }
             if (root) {
                 if (rootIsSelector) {
                     if (matches(node,root)) {
@@ -603,6 +667,10 @@ define([
                 }
             } 
 
+        }
+
+        if (selector) {
+            ret = local.filter(ret,selector);
         }
         return ret;
     }
@@ -618,11 +686,11 @@ define([
         for (var i = 0; i < childNodes.length; i++) {
             var node = childNodes[i];
             if (node.nodeType == 1) {
-                if (!selector || matches(node, selector)) {
-                    ret.push(node);
-                }
-
+                ret.push(node);
             }
+        }
+        if (selector) {
+            ret = local.filter(ret,selector);
         }
         return ret;
     }

@@ -177,34 +177,34 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
                 };
             }
             if (!ctor.inherit) {
-                ctor.inherit = function(props,options) {
-                    return createClass(props, this,options);
+                ctor.inherit = function(props, options) {
+                    return createClass(props, this, options);
                 };
             }
 
-            ctor.partial(props,options);
+            ctor.partial(props, options);
 
             return ctor;
         }
     })();
 
 
-   function clone( /*anything*/ src) {
+    function clone( /*anything*/ src) {
         var copy;
         if (src === undefined || src === null) {
-            copy =  src;
-        } else if (src.clone){
+            copy = src;
+        } else if (src.clone) {
             copy = src.clone();
         } else if (isArray(src)) {
             copy = [];
-            for (var i = 0;i<src.length;i++) {
+            for (var i = 0; i < src.length; i++) {
                 copy.push(clone(src[i]));
             }
-        } else if (isPlainObject(src)){
+        } else if (isPlainObject(src)) {
             copy = {};
-            for (var key in src){
+            for (var key in src) {
                 copy[key] = clone(src[key]);
-            } 
+            }
         } else {
             copy = src;
         }
@@ -227,18 +227,18 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
         };
     }
 
-    var delegate = (function(){
-            // boodman/crockford delegation w/ cornford optimization
-            function TMP(){}
-            return function(obj, props){
-                TMP.prototype = obj;
-                var tmp = new TMP();
-                TMP.prototype = null;
-                if(props){
-                    mixin(tmp, props);
-                }
-                return tmp; // Object
-            };
+    var delegate = (function() {
+        // boodman/crockford delegation w/ cornford optimization
+        function TMP() {}
+        return function(obj, props) {
+            TMP.prototype = obj;
+            var tmp = new TMP();
+            TMP.prototype = null;
+            if (props) {
+                mixin(tmp, props);
+            }
+            return tmp; // Object
+        };
     })();
 
 
@@ -312,228 +312,227 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
     Deferred.immediate = Deferred.resolve;
 
     var Evented = createClass({
-        on: function(events,selector,data,callback,ctx,/*used internally*/one) {
-	        var self = this,
-	        	_hub = this._hub || (this._hub = {});
+        on: function(events, selector, data, callback, ctx, /*used internally*/ one) {
+            var self = this,
+                _hub = this._hub || (this._hub = {});
 
-	        if (isPlainObject(events)) {
-	        	ctx = callback;
-	            each(events, function(type, fn) {
-	                self.on(type,selector, data, fn, ctx, one);
-	            });
-	            return this;
-	        }
+            if (isPlainObject(events)) {
+                ctx = callback;
+                each(events, function(type, fn) {
+                    self.on(type, selector, data, fn, ctx, one);
+                });
+                return this;
+            }
 
-	        if (!isString(selector) && !isFunction(callback)) {
-	        	ctx = callback;
-	            callback = data;
-	            data = selector;
-	            selector = undefined;
-	        }
+            if (!isString(selector) && !isFunction(callback)) {
+                ctx = callback;
+                callback = data;
+                data = selector;
+                selector = undefined;
+            }
 
-	        if (isFunction(data)) {
-	            ctx = callback;
-	            callback = data;
-	            data = null;
-	        }
+            if (isFunction(data)) {
+                ctx = callback;
+                callback = data;
+                data = null;
+            }
 
-	        if (isString(events)) {
-	            events = events.split(/\s/)
-	        }
+            if (isString(events)) {
+                events = events.split(/\s/)
+            }
 
-	        events.forEach(function(name) {
-	            (_hub[name] || (_hub[name] = [])).push({
-	                fn: callback,
-	                selector: selector,
-	                data: data,
-	                ctx: ctx,
-	                one: one
-	            });
-	        });
+            events.forEach(function(name) {
+                (_hub[name] || (_hub[name] = [])).push({
+                    fn: callback,
+                    selector: selector,
+                    data: data,
+                    ctx: ctx,
+                    one: one
+                });
+            });
 
-	        return this;
-	    },
+            return this;
+        },
 
-	    one: function(events,selector,data,callback,ctx) {
-	        return this.on(events,selector,data,callback,ctx,1);
-	    },
+        one: function(events, selector, data, callback, ctx) {
+            return this.on(events, selector, data, callback, ctx, 1);
+        },
 
-	    trigger: function(e/*,argument list*/) {
-	    	if (!this._hub) {
-	    		return this;
-	    	}
+        trigger: function(e /*,argument list*/ ) {
+            if (!this._hub) {
+                return this;
+            }
 
-	    	var self = this;
+            var self = this;
 
-	    	if (isString(e)) {
-	    		e = new CustomEvent(e);
-	    	}
+            if (isString(e)) {
+                e = new CustomEvent(e);
+            }
 
-	        var args = slice.call(arguments,1);
+            var args = slice.call(arguments, 1);
             if (isDefined(args)) {
                 args = [e].concat(args);
             } else {
                 args = [e];
             }
-	        [e.type || e.name ,"all"].forEach(function(eventName){
-		        var listeners = self._hub[eventName];
-		        if (!listeners){
-		        	return;
-		        }
+            [e.type || e.name, "all"].forEach(function(eventName) {
+                var listeners = self._hub[eventName];
+                if (!listeners) {
+                    return;
+                }
 
-		        var len = listeners.length,
-		        	reCompact = false;
+                var len = listeners.length,
+                    reCompact = false;
 
-		        for (var i = 0; i < len; i++) {
-		        	var listener = listeners[i];
-		            if (e.data) {
-		                if (listener.data) {
-		                    e.data = mixin({}, listener.data, e.data);
-		                }
-		            } else {
-		                e.data = listener.data || null;
-		            }
-		            listener.fn.apply(listener.ctx, args);
-		            if (listener.one){
-		            	listeners[i] = null;
-		            	reCompact = true;
-		            }
-		        }
+                for (var i = 0; i < len; i++) {
+                    var listener = listeners[i];
+                    if (e.data) {
+                        if (listener.data) {
+                            e.data = mixin({}, listener.data, e.data);
+                        }
+                    } else {
+                        e.data = listener.data || null;
+                    }
+                    listener.fn.apply(listener.ctx, args);
+                    if (listener.one) {
+                        listeners[i] = null;
+                        reCompact = true;
+                    }
+                }
 
-		        if (reCompact){
-		        	self._hub[eventName] = compact(listeners);
-		        }
+                if (reCompact) {
+                    self._hub[eventName] = compact(listeners);
+                }
 
-	        });
-	        return this;
-	    },
+            });
+            return this;
+        },
 
-	    listened: function(event) {
-	        var evtArr = ((this._hub || (this._events = {}))[event] || []);
-	        return evtArr.length > 0;
-	    },
+        listened: function(event) {
+            var evtArr = ((this._hub || (this._events = {}))[event] || []);
+            return evtArr.length > 0;
+        },
 
-	    listenTo: function(obj, event, callback,/*used internally*/one) {
-	        if (!obj) {
-	        	return this;
-	        }
+        listenTo: function(obj, event, callback, /*used internally*/ one) {
+            if (!obj) {
+                return this;
+            }
 
-	        // Bind callbacks on obj,
-	        if (isString(callback)) {
-	        	callback = this[callback];
-	        }
+            // Bind callbacks on obj,
+            if (isString(callback)) {
+                callback = this[callback];
+            }
 
-	        if (one){
-		        obj.one(event,callback,this);
-	        } else {
-		        obj.on(event,callback,this);
-	        }
+            if (one) {
+                obj.one(event, callback, this);
+            } else {
+                obj.on(event, callback, this);
+            }
 
-	        //keep track of them on listening.
-	        var listeningTo = this._listeningTo || (this._listeningTo = []),
-	        	listening;
+            //keep track of them on listening.
+            var listeningTo = this._listeningTo || (this._listeningTo = []),
+                listening;
 
-	        for (var i=0;i<listeningTo.length;i++) {
-	        	if (listeningTo[i].obj == obj) {
-	        		listening = listeningTo[i];
-	        		break;
-	        	}
-	        }
-	        if (!listening) {
-	        	listeningTo.push(
-	        		listening = {
-	        			obj : obj,
-	        			events : {
-	        			}
-	        	    }
-	        	);
-	        }
-	        var listeningEvents = listening.events,
-	        	listeningEvent = listeningEvents[event] = listeningEvents[event] || [];
-	        if (listeningEvent.indexOf(callback)==-1) {
-	        	listeningEvent.push(callback);
-	        }
+            for (var i = 0; i < listeningTo.length; i++) {
+                if (listeningTo[i].obj == obj) {
+                    listening = listeningTo[i];
+                    break;
+                }
+            }
+            if (!listening) {
+                listeningTo.push(
+                    listening = {
+                        obj: obj,
+                        events: {}
+                    }
+                );
+            }
+            var listeningEvents = listening.events,
+                listeningEvent = listeningEvents[event] = listeningEvents[event] || [];
+            if (listeningEvent.indexOf(callback) == -1) {
+                listeningEvent.push(callback);
+            }
 
-	        return this;
-	    },
+            return this;
+        },
 
-	    listenToOnce: function(obj, event, callback) {
-	    	return this.listenTo(obj,event,callback,1);
-	    },
+        listenToOnce: function(obj, event, callback) {
+            return this.listenTo(obj, event, callback, 1);
+        },
 
-	    off: function(events, callback) {
-	        var _hub = this._hub || (this._hub = {});
-	        if (isString(events)) {
-	            events = events.split(/\s/)
-	        }
+        off: function(events, callback) {
+            var _hub = this._hub || (this._hub = {});
+            if (isString(events)) {
+                events = events.split(/\s/)
+            }
 
-	        events.forEach(function(name) {
-	            var evts = _hub[name];
-	            var liveEvents = [];
+            events.forEach(function(name) {
+                var evts = _hub[name];
+                var liveEvents = [];
 
-	            if (evts && callback) {
-	                for (var i = 0, len = evts.length; i < len; i++) {
-	                    if (evts[i].fn !== callback && evts[i].fn._ !== callback)
-	                        liveEvents.push(evts[i]);
-	                }
-	            }
+                if (evts && callback) {
+                    for (var i = 0, len = evts.length; i < len; i++) {
+                        if (evts[i].fn !== callback && evts[i].fn._ !== callback)
+                            liveEvents.push(evts[i]);
+                    }
+                }
 
-	            if (liveEvents.length) {
-	            	_hub[name] = liveEvents;
-	            } else {
-	            	delete _hub[name];
-	            }
-	        });
+                if (liveEvents.length) {
+                    _hub[name] = liveEvents;
+                } else {
+                    delete _hub[name];
+                }
+            });
 
-	        return this;
-	    },
-	    unlistenTo : function(obj, event, callback) {
-	        var listeningTo = this._listeningTo;
-	        if (!listeningTo) {
-	        	return this;
-	        }
-	        for (var i = 0; i < listeningTo.length; i++) {
-	          var listening = listeningTo[i];
+            return this;
+        },
+        unlistenTo: function(obj, event, callback) {
+            var listeningTo = this._listeningTo;
+            if (!listeningTo) {
+                return this;
+            }
+            for (var i = 0; i < listeningTo.length; i++) {
+                var listening = listeningTo[i];
 
-	          if (obj && obj != listening.obj) {
-	        	  continue;
-	          }
+                if (obj && obj != listening.obj) {
+                    continue;
+                }
 
-	          var listeningEvents = listening.events;
-	          for (var eventName in listeningEvents) {
-	        	 if (event && event != eventName) {
-	        		 continue;
-	        	 }
+                var listeningEvents = listening.events;
+                for (var eventName in listeningEvents) {
+                    if (event && event != eventName) {
+                        continue;
+                    }
 
-	        	 listeningEvent = listeningEvents[eventName];
+                    listeningEvent = listeningEvents[eventName];
 
-	        	 for (var j=0;j<listeningEvent.length;j++) {
-	        		 if (!callback || callback == listeningEvent[i]) {
-	        			 listening.obj.off(eventName, listeningEvent[i], this);
-	        			 listeningEvent[i] = null;
-	        		 }
-	        	 }
+                    for (var j = 0; j < listeningEvent.length; j++) {
+                        if (!callback || callback == listeningEvent[i]) {
+                            listening.obj.off(eventName, listeningEvent[i], this);
+                            listeningEvent[i] = null;
+                        }
+                    }
 
-	        	 listeningEvent = listeningEvents[eventName] = compact(listeningEvent);
+                    listeningEvent = listeningEvents[eventName] = compact(listeningEvent);
 
-	        	 if (isEmptyObject(listeningEvent)) {
-	        		 listeningEvents[eventName] = null;
-	        	 }
+                    if (isEmptyObject(listeningEvent)) {
+                        listeningEvents[eventName] = null;
+                    }
 
-	          }
+                }
 
-	          if (isEmptyObject(listeningEvents)) {
-	        	  listeningTo[i] = null;
-	          }
-	        }
+                if (isEmptyObject(listeningEvents)) {
+                    listeningTo[i] = null;
+                }
+            }
 
-	        listeningTo = this._listeningTo = compact(listeningTo);
-	        if (isEmptyObject(listeningTo)) {
-	        	this._listeningTo = null;
-	        }
+            listeningTo = this._listeningTo = compact(listeningTo);
+            if (isEmptyObject(listeningTo)) {
+                this._listeningTo = null;
+            }
 
-	        return this;
-	    }
+            return this;
+        }
     });
 
     function compact(array) {
@@ -597,10 +596,10 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
     function flatten(array) {
         if (isArrayLike(array)) {
             var result = [];
-            for (var i = 0;i<array.length;i++) {
+            for (var i = 0; i < array.length; i++) {
                 var item = array[i];
                 if (isArrayLike(item)) {
-                    for (var j = 0; j<item.length;j++) {
+                    for (var j = 0; j < item.length; j++) {
                         result.push(item[j]);
                     }
                 } else {
@@ -744,9 +743,9 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
     function isEmptyObject(obj) {
         var name;
         for (name in obj) {
-        	if (obj[name] !== null) {
-        		return false;
-        	}
+            if (obj[name] !== null) {
+                return false;
+            }
         }
         return true;
     }
@@ -820,22 +819,22 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
         return str == null ? "" : String.prototype.trim.call(str);
     }
 
-    function removeItem(items,item) {
-    	if (isArray(items)) {
-        	var idx = items.indexOf(item);
-        	if (idx != -1) {
-        		items.splice(idx, 1);
-        	}
-    	} else if (isPlainObject(items)) {
-    		for (var key in items) {
-    			if (items[key] == item) {
-    				delete items[key];
-    				break;
-    			}
-    		}
-    	}
+    function removeItem(items, item) {
+        if (isArray(items)) {
+            var idx = items.indexOf(item);
+            if (idx != -1) {
+                items.splice(idx, 1);
+            }
+        } else if (isPlainObject(items)) {
+            for (var key in items) {
+                if (items[key] == item) {
+                    delete items[key];
+                    break;
+                }
+            }
+        }
 
-    	return this;
+        return this;
     }
 
     function _mixin(target, source, deep, safe) {
@@ -948,8 +947,9 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
     }
 
     var _uid = 1;
+
     function uid(obj) {
-        return obj._uid || obj.id || (obj._uid = _uid++);
+        return obj._uid || (obj._uid = _uid++);
     }
 
     function uniq(array) {
@@ -1010,7 +1010,7 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
 
         isFunction: isFunction,
 
-        isHtmlNode : isHtmlNode,
+        isHtmlNode: isHtmlNode,
 
         isObject: isObject,
 
@@ -1038,7 +1038,7 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
 
         mixin: mixin,
 
-        nextTick : nextTick,
+        nextTick: nextTick,
 
         proxy: proxy,
 
@@ -1054,7 +1054,7 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
 
         safeMixin: safeMixin,
 
-        serializeValue : function(value) {
+        serializeValue: function(value) {
             return JSON.stringify(value)
         },
 
@@ -1080,7 +1080,6 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
 
     return skylark.langx = langx;
 });
-
 define('skylark-utils/langx',[
     "skylark-langx/langx"
 ], function(langx) {
@@ -5174,12 +5173,12 @@ define('skylark-utils/fx',[
         return this;
     }
 
-    function fadeTo(elm, speed, opacity, callback) {
-        animate(elm, { opacity: opacity }, speed, callback);
+    function fadeTo(elm, speed, opacity, easing, callback) {
+        animate(elm, { opacity: opacity }, speed, easing, callback);
         return this;
     }
 
-    function fadeIn(elm, speed, callback) {
+    function fadeIn(elm, speed, easing, callback) {
         var target = styler.css(elm, "opacity");
         if (target > 0) {
             styler.css(elm, "opacity", 0);
@@ -5188,29 +5187,46 @@ define('skylark-utils/fx',[
         }
         styler.show(elm);
 
-        fadeTo(elm, speed, target, callback);
+        fadeTo(elm, speed, target, easing, callback);
 
         return this;
     }
 
-    function fadeOut(elm, speed, callback) {
+    function fadeOut(elm, speed, easing, callback) {
+        var _elm = elm,
+            complete,
+            options = {};
 
-        fadeTo(elm, speed, 0, function() {
-            styler.hide(elm);
-            if (callback) {
-                callback.call(elm);
-            }
-
-        });
-
-        return this;
-    }
-
-    function fadeToggle(elm, speed, callback) {
-        if (styler.isInvisible(elm)) {
-            fadeIn(elm, speed, callback);
+        if (langx.isPlainObject(speed)) {
+            options.easing = speed.easing;
+            options.duration = speed.duration;
+            complete = speed.complete;
         } else {
-            fadeOut(elm, speed, callback);
+            options.duration = speed;
+            if (callback) {
+                complete = callback;
+                options.easing = easing;
+            } else {
+                complete = easing;
+            }
+        }
+        options.complete = function() {
+            styler.hide(this);
+            if (complete) {
+                complete.call(this);
+            }
+        }
+
+        fadeTo(elm, options, 0);
+
+        return this;
+    }
+
+    function fadeToggle(elm, speed, ceasing,allback) {
+        if (styler.isInvisible(elm)) {
+            fadeIn(elm, speed, easing,callback);
+        } else {
+            fadeOut(elm, speed, easing,callback);
         }
         return this;
     }
@@ -7834,6 +7850,14 @@ define('skylark-utils/velm',[
         root: new VisualElement(document.body),
 
         VisualElement: VisualElement,
+
+        partial : function(name,fn) {
+            var props = {};
+
+            props[name] = fn;
+
+            VisualElement.partial(props);
+        },
 
         delegate: function(names, context) {
             var props = {};

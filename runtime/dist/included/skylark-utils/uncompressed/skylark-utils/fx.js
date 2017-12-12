@@ -217,12 +217,12 @@ define([
         return this;
     }
 
-    function fadeTo(elm, speed, opacity, callback) {
-        animate(elm, { opacity: opacity }, speed, callback);
+    function fadeTo(elm, speed, opacity, easing, callback) {
+        animate(elm, { opacity: opacity }, speed, easing, callback);
         return this;
     }
 
-    function fadeIn(elm, speed, callback) {
+    function fadeIn(elm, speed, easing, callback) {
         var target = styler.css(elm, "opacity");
         if (target > 0) {
             styler.css(elm, "opacity", 0);
@@ -231,29 +231,46 @@ define([
         }
         styler.show(elm);
 
-        fadeTo(elm, speed, target, callback);
+        fadeTo(elm, speed, target, easing, callback);
 
         return this;
     }
 
-    function fadeOut(elm, speed, callback) {
+    function fadeOut(elm, speed, easing, callback) {
+        var _elm = elm,
+            complete,
+            options = {};
 
-        fadeTo(elm, speed, 0, function() {
-            styler.hide(elm);
-            if (callback) {
-                callback.call(elm);
-            }
-
-        });
-
-        return this;
-    }
-
-    function fadeToggle(elm, speed, callback) {
-        if (styler.isInvisible(elm)) {
-            fadeIn(elm, speed, callback);
+        if (langx.isPlainObject(speed)) {
+            options.easing = speed.easing;
+            options.duration = speed.duration;
+            complete = speed.complete;
         } else {
-            fadeOut(elm, speed, callback);
+            options.duration = speed;
+            if (callback) {
+                complete = callback;
+                options.easing = easing;
+            } else {
+                complete = easing;
+            }
+        }
+        options.complete = function() {
+            styler.hide(this);
+            if (complete) {
+                complete.call(this);
+            }
+        }
+
+        fadeTo(elm, options, 0);
+
+        return this;
+    }
+
+    function fadeToggle(elm, speed, ceasing,allback) {
+        if (styler.isInvisible(elm)) {
+            fadeIn(elm, speed, easing,callback);
+        } else {
+            fadeOut(elm, speed, easing,callback);
         }
         return this;
     }

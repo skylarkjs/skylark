@@ -76,6 +76,14 @@ define([
 
         VisualElement: VisualElement,
 
+        partial : function(name,fn) {
+            var props = {};
+
+            props[name] = fn;
+
+            VisualElement.partial(props);
+        },
+
         delegate: function(names, context) {
             var props = {};
 

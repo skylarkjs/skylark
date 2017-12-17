@@ -16,6 +16,7 @@ define([
         init: function(name, setting) {
             this.overrided(name, setting);
             this.content = setting.content;
+            this.forceRefresh = setting.forceRefresh;
             this.data = setting.data;
             //this.lazy = !!setting.lazy;
             var self = this;
@@ -27,7 +28,7 @@ define([
         },
 
         _entering: function(ctx) {
-            if (!this._prepared) {
+            if (this.forceRefresh || ctx.force || !this._prepared) {
                 return this.prepare();
             }
             return this;
@@ -134,6 +135,9 @@ define([
             var curCtx = router.current(),
                 prevCtx = router.previous();
             var content = curCtx.route.render(curCtx);
+            if (content===undefined || content===null) {
+                return;
+            }
             if (langx.isString(content)) {
                 this._rvc.innerHTML = content;
             } else {

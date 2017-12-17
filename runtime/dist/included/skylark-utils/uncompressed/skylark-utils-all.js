@@ -1519,7 +1519,10 @@ define('skylark-utils/noder',[
         return this;
     }
 
-    function isChildOf(node, parent) {
+    function isChildOf(node, parent,directly) {
+        if (directly) {
+            return node.parentNode === parent;
+        }
         if (document.documentElement.contains) {
             return parent.contains(node);
         }
@@ -2462,9 +2465,25 @@ define('skylark-utils/finder',[
     };
 
 
-    local.filter = function(nodes, selector) {
-        var parsed = local.Slick.parse(selector);
+    local.filterSingle = function(nodes, exp){
+        var matchs = filter.call(nodes, function(node, idx) {
+            return local.check(node, exp, idx, nodes,false);
+        });    
 
+        matchs = filter.call(matchs, function(node, idx) {
+            return local.check(node, exp, idx, matchs,true);
+        }); 
+        return matchs;
+    };
+
+    local.filter = function(nodes, selector) {
+        var parsed;
+
+        if (langx.isString(selector)) {
+            parsed = local.Slick.parse(selector);
+        } else {
+            return local.filterSingle(nodes,selector);           
+        }
 
         // simple (single) selectors
         var expressions = parsed.expressions,
@@ -2476,13 +2495,7 @@ define('skylark-utils/finder',[
             if (currentExpression.length == 1) {
                 var exp = currentExpression[0];
 
-                var matchs = filter.call(nodes, function(node, idx) {
-                    return local.check(node, exp, idx, nodes,false);
-                });    
-
-                matchs = filter.call(matchs, function(node, idx) {
-                    return local.check(node, exp, idx, matchs,true);
-                });    
+                var matchs = local.filterSingle(nodes,exp);  
 
                 ret = langx.uniq(ret.concat(matchs));
             } else {
@@ -2704,12 +2717,24 @@ define('skylark-utils/finder',[
         }
     }
 
-    function find(selector) {
-        return descendant(document.body, selector);
+    function find(elm,selector) {
+        if (!selector) {
+            selector = elm;
+            elm = document.body;
+        }
+        if (matches(elm,selector)) {
+            return elm;
+        } else {
+            return descendant(elm, selector);
+        }
     }
 
-    function findAll(selector) {
-        return descendants(document.body, selector);
+    function findAll(elm,selector) {
+        if (!selector) {
+            selector = elm;
+            elm = document.body;
+        }
+        return descendants(elm, selector);
     }
 
     function firstChild(elm, selector, first) {

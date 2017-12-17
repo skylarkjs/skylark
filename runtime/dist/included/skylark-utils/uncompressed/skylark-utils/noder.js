@@ -140,7 +140,10 @@ define([
         return this;
     }
 
-    function isChildOf(node, parent) {
+    function isChildOf(node, parent,directly) {
+        if (directly) {
+            return node.parentNode === parent;
+        }
         if (document.documentElement.contains) {
             return parent.contains(node);
         }

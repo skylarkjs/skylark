@@ -1155,7 +1155,7 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
 /**
  * skylark-router - An Elegant HTML5 Routing Framework.
  * @author Hudaokeji Co.,Ltd
- * @version v0.9.3-beta
+ * @version v0.9.5
  * @link www.skylarkjs.org
  * @license MIT
  */
@@ -1333,6 +1333,7 @@ define('skylark-router/router',[
         }
 
         var r = _curCtx.route.enter({
+            force: _curCtx.force,
             path: _curCtx.path,
             params: _curCtx.params
         },true);
@@ -1372,6 +1373,7 @@ define('skylark-router/router',[
 
             if (router.useHistoryApi) {
                 var state = {
+                    force: force,
                     path: path
                 }
 
@@ -1619,6 +1621,7 @@ define('skylark-spa/spa',[
         init: function(name, setting) {
             this.overrided(name, setting);
             this.content = setting.content;
+            this.forceRefresh = setting.forceRefresh;
             this.data = setting.data;
             //this.lazy = !!setting.lazy;
             var self = this;
@@ -1630,7 +1633,7 @@ define('skylark-spa/spa',[
         },
 
         _entering: function(ctx) {
-            if (!this._prepared) {
+            if (this.forceRefresh || ctx.force || !this._prepared) {
                 return this.prepare();
             }
             return this;
@@ -1737,6 +1740,9 @@ define('skylark-spa/spa',[
             var curCtx = router.current(),
                 prevCtx = router.previous();
             var content = curCtx.route.render(curCtx);
+            if (content===undefined || content===null) {
+                return;
+            }
             if (langx.isString(content)) {
                 this._rvc.innerHTML = content;
             } else {

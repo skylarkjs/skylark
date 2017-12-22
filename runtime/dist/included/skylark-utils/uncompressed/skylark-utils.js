@@ -473,10 +473,13 @@ define('skylark-utils/noder',[
         }
     }
 
-    function createElement(tag, props) {
+    function createElement(tag, props,parent) {
         var node = document.createElement(tag);
         if (props) {
             langx.mixin(node, props);
+        }
+        if (parent) {
+            append(parent,node);
         }
         return node;
     }

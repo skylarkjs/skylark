@@ -68,13 +68,7 @@
 
   factory(define,require);
 
-  if (isAmd) {
-    define([
-      "skylark-spa",
-    ],function(skylarkjs){
-      return skylarkjs;
-    });
-  } else {    
+  if (!isAmd) {
     var skylarkjs = require("skylark-spa/main");
 
     if (isCmd) {

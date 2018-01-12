@@ -372,8 +372,6 @@ define([
 
             contents: wrapper_map(noder.contents, noder),
 
-            siblings: wrapper_selector(finder.siblings, finder),
-
             empty: wrapper_every_act(noder.empty, noder),
 
             // `pluck` is borrowed from Prototype.js
@@ -459,9 +457,15 @@ define([
                 return $(this.pluck('previousElementSibling')).filter(selector || '*')
             },
 
+            prevAll: wrapper_selector(finder.previousSibling, finder),
+
             next: function(selector) {
                 return $(this.pluck('nextElementSibling')).filter(selector || '*')
             },
+
+            nextAll: wrapper_selector(finder.nextSiblings, finder),
+
+            siblings: wrapper_selector(finder.siblings, finder),
 
             html: wrapper_value(noder.html, noder, noder.html),
 

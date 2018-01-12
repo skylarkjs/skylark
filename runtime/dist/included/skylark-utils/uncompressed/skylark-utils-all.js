@@ -5304,7 +5304,7 @@ define('skylark-utils/fx',[
         var interval = setInterval(function() {
             i++;
 
-            if(i<=freq) elm.scrollTop = (scrollTo - scrollFrom) / freq * i + scrollFrom;
+            if (i <= freq) elm.scrollTop = (scrollTo - scrollFrom) / freq * i + scrollFrom;
 
             if (i >= freq + 1) {
                 clearInterval(interval);
@@ -5360,9 +5360,9 @@ define('skylark-utils/fx',[
             }
         }
         options.complete = function() {
-            styler.hide(this);
+            styler.hide(elm);
             if (complete) {
-                complete.call(this);
+                complete.call(elm);
             }
         }
 
@@ -5371,11 +5371,11 @@ define('skylark-utils/fx',[
         return this;
     }
 
-    function fadeToggle(elm, speed, ceasing,allback) {
+    function fadeToggle(elm, speed, ceasing, allback) {
         if (styler.isInvisible(elm)) {
-            fadeIn(elm, speed, easing,callback);
+            fadeIn(elm, speed, easing, callback);
         } else {
-            fadeOut(elm, speed, easing,callback);
+            fadeOut(elm, speed, easing, callback);
         }
         return this;
     }
@@ -5406,7 +5406,6 @@ define('skylark-utils/fx',[
 
     return skylark.fx = fx;
 });
-
 define('skylark-utils/http',[
     "./skylark",
     "./langx"
@@ -6529,8 +6528,6 @@ define('skylark-utils/query',[
 
             contents: wrapper_map(noder.contents, noder),
 
-            siblings: wrapper_selector(finder.siblings, finder),
-
             empty: wrapper_every_act(noder.empty, noder),
 
             // `pluck` is borrowed from Prototype.js
@@ -6616,9 +6613,15 @@ define('skylark-utils/query',[
                 return $(this.pluck('previousElementSibling')).filter(selector || '*')
             },
 
+            prevAll: wrapper_selector(finder.previousSibling, finder),
+
             next: function(selector) {
                 return $(this.pluck('nextElementSibling')).filter(selector || '*')
             },
+
+            nextAll: wrapper_selector(finder.nextSiblings, finder),
+
+            siblings: wrapper_selector(finder.siblings, finder),
 
             html: wrapper_value(noder.html, noder, noder.html),
 

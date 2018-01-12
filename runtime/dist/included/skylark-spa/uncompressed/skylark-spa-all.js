@@ -68,13 +68,7 @@
 
   factory(define,require);
 
-  if (isAmd) {
-    define([
-      "skylark-spa",
-    ],function(skylarkjs){
-      return skylarkjs;
-    });
-  } else {    
+  if (!isAmd) {
     var skylarkjs = require("skylark-spa/main");
 
     if (isCmd) {
@@ -1206,7 +1200,7 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
 /**
  * skylark-router - An Elegant HTML5 Routing Framework.
  * @author Hudaokeji Co.,Ltd
- * @version v0.9.5
+ * @version v0.9.6-beta
  * @link www.skylarkjs.org
  * @license MIT
  */

@@ -199,7 +199,7 @@ define([
         var interval = setInterval(function() {
             i++;
 
-            if(i<=freq) elm.scrollTop = (scrollTo - scrollFrom) / freq * i + scrollFrom;
+            if (i <= freq) elm.scrollTop = (scrollTo - scrollFrom) / freq * i + scrollFrom;
 
             if (i >= freq + 1) {
                 clearInterval(interval);
@@ -255,9 +255,9 @@ define([
             }
         }
         options.complete = function() {
-            styler.hide(this);
+            styler.hide(elm);
             if (complete) {
-                complete.call(this);
+                complete.call(elm);
             }
         }
 
@@ -266,11 +266,11 @@ define([
         return this;
     }
 
-    function fadeToggle(elm, speed, ceasing,allback) {
+    function fadeToggle(elm, speed, ceasing, allback) {
         if (styler.isInvisible(elm)) {
-            fadeIn(elm, speed, easing,callback);
+            fadeIn(elm, speed, easing, callback);
         } else {
-            fadeOut(elm, speed, easing,callback);
+            fadeOut(elm, speed, easing, callback);
         }
         return this;
     }

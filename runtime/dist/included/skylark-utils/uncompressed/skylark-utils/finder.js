@@ -316,6 +316,10 @@ define([
             return !!elm.selected;
         },
 
+        'text': function(elm){
+            return elm.type === "text";
+        },
+
         'visible': function(elm) {
             return elm.offsetWidth && elm.offsetWidth
         }

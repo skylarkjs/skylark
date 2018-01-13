@@ -7070,7 +7070,9 @@ define('skylark-utils/query',[
             var self = this,
                 params = slice.call(arguments);
             var result = this.map(function(idx, elem) {
-                return func.apply(context, last ? [elem] : [elem, selector]);
+                if (elem.nodeType == 1) {
+                    return func.apply(context, last ? [elem] : [elem, selector]);
+                }
             });
             if (last && selector) {
                 return result.filter(selector);
@@ -7089,7 +7091,9 @@ define('skylark-utils/query',[
                 util = undefined;
             }
             var result = this.map(function(idx, elem) {
-                return func.apply(context, last ? [elem,util] : [elem, selector,util]);
+                if (elem.nodeType == 1) {
+                    return func.apply(context, last ? [elem,util] : [elem, selector,util]);
+                }
             });
             if (last && selector) {
                 return result.filter(selector);
@@ -7142,7 +7146,7 @@ define('skylark-utils/query',[
                 forEach.call(self, function(elem, idx) {
                     var newValue;
                     if (oldValueFunc) {
-                        newValue = funcArg(elem, value, idx, oldValueFunc(elem));
+                        newValue = funcArg(elem, value, idx, oldValueFunc(elem,name));
                     } else {
                         newValue = value
                     }
@@ -7237,6 +7241,7 @@ define('skylark-utils/query',[
 
 
             if (nodes) {
+
                 push.apply(self, nodes);
 
                 if (props) {
@@ -7277,9 +7282,9 @@ define('skylark-utils/query',[
             // from their array counterparts
 
             map: function(fn) {
-                return $(langx.map(this, function(el, i) {
+                return $(uniq(langx.map(this, function(el, i) {
                     return fn.call(el, i, el)
-                }))
+                })));
             },
 
             slice: function() { 
@@ -7358,6 +7363,8 @@ define('skylark-utils/query',[
 
             find: wrapper_selector(finder.descendants, finder),
 
+            closest: wrapper_selector(finder.closest, finder),
+/*
             closest: function(selector, context) {
                 var node = this[0],
                     collection = false
@@ -7366,6 +7373,7 @@ define('skylark-utils/query',[
                     node = node !== context && !isDocument(node) && node.parentNode
                 return $(node)
             },
+*/
 
 
             parents: wrapper_selector(finder.ancestors, finder),

@@ -112,11 +112,13 @@ require([
             require.config(cfg.runtime);
         }
 
-        if (cfg.contextPath) {
-              cfg.baseUrl = cfg.contextPath;
-        }
-        var initApp = function(spa) {
-            var app = spa(cfg);
+       
+        var initApp = function(spa, _cfg) {
+            _cfg = _cfg || cfg;
+            if (cfg.contextPath) {
+              _cfg.baseUrl = cfg.contextPath;
+            }
+            var app = spa(_cfg);
 
             globals.go =  function(path, force) {
                 app.go(path, force);
@@ -124,11 +126,17 @@ require([
 
             app.prepare().then(function(){
                 app.run();
-            })
+            });
         };
         if(cfg.spaModule) {
             require([cfg.spaModule], function(spa) {
-                initApp(spa);
+                if(spa._start) {
+                    spa._start().then(function(_cfg){
+                        initApp(spa, _cfg);
+                    });
+                } else {
+                    initApp(spa);
+                }
             });
         } else {
             initApp(skylark.spa);

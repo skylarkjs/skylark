@@ -119,11 +119,13 @@ require([
             require.config(cfg.runtime);
         }
 
-        if (cfg.contextPath) {
-              cfg.baseUrl = cfg.contextPath;
-        }
-        var initApp = function(spa) {
-            var app = spa(cfg);
+       
+        var initApp = function(spa, _cfg) {
+            _cfg = _cfg || cfg;
+            if (cfg.contextPath) {
+              _cfg.baseUrl = cfg.contextPath;
+            }
+            var app = spa(_cfg);
 
             globals.go =  function(path, force) {
                 app.go(path, force);
@@ -131,11 +133,17 @@ require([
 
             app.prepare().then(function(){
                 app.run();
-            })
+            });
         };
         if(cfg.spaModule) {
             require([cfg.spaModule], function(spa) {
-                initApp(spa);
+                if(spa._start) {
+                    spa._start().then(function(_cfg){
+                        initApp(spa, _cfg);
+                    });
+                } else {
+                    initApp(spa);
+                }
             });
         } else {
             initApp(skylark.spa);
@@ -1861,7 +1869,7 @@ define('skylark-spa/spa',[
             var curCtx = router.current(),
                 prevCtx = router.previous();
             var content = curCtx.route.render(curCtx);
-            if (content===undefined || content===null) {
+            if (content === undefined || content === null) {
                 return;
             }
             if (langx.isString(content)) {
@@ -2061,7 +2069,6 @@ define('skylark-spa/spa',[
 
     return skylark.spa = spa;
 });
-
 define('skylarkjs/spa',[
     "skylark-spa/spa"
 ], function(spa) {

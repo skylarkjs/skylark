@@ -99,121 +99,6 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
         filter = Array.prototype.filter;
 
 
-    var undefined, nextId = 0;
-    function advise(dispatcher, type, advice, receiveArguments){
-        var previous = dispatcher[type];
-        var around = type == "around";
-        var signal;
-        if(around){
-            var advised = advice(function(){
-                return previous.advice(this, arguments);
-            });
-            signal = {
-                remove: function(){
-                    if(advised){
-                        advised = dispatcher = advice = null;
-                    }
-                },
-                advice: function(target, args){
-                    return advised ?
-                        advised.apply(target, args) :  // called the advised function
-                        previous.advice(target, args); // cancelled, skip to next one
-                }
-            };
-        }else{
-            // create the remove handler
-            signal = {
-                remove: function(){
-                    if(signal.advice){
-                        var previous = signal.previous;
-                        var next = signal.next;
-                        if(!next && !previous){
-                            delete dispatcher[type];
-                        }else{
-                            if(previous){
-                                previous.next = next;
-                            }else{
-                                dispatcher[type] = next;
-                            }
-                            if(next){
-                                next.previous = previous;
-                            }
-                        }
-
-                        // remove the advice to signal that this signal has been removed
-                        dispatcher = advice = signal.advice = null;
-                    }
-                },
-                id: nextId++,
-                advice: advice,
-                receiveArguments: receiveArguments
-            };
-        }
-        if(previous && !around){
-            if(type == "after"){
-                // add the listener to the end of the list
-                // note that we had to change this loop a little bit to workaround a bizarre IE10 JIT bug
-                while(previous.next && (previous = previous.next)){}
-                previous.next = signal;
-                signal.previous = previous;
-            }else if(type == "before"){
-                // add to beginning
-                dispatcher[type] = signal;
-                signal.next = previous;
-                previous.previous = signal;
-            }
-        }else{
-            // around or first one just replaces
-            dispatcher[type] = signal;
-        }
-        return signal;
-    }
-    function aspect(type){
-        return function(target, methodName, advice, receiveArguments){
-            var existing = target[methodName], dispatcher;
-            if(!existing || existing.target != target){
-                // no dispatcher in place
-                target[methodName] = dispatcher = function(){
-                    var executionId = nextId;
-                    // before advice
-                    var args = arguments;
-                    var before = dispatcher.before;
-                    while(before){
-                        args = before.advice.apply(this, args) || args;
-                        before = before.next;
-                    }
-                    // around advice
-                    if(dispatcher.around){
-                        var results = dispatcher.around.advice(this, args);
-                    }
-                    // after advice
-                    var after = dispatcher.after;
-                    while(after && after.id < executionId){
-                        if(after.receiveArguments){
-                            var newResults = after.advice.apply(this, args);
-                            // change the return value only if a new value was returned
-                            results = newResults === undefined ? results : newResults;
-                        }else{
-                            results = after.advice.call(this, results, args);
-                        }
-                        after = after.next;
-                    }
-                    return results;
-                };
-                if(existing){
-                    dispatcher.around = {advice: function(target, args){
-                        return existing.apply(target, args);
-                    }};
-                }
-                dispatcher.target = target;
-            }
-            var results = advise((dispatcher || existing), type, advice, receiveArguments);
-            advice = null;
-            return results;
-        };
-    }
-
-
     var createClass = (function() {
         function extendClass(ctor, props, options) {
             // Copy the properties to the prototype of the class.
@@ -292,34 +177,34 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
                 };
             }
             if (!ctor.inherit) {
-                ctor.inherit = function(props, options) {
-                    return createClass(props, this, options);
+                ctor.inherit = function(props,options) {
+                    return createClass(props, this,options);
                 };
             }
 
-            ctor.partial(props, options);
+            ctor.partial(props,options);
 
             return ctor;
         }
     })();
 
 
-    function clone( /*anything*/ src) {
+   function clone( /*anything*/ src) {
         var copy;
         if (src === undefined || src === null) {
-            copy = src;
-        } else if (src.clone) {
+            copy =  src;
+        } else if (src.clone){
             copy = src.clone();
         } else if (isArray(src)) {
             copy = [];
-            for (var i = 0; i < src.length; i++) {
+            for (var i = 0;i<src.length;i++) {
                 copy.push(clone(src[i]));
             }
-        } else if (isPlainObject(src)) {
+        } else if (isPlainObject(src)){
             copy = {};
-            for (var key in src) {
+            for (var key in src){
                 copy[key] = clone(src[key]);
-            }
+            } 
         } else {
             copy = src;
         }
@@ -342,18 +227,18 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
         };
     }
 
-    var delegate = (function() {
-        // boodman/crockford delegation w/ cornford optimization
-        function TMP() {}
-        return function(obj, props) {
-            TMP.prototype = obj;
-            var tmp = new TMP();
-            TMP.prototype = null;
-            if (props) {
-                mixin(tmp, props);
-            }
-            return tmp; // Object
-        };
+    var delegate = (function(){
+            // boodman/crockford delegation w/ cornford optimization
+            function TMP(){}
+            return function(obj, props){
+                TMP.prototype = obj;
+                var tmp = new TMP();
+                TMP.prototype = null;
+                if(props){
+                    mixin(tmp, props);
+                }
+                return tmp; // Object
+            };
     })();
 
 
@@ -427,227 +312,228 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
     Deferred.immediate = Deferred.resolve;
 
     var Evented = createClass({
-        on: function(events, selector, data, callback, ctx, /*used internally*/ one) {
-            var self = this,
-                _hub = this._hub || (this._hub = {});
+        on: function(events,selector,data,callback,ctx,/*used internally*/one) {
+	        var self = this,
+	        	_hub = this._hub || (this._hub = {});
 
-            if (isPlainObject(events)) {
-                ctx = callback;
-                each(events, function(type, fn) {
-                    self.on(type, selector, data, fn, ctx, one);
-                });
-                return this;
-            }
+	        if (isPlainObject(events)) {
+	        	ctx = callback;
+	            each(events, function(type, fn) {
+	                self.on(type,selector, data, fn, ctx, one);
+	            });
+	            return this;
+	        }
 
-            if (!isString(selector) && !isFunction(callback)) {
-                ctx = callback;
-                callback = data;
-                data = selector;
-                selector = undefined;
-            }
+	        if (!isString(selector) && !isFunction(callback)) {
+	        	ctx = callback;
+	            callback = data;
+	            data = selector;
+	            selector = undefined;
+	        }
 
-            if (isFunction(data)) {
-                ctx = callback;
-                callback = data;
-                data = null;
-            }
+	        if (isFunction(data)) {
+	            ctx = callback;
+	            callback = data;
+	            data = null;
+	        }
 
-            if (isString(events)) {
-                events = events.split(/\s/)
-            }
+	        if (isString(events)) {
+	            events = events.split(/\s/)
+	        }
 
-            events.forEach(function(name) {
-                (_hub[name] || (_hub[name] = [])).push({
-                    fn: callback,
-                    selector: selector,
-                    data: data,
-                    ctx: ctx,
-                    one: one
-                });
-            });
+	        events.forEach(function(name) {
+	            (_hub[name] || (_hub[name] = [])).push({
+	                fn: callback,
+	                selector: selector,
+	                data: data,
+	                ctx: ctx,
+	                one: one
+	            });
+	        });
 
-            return this;
-        },
+	        return this;
+	    },
 
-        one: function(events, selector, data, callback, ctx) {
-            return this.on(events, selector, data, callback, ctx, 1);
-        },
+	    one: function(events,selector,data,callback,ctx) {
+	        return this.on(events,selector,data,callback,ctx,1);
+	    },
 
-        trigger: function(e /*,argument list*/ ) {
-            if (!this._hub) {
-                return this;
-            }
+	    trigger: function(e/*,argument list*/) {
+	    	if (!this._hub) {
+	    		return this;
+	    	}
 
-            var self = this;
+	    	var self = this;
 
-            if (isString(e)) {
-                e = new CustomEvent(e);
-            }
+	    	if (isString(e)) {
+	    		e = new CustomEvent(e);
+	    	}
 
-            var args = slice.call(arguments, 1);
+	        var args = slice.call(arguments,1);
             if (isDefined(args)) {
                 args = [e].concat(args);
             } else {
                 args = [e];
             }
-            [e.type || e.name, "all"].forEach(function(eventName) {
-                var listeners = self._hub[eventName];
-                if (!listeners) {
-                    return;
-                }
+	        [e.type || e.name ,"all"].forEach(function(eventName){
+		        var listeners = self._hub[eventName];
+		        if (!listeners){
+		        	return;
+		        }
 
-                var len = listeners.length,
-                    reCompact = false;
+		        var len = listeners.length,
+		        	reCompact = false;
 
-                for (var i = 0; i < len; i++) {
-                    var listener = listeners[i];
-                    if (e.data) {
-                        if (listener.data) {
-                            e.data = mixin({}, listener.data, e.data);
-                        }
-                    } else {
-                        e.data = listener.data || null;
-                    }
-                    listener.fn.apply(listener.ctx, args);
-                    if (listener.one) {
-                        listeners[i] = null;
-                        reCompact = true;
-                    }
-                }
+		        for (var i = 0; i < len; i++) {
+		        	var listener = listeners[i];
+		            if (e.data) {
+		                if (listener.data) {
+		                    e.data = mixin({}, listener.data, e.data);
+		                }
+		            } else {
+		                e.data = listener.data || null;
+		            }
+		            listener.fn.apply(listener.ctx, args);
+		            if (listener.one){
+		            	listeners[i] = null;
+		            	reCompact = true;
+		            }
+		        }
 
-                if (reCompact) {
-                    self._hub[eventName] = compact(listeners);
-                }
+		        if (reCompact){
+		        	self._hub[eventName] = compact(listeners);
+		        }
 
-            });
-            return this;
-        },
+	        });
+	        return this;
+	    },
 
-        listened: function(event) {
-            var evtArr = ((this._hub || (this._events = {}))[event] || []);
-            return evtArr.length > 0;
-        },
+	    listened: function(event) {
+	        var evtArr = ((this._hub || (this._events = {}))[event] || []);
+	        return evtArr.length > 0;
+	    },
 
-        listenTo: function(obj, event, callback, /*used internally*/ one) {
-            if (!obj) {
-                return this;
-            }
+	    listenTo: function(obj, event, callback,/*used internally*/one) {
+	        if (!obj) {
+	        	return this;
+	        }
 
-            // Bind callbacks on obj,
-            if (isString(callback)) {
-                callback = this[callback];
-            }
+	        // Bind callbacks on obj,
+	        if (isString(callback)) {
+	        	callback = this[callback];
+	        }
 
-            if (one) {
-                obj.one(event, callback, this);
-            } else {
-                obj.on(event, callback, this);
-            }
+	        if (one){
+		        obj.one(event,callback,this);
+	        } else {
+		        obj.on(event,callback,this);
+	        }
 
-            //keep track of them on listening.
-            var listeningTo = this._listeningTo || (this._listeningTo = []),
-                listening;
+	        //keep track of them on listening.
+	        var listeningTo = this._listeningTo || (this._listeningTo = []),
+	        	listening;
 
-            for (var i = 0; i < listeningTo.length; i++) {
-                if (listeningTo[i].obj == obj) {
-                    listening = listeningTo[i];
-                    break;
-                }
-            }
-            if (!listening) {
-                listeningTo.push(
-                    listening = {
-                        obj: obj,
-                        events: {}
-                    }
-                );
-            }
-            var listeningEvents = listening.events,
-                listeningEvent = listeningEvents[event] = listeningEvents[event] || [];
-            if (listeningEvent.indexOf(callback) == -1) {
-                listeningEvent.push(callback);
-            }
+	        for (var i=0;i<listeningTo.length;i++) {
+	        	if (listeningTo[i].obj == obj) {
+	        		listening = listeningTo[i];
+	        		break;
+	        	}
+	        }
+	        if (!listening) {
+	        	listeningTo.push(
+	        		listening = {
+	        			obj : obj,
+	        			events : {
+	        			}
+	        	    }
+	        	);
+	        }
+	        var listeningEvents = listening.events,
+	        	listeningEvent = listeningEvents[event] = listeningEvents[event] || [];
+	        if (listeningEvent.indexOf(callback)==-1) {
+	        	listeningEvent.push(callback);
+	        }
 
-            return this;
-        },
+	        return this;
+	    },
 
-        listenToOnce: function(obj, event, callback) {
-            return this.listenTo(obj, event, callback, 1);
-        },
+	    listenToOnce: function(obj, event, callback) {
+	    	return this.listenTo(obj,event,callback,1);
+	    },
 
-        off: function(events, callback) {
-            var _hub = this._hub || (this._hub = {});
-            if (isString(events)) {
-                events = events.split(/\s/)
-            }
+	    off: function(events, callback) {
+	        var _hub = this._hub || (this._hub = {});
+	        if (isString(events)) {
+	            events = events.split(/\s/)
+	        }
 
-            events.forEach(function(name) {
-                var evts = _hub[name];
-                var liveEvents = [];
+	        events.forEach(function(name) {
+	            var evts = _hub[name];
+	            var liveEvents = [];
 
-                if (evts && callback) {
-                    for (var i = 0, len = evts.length; i < len; i++) {
-                        if (evts[i].fn !== callback && evts[i].fn._ !== callback)
-                            liveEvents.push(evts[i]);
-                    }
-                }
+	            if (evts && callback) {
+	                for (var i = 0, len = evts.length; i < len; i++) {
+	                    if (evts[i].fn !== callback && evts[i].fn._ !== callback)
+	                        liveEvents.push(evts[i]);
+	                }
+	            }
 
-                if (liveEvents.length) {
-                    _hub[name] = liveEvents;
-                } else {
-                    delete _hub[name];
-                }
-            });
+	            if (liveEvents.length) {
+	            	_hub[name] = liveEvents;
+	            } else {
+	            	delete _hub[name];
+	            }
+	        });
 
-            return this;
-        },
-        unlistenTo: function(obj, event, callback) {
-            var listeningTo = this._listeningTo;
-            if (!listeningTo) {
-                return this;
-            }
-            for (var i = 0; i < listeningTo.length; i++) {
-                var listening = listeningTo[i];
+	        return this;
+	    },
+	    unlistenTo : function(obj, event, callback) {
+	        var listeningTo = this._listeningTo;
+	        if (!listeningTo) {
+	        	return this;
+	        }
+	        for (var i = 0; i < listeningTo.length; i++) {
+	          var listening = listeningTo[i];
 
-                if (obj && obj != listening.obj) {
-                    continue;
-                }
+	          if (obj && obj != listening.obj) {
+	        	  continue;
+	          }
 
-                var listeningEvents = listening.events;
-                for (var eventName in listeningEvents) {
-                    if (event && event != eventName) {
-                        continue;
-                    }
+	          var listeningEvents = listening.events;
+	          for (var eventName in listeningEvents) {
+	        	 if (event && event != eventName) {
+	        		 continue;
+	        	 }
 
-                    listeningEvent = listeningEvents[eventName];
+	        	 listeningEvent = listeningEvents[eventName];
 
-                    for (var j = 0; j < listeningEvent.length; j++) {
-                        if (!callback || callback == listeningEvent[i]) {
-                            listening.obj.off(eventName, listeningEvent[i], this);
-                            listeningEvent[i] = null;
-                        }
-                    }
+	        	 for (var j=0;j<listeningEvent.length;j++) {
+	        		 if (!callback || callback == listeningEvent[i]) {
+	        			 listening.obj.off(eventName, listeningEvent[i], this);
+	        			 listeningEvent[i] = null;
+	        		 }
+	        	 }
 
-                    listeningEvent = listeningEvents[eventName] = compact(listeningEvent);
+	        	 listeningEvent = listeningEvents[eventName] = compact(listeningEvent);
 
-                    if (isEmptyObject(listeningEvent)) {
-                        listeningEvents[eventName] = null;
-                    }
+	        	 if (isEmptyObject(listeningEvent)) {
+	        		 listeningEvents[eventName] = null;
+	        	 }
 
-                }
+	          }
 
-                if (isEmptyObject(listeningEvents)) {
-                    listeningTo[i] = null;
-                }
-            }
+	          if (isEmptyObject(listeningEvents)) {
+	        	  listeningTo[i] = null;
+	          }
+	        }
 
-            listeningTo = this._listeningTo = compact(listeningTo);
-            if (isEmptyObject(listeningTo)) {
-                this._listeningTo = null;
-            }
+	        listeningTo = this._listeningTo = compact(listeningTo);
+	        if (isEmptyObject(listeningTo)) {
+	        	this._listeningTo = null;
+	        }
 
-            return this;
-        }
+	        return this;
+	    }
     });
 
     function compact(array) {
@@ -711,10 +597,10 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
     function flatten(array) {
         if (isArrayLike(array)) {
             var result = [];
-            for (var i = 0; i < array.length; i++) {
+            for (var i = 0;i<array.length;i++) {
                 var item = array[i];
                 if (isArrayLike(item)) {
-                    for (var j = 0; j < item.length; j++) {
+                    for (var j = 0; j<item.length;j++) {
                         result.push(item[j]);
                     }
                 } else {
@@ -797,11 +683,11 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
     }
 
     function isArray(object) {
-        return object && object.constructor === Array;
+        return object instanceof Array;
     }
 
     function isArrayLike(obj) {
-        return !isString(obj) && !isHtmlNode(obj) && typeof obj.length == 'number';
+        return !isString(obj) && !(obj.nodeName && obj.nodeName == "#text") && typeof obj.length == 'number';
     }
 
     function isBoolean(obj) {
@@ -858,9 +744,9 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
     function isEmptyObject(obj) {
         var name;
         for (name in obj) {
-            if (obj[name] !== null) {
-                return false;
-            }
+        	if (obj[name] !== null) {
+        		return false;
+        	}
         }
         return true;
     }
@@ -934,22 +820,22 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
         return str == null ? "" : String.prototype.trim.call(str);
     }
 
-    function removeItem(items, item) {
-        if (isArray(items)) {
-            var idx = items.indexOf(item);
-            if (idx != -1) {
-                items.splice(idx, 1);
-            }
-        } else if (isPlainObject(items)) {
-            for (var key in items) {
-                if (items[key] == item) {
-                    delete items[key];
-                    break;
-                }
-            }
-        }
+    function removeItem(items,item) {
+    	if (isArray(items)) {
+        	var idx = items.indexOf(item);
+        	if (idx != -1) {
+        		items.splice(idx, 1);
+        	}
+    	} else if (isPlainObject(items)) {
+    		for (var key in items) {
+    			if (items[key] == item) {
+    				delete items[key];
+    				break;
+    			}
+    		}
+    	}
 
-        return this;
+    	return this;
     }
 
     function _mixin(target, source, deep, safe) {
@@ -1062,9 +948,8 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
     }
 
     var _uid = 1;
-
     function uid(obj) {
-        return obj._uid || (obj._uid = _uid++);
+        return obj._uid || obj.id || (obj._uid = _uid++);
     }
 
     function uniq(array) {
@@ -1078,12 +963,6 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
     }
 
     mixin(langx, {
-        after: aspect("after"),
-
-        around: aspect("around"),
-
-        before: aspect("before"),
-
         camelCase: function(str) {
             return str.replace(/-([\da-z])/g, function(a) {
                 return a.toUpperCase().replace('-', '');
@@ -1131,7 +1010,7 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
 
         isFunction: isFunction,
 
-        isHtmlNode: isHtmlNode,
+        isHtmlNode : isHtmlNode,
 
         isObject: isObject,
 
@@ -1159,7 +1038,7 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
 
         mixin: mixin,
 
-        nextTick: nextTick,
+        nextTick : nextTick,
 
         proxy: proxy,
 
@@ -1175,7 +1054,7 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
 
         safeMixin: safeMixin,
 
-        serializeValue: function(value) {
+        serializeValue : function(value) {
             return JSON.stringify(value)
         },
 
@@ -1201,6 +1080,7 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
 
     return skylark.langx = langx;
 });
+
 define('skylark-utils/langx',[
     "skylark-langx/langx"
 ], function(langx) {
@@ -6223,7 +6103,8 @@ define('skylark-utils/query',[
             var self = this,
                 params = slice.call(arguments);
             var result = this.map(function(idx, elem) {
-                if (elem.nodeType == 1) {
+                // if (elem.nodeType == 1) {
+                if (elem.querySelector) {
                     return func.apply(context, last ? [elem] : [elem, selector]);
                 }
             });
@@ -6236,7 +6117,7 @@ define('skylark-utils/query',[
     }
 
     function wrapper_selector_until(func, context, last) {
-        return function(util,selector) {
+        return function(util, selector) {
             var self = this,
                 params = slice.call(arguments);
             if (selector === undefined) {
@@ -6244,8 +6125,9 @@ define('skylark-utils/query',[
                 util = undefined;
             }
             var result = this.map(function(idx, elem) {
-                if (elem.nodeType == 1) {
-                    return func.apply(context, last ? [elem,util] : [elem, selector,util]);
+                // if (elem.nodeType == 1) {
+                if (elem.querySelector) {
+                    return func.apply(context, last ? [elem, util] : [elem, selector, util]);
                 }
             });
             if (last && selector) {
@@ -6299,7 +6181,7 @@ define('skylark-utils/query',[
                 forEach.call(self, function(elem, idx) {
                     var newValue;
                     if (oldValueFunc) {
-                        newValue = funcArg(elem, value, idx, oldValueFunc(elem,name));
+                        newValue = funcArg(elem, value, idx, oldValueFunc(elem, name));
                     } else {
                         newValue = value
                     }
@@ -6440,7 +6322,7 @@ define('skylark-utils/query',[
                 })));
             },
 
-            slice: function() { 
+            slice: function() {
                 return $(slice.apply(this, arguments))
             },
 
@@ -6517,16 +6399,16 @@ define('skylark-utils/query',[
             find: wrapper_selector(finder.descendants, finder),
 
             closest: wrapper_selector(finder.closest, finder),
-/*
-            closest: function(selector, context) {
-                var node = this[0],
-                    collection = false
-                if (typeof selector == 'object') collection = $(selector)
-                while (node && !(collection ? collection.indexOf(node) >= 0 : finder.matches(node, selector)))
-                    node = node !== context && !isDocument(node) && node.parentNode
-                return $(node)
-            },
-*/
+            /*
+                        closest: function(selector, context) {
+                            var node = this[0],
+                                collection = false
+                            if (typeof selector == 'object') collection = $(selector)
+                            while (node && !(collection ? collection.indexOf(node) >= 0 : finder.matches(node, selector)))
+                                node = node !== context && !isDocument(node) && node.parentNode
+                            return $(node)
+                        },
+            */
 
 
             parents: wrapper_selector(finder.ancestors, finder),
@@ -6617,7 +6499,7 @@ define('skylark-utils/query',[
             toggle: function(setting) {
                 return this.each(function() {
                     var el = $(this);
-                    (setting === undefined ? el.css("display") == "none" : setting) ? el.show() : el.hide()
+                    (setting === undefined ? el.css("display") == "none" : setting) ? el.show(): el.hide()
                 })
             },
 

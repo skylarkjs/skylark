@@ -63,7 +63,8 @@ define([
             var self = this,
                 params = slice.call(arguments);
             var result = this.map(function(idx, elem) {
-                if (elem.nodeType == 1) {
+                // if (elem.nodeType == 1) {
+                if (elem.querySelector) {
                     return func.apply(context, last ? [elem] : [elem, selector]);
                 }
             });
@@ -76,7 +77,7 @@ define([
     }
 
     function wrapper_selector_until(func, context, last) {
-        return function(util,selector) {
+        return function(util, selector) {
             var self = this,
                 params = slice.call(arguments);
             if (selector === undefined) {
@@ -84,8 +85,9 @@ define([
                 util = undefined;
             }
             var result = this.map(function(idx, elem) {
-                if (elem.nodeType == 1) {
-                    return func.apply(context, last ? [elem,util] : [elem, selector,util]);
+                // if (elem.nodeType == 1) {
+                if (elem.querySelector) {
+                    return func.apply(context, last ? [elem, util] : [elem, selector, util]);
                 }
             });
             if (last && selector) {
@@ -139,7 +141,7 @@ define([
                 forEach.call(self, function(elem, idx) {
                     var newValue;
                     if (oldValueFunc) {
-                        newValue = funcArg(elem, value, idx, oldValueFunc(elem,name));
+                        newValue = funcArg(elem, value, idx, oldValueFunc(elem, name));
                     } else {
                         newValue = value
                     }
@@ -280,7 +282,7 @@ define([
                 })));
             },
 
-            slice: function() { 
+            slice: function() {
                 return $(slice.apply(this, arguments))
             },
 
@@ -357,16 +359,16 @@ define([
             find: wrapper_selector(finder.descendants, finder),
 
             closest: wrapper_selector(finder.closest, finder),
-/*
-            closest: function(selector, context) {
-                var node = this[0],
-                    collection = false
-                if (typeof selector == 'object') collection = $(selector)
-                while (node && !(collection ? collection.indexOf(node) >= 0 : finder.matches(node, selector)))
-                    node = node !== context && !isDocument(node) && node.parentNode
-                return $(node)
-            },
-*/
+            /*
+                        closest: function(selector, context) {
+                            var node = this[0],
+                                collection = false
+                            if (typeof selector == 'object') collection = $(selector)
+                            while (node && !(collection ? collection.indexOf(node) >= 0 : finder.matches(node, selector)))
+                                node = node !== context && !isDocument(node) && node.parentNode
+                            return $(node)
+                        },
+            */
 
 
             parents: wrapper_selector(finder.ancestors, finder),
@@ -457,7 +459,7 @@ define([
             toggle: function(setting) {
                 return this.each(function() {
                     var el = $(this);
-                    (setting === undefined ? el.css("display") == "none" : setting) ? el.show() : el.hide()
+                    (setting === undefined ? el.css("display") == "none" : setting) ? el.show(): el.hide()
                 })
             },
 

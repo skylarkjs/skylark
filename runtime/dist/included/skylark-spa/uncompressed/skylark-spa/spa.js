@@ -135,7 +135,7 @@ define([
             var curCtx = router.current(),
                 prevCtx = router.previous();
             var content = curCtx.route.render(curCtx);
-            if (content===undefined || content===null) {
+            if (content === undefined || content === null) {
                 return;
             }
             if (langx.isString(content)) {

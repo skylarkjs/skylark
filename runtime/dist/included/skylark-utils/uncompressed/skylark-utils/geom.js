@@ -374,11 +374,11 @@ define([
                 var pex = paddingExtents(elm),
                     bex = borderExtents(elm);
 
-                if (props.width !== undefined) {
+                if (props.width !== undefined && props.width !== "" && props.width !== null) {
                     props.width = props.width - pex.left - pex.right - bex.left - bex.right;
                 }
 
-                if (props.height !== undefined) {
+                if (props.height !== undefined && props.height !== "" && props.height !== null) {
                     props.height = props.height - pex.top - pex.bottom - bex.top - bex.bottom;
                 }
             }

@@ -145,8 +145,8 @@ define([
             if (langx.isString(type)) {
                 props = props || {};
             } else {
-                props = type;
-                type = props.type;
+                props = type || {};
+                type = props.type || "";
             }
             var parsed = parse(type);
             type = parsed.type;
@@ -233,7 +233,7 @@ define([
                                 one = options.one,
                                 data = options.data;
 
-                            if (ns && ns != options.ns) {
+                            if (ns && ns != options.ns && options.ns.indexOf(ns)===-1) {
                                 return ;
                             }
                             if (selector) {
@@ -475,7 +475,12 @@ define([
         }
         e._args = args;
 
-        (evented.dispatchEvent || evented.trigger).call(evented, e);
+        var fn = (evented.dispatchEvent || evented.trigger);
+        if (fn) {
+            fn.call(evented, e);
+        } else {
+            console.warn("The evented parameter is not a eventable object");
+        }
 
         return this;
     }

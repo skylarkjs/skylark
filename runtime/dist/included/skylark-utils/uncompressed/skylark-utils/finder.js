@@ -284,7 +284,7 @@ define([
         },
 
         'has': function(elm, idx, nodes, sel) {
-            return local.querySelector(elm, sel).length > 0;
+            return matches(elm, sel);
         },
 
 
@@ -301,7 +301,7 @@ define([
         },
 
         'not': function(elm, idx, nodes, sel) {
-            return local.match(elm, sel);
+            return !matches(elm, sel);
         },
 
         'parent': function(elm) {
@@ -811,7 +811,7 @@ define([
             }
             return local.match(elm, selector);
         } else if (langx.isArrayLike(selector)) {
-            return langx.inArray(elm,selector);
+            return langx.inArray(elm,selector) > -1;
         } else if (langx.isPlainObject(selector)){    
             return local.check(elm, selector);
         } else {

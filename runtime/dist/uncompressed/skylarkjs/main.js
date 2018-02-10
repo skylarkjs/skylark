@@ -10,12 +10,14 @@ define([
     "./fx",
     "./geom",
     "./http",
+    "./images",
     "./mover",
     "./noder",
     "./query",
     "./scripter",
     "./styler",
-    "./velm"
+    "./velm",
+    "./widget"
 ], function(skylark) {
     return skylark;
 })

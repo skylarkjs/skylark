@@ -217,7 +217,7 @@ define('skylark-spa/spa',[
             var curCtx = router.current(),
                 prevCtx = router.previous();
             var content = curCtx.route.render(curCtx);
-            if (content === undefined || content === null) {
+            if (content===undefined || content===null) {
                 return;
             }
             if (langx.isString(content)) {
@@ -417,6 +417,7 @@ define('skylark-spa/spa',[
 
     return skylark.spa = spa;
 });
+
 define('skylark-spa/main',[
     "skylark-langx/skylark",
     "./spa"

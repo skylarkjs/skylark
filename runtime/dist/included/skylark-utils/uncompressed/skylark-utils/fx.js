@@ -2,9 +2,10 @@ define([
     "./skylark",
     "./langx",
     "./browser",
+    "./geom",
     "./styler",
     "./eventer"
-], function(skylark, langx, browser, styler, eventer) {
+], function(skylark, langx, browser, geom, styler, eventer) {
     var animationName,
         animationDuration,
         animationTiming,
@@ -275,6 +276,130 @@ define([
         return this;
     }
 
+    function slideDown(elm,duration,callback) {    
+    
+        // get the element position to restore it then
+        var position = styler.css(elm,'position');
+        
+        // show element if it is hidden
+        show(elm);
+        
+        // place it so it displays as usually but hidden
+        styler.css(elm,{
+            position: 'absolute',
+            visibility: 'hidden'
+        });
+        
+        // get naturally height, margin, padding
+        var marginTop = styler.css(elm,'margin-top');
+        var marginBottom = styler.css(elm,'margin-bottom');
+        var paddingTop = styler.css(elm,'padding-top');
+        var paddingBottom = styler.css(elm,'padding-bottom');
+        var height = styler.css(elm,'height');
+        
+        // set initial css for animation
+        styler.css(elm,{
+            position: position,
+            visibility: 'visible',
+            overflow: 'hidden',
+            height: 0,
+            marginTop: 0,
+            marginBottom: 0,
+            paddingTop: 0,
+            paddingBottom: 0
+        });
+        
+        // animate to gotten height, margin and padding
+        animate(elm,{
+            height: height,
+            marginTop: marginTop,
+            marginBottom: marginBottom,
+            paddingTop: paddingTop,
+            paddingBottom: paddingBottom
+        }, {
+            duration : duration,
+            complete: function(){
+                if (callback) {
+                    callback.apply(elm); 
+                }
+            }    
+        }
+    );
+        
+        return this;
+    };
+
+    function slideUp(elm,duration,callback) {
+        // active the function only if the element is visible
+        if (geom.height(elm) > 0) {
+                   
+            // get the element position to restore it then
+            var position = styler.css(elm,'position');
+            
+            // get the element height, margin and padding to restore them then
+            var height = styler.css(elm,'height');
+            var marginTop = styler.css(elm,'margin-top');
+            var marginBottom = styler.css(elm,'margin-bottom');
+            var paddingTop = styler.css(elm,'padding-top');
+            var paddingBottom = styler.css(elm,'padding-bottom');
+            
+            // set initial css for animation
+            styler.css(elm,{
+                visibility: 'visible',
+                overflow: 'hidden',
+                height: height,
+                marginTop: marginTop,
+                marginBottom: marginBottom,
+                paddingTop: paddingTop,
+                paddingBottom: paddingBottom
+            });
+            
+            // animate element height, margin and padding to zero
+            animate(elm,{
+                height: 0,
+                marginTop: 0,
+                marginBottom: 0,
+                paddingTop: 0,
+                paddingBottom: 0
+            }, { 
+                // callback : restore the element position, height, margin and padding to original values
+                duration: duration,
+                queue: false,
+                complete: function(){
+                    hide(elm);
+                    styler.css(elm,{
+                        visibility: 'visible',
+                        overflow: 'hidden',
+                        height: height,
+                        marginTop: marginTop,
+                        marginBottom: marginBottom,
+                        paddingTop: paddingTop,
+                        paddingBottom: paddingBottom
+                    });
+                    if (callback) {
+                        callback.apply(elm); 
+                    }
+                }
+            });
+        }
+        return this;
+    };
+    
+    /* SlideToggle */
+    function slideToggle(elm,duration,callback) {
+    
+        // if the element is hidden, slideDown !
+        if (geom.height(elm) == 0) {
+            slideDown(elm,duration,callback);
+        } 
+        // if the element is visible, slideUp !
+        else {
+            slideUp(elm,duration,callback);
+        }
+        return this;
+    };
+
+
     function fx() {
         return fx;
     }
@@ -295,6 +420,10 @@ define([
         fadeToggle: fadeToggle,
         hide: hide,
         scrollToTop: scrollToTop,
+
+        slideDown : slideDown,
+        slideToggle : slideToggle,
+        slideUp : slideUp,
         show: show,
         toggle: toggle
     });

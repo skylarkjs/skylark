@@ -1,1 +1,1 @@
-{"version":3,"sources":["spa.js"],"names":["define","spa"],"mappings":";;;;;;;AAAAA,QACI,mBACD,SAASC,GACR,MAAOA","file":"../spa.js","sourcesContent":["define([\n    \"skylark-spa/spa\"\n], function(spa) {\n    return spa;\n});\n"]}
+{"version":3,"sources":["spa.js"],"names":["define","spa"],"mappings":";;;;;;;AAAAA,QACI,mBACD,SAASC,GACR,MAAOA","file":"../spa.js","sourcesContent":["define([\r\n    \"skylark-spa/spa\"\r\n], function(spa) {\r\n    return spa;\r\n});\r\n"]}

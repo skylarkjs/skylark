@@ -366,7 +366,10 @@ define('skylark-utils/styler',[
 
     langx.mixin(styler, {
         autocssfix: true,
+        cssHooks : {
 
+        },
+        
         addClass: addClass,
         className: className,
         css: css,
@@ -476,7 +479,9 @@ define('skylark-utils/noder',[
     function createElement(tag, props,parent) {
         var node = document.createElement(tag);
         if (props) {
-            langx.mixin(node, props);
+            for (var name in props) {
+                node.setAttribute(name, props[name]);
+            }
         }
         if (parent) {
             append(parent,node);
@@ -638,8 +643,12 @@ define('skylark-utils/noder',[
 
     function remove(node) {
         if (node && node.parentNode) {
-            node.parentNode.removeChild(node);
-        }
+            try {
+               node.parentNode.removeChild(node);
+            } catch (e) {
+                console.warn("The node is already removed",e);
+            }
+         }
         return this;
     }
 
@@ -1270,7 +1279,7 @@ define('skylark-utils/finder',[
         },
 
         'has': function(elm, idx, nodes, sel) {
-            return local.querySelector(elm, sel).length > 0;
+            return matches(elm, sel);
         },
 
 
@@ -1287,7 +1296,7 @@ define('skylark-utils/finder',[
         },
 
         'not': function(elm, idx, nodes, sel) {
-            return local.match(elm, sel);
+            return !matches(elm, sel);
         },
 
         'parent': function(elm) {
@@ -1797,7 +1806,7 @@ define('skylark-utils/finder',[
             }
             return local.match(elm, selector);
         } else if (langx.isArrayLike(selector)) {
-            return langx.inArray(elm,selector);
+            return langx.inArray(elm,selector) > -1;
         } else if (langx.isPlainObject(selector)){    
             return local.check(elm, selector);
         } else {
@@ -2522,11 +2531,11 @@ define('skylark-utils/geom',[
                 var pex = paddingExtents(elm),
                     bex = borderExtents(elm);
 
-                if (props.width !== undefined) {
+                if (props.width !== undefined && props.width !== "" && props.width !== null) {
                     props.width = props.width - pex.left - pex.right - bex.left - bex.right;
                 }
 
-                if (props.height !== undefined) {
+                if (props.height !== undefined && props.height !== "" && props.height !== null) {
                     props.height = props.height - pex.top - pex.bottom - bex.top - bex.bottom;
                 }
             }
@@ -2746,8 +2755,8 @@ define('skylark-utils/eventer',[
             if (langx.isString(type)) {
                 props = props || {};
             } else {
-                props = type;
-                type = props.type;
+                props = type || {};
+                type = props.type || "";
             }
             var parsed = parse(type);
             type = parsed.type;
@@ -2834,7 +2843,7 @@ define('skylark-utils/eventer',[
                                 one = options.one,
                                 data = options.data;
 
-                            if (ns && ns != options.ns) {
+                            if (ns && ns != options.ns && options.ns.indexOf(ns)===-1) {
                                 return ;
                             }
                             if (selector) {
@@ -3076,7 +3085,12 @@ define('skylark-utils/eventer',[
         }
         e._args = args;
 
-        (evented.dispatchEvent || evented.trigger).call(evented, e);
+        var fn = (evented.dispatchEvent || evented.trigger);
+        if (fn) {
+            fn.call(evented, e);
+        } else {
+            console.warn("The evented parameter is not a eventable object");
+        }
 
         return this;
     }
@@ -3994,9 +4008,10 @@ define('skylark-utils/fx',[
     "./skylark",
     "./langx",
     "./browser",
+    "./geom",
     "./styler",
     "./eventer"
-], function(skylark, langx, browser, styler, eventer) {
+], function(skylark, langx, browser, geom, styler, eventer) {
     var animationName,
         animationDuration,
         animationTiming,
@@ -4267,6 +4282,130 @@ define('skylark-utils/fx',[
         return this;
     }
 
+    function slideDown(elm,duration,callback) {    
+    
+        // get the element position to restore it then
+        var position = styler.css(elm,'position');
+        
+        // show element if it is hidden
+        show(elm);
+        
+        // place it so it displays as usually but hidden
+        styler.css(elm,{
+            position: 'absolute',
+            visibility: 'hidden'
+        });
+        
+        // get naturally height, margin, padding
+        var marginTop = styler.css(elm,'margin-top');
+        var marginBottom = styler.css(elm,'margin-bottom');
+        var paddingTop = styler.css(elm,'padding-top');
+        var paddingBottom = styler.css(elm,'padding-bottom');
+        var height = styler.css(elm,'height');
+        
+        // set initial css for animation
+        styler.css(elm,{
+            position: position,
+            visibility: 'visible',
+            overflow: 'hidden',
+            height: 0,
+            marginTop: 0,
+            marginBottom: 0,
+            paddingTop: 0,
+            paddingBottom: 0
+        });
+        
+        // animate to gotten height, margin and padding
+        animate(elm,{
+            height: height,
+            marginTop: marginTop,
+            marginBottom: marginBottom,
+            paddingTop: paddingTop,
+            paddingBottom: paddingBottom
+        }, {
+            duration : duration,
+            complete: function(){
+                if (callback) {
+                    callback.apply(elm); 
+                }
+            }    
+        }
+    );
+        
+        return this;
+    };
+
+    function slideUp(elm,duration,callback) {
+        // active the function only if the element is visible
+        if (geom.height(elm) > 0) {
+                   
+            // get the element position to restore it then
+            var position = styler.css(elm,'position');
+            
+            // get the element height, margin and padding to restore them then
+            var height = styler.css(elm,'height');
+            var marginTop = styler.css(elm,'margin-top');
+            var marginBottom = styler.css(elm,'margin-bottom');
+            var paddingTop = styler.css(elm,'padding-top');
+            var paddingBottom = styler.css(elm,'padding-bottom');
+            
+            // set initial css for animation
+            styler.css(elm,{
+                visibility: 'visible',
+                overflow: 'hidden',
+                height: height,
+                marginTop: marginTop,
+                marginBottom: marginBottom,
+                paddingTop: paddingTop,
+                paddingBottom: paddingBottom
+            });
+            
+            // animate element height, margin and padding to zero
+            animate(elm,{
+                height: 0,
+                marginTop: 0,
+                marginBottom: 0,
+                paddingTop: 0,
+                paddingBottom: 0
+            }, { 
+                // callback : restore the element position, height, margin and padding to original values
+                duration: duration,
+                queue: false,
+                complete: function(){
+                    hide(elm);
+                    styler.css(elm,{
+                        visibility: 'visible',
+                        overflow: 'hidden',
+                        height: height,
+                        marginTop: marginTop,
+                        marginBottom: marginBottom,
+                        paddingTop: paddingTop,
+                        paddingBottom: paddingBottom
+                    });
+                    if (callback) {
+                        callback.apply(elm); 
+                    }
+                }
+            });
+        }
+        return this;
+    };
+    
+    /* SlideToggle */
+    function slideToggle(elm,duration,callback) {
+    
+        // if the element is hidden, slideDown !
+        if (geom.height(elm) == 0) {
+            slideDown(elm,duration,callback);
+        } 
+        // if the element is visible, slideUp !
+        else {
+            slideUp(elm,duration,callback);
+        }
+        return this;
+    };
+
+
     function fx() {
         return fx;
     }
@@ -4287,6 +4426,10 @@ define('skylark-utils/fx',[
         fadeToggle: fadeToggle,
         hide: hide,
         scrollToTop: scrollToTop,
+
+        slideDown : slideDown,
+        slideToggle : slideToggle,
+        slideUp : slideUp,
         show: show,
         toggle: toggle
     });
@@ -4573,6 +4716,306 @@ define('skylark-utils/http',[
     });
 
     return skylark.http = http;
+});
+
+define('skylark-utils/images',[
+    "./skylark",
+    "./langx"
+], function(skylark,langx) {
+
+  var elementNodeTypes = {
+    1: true,
+    9: true,
+    11: true
+  };
+
+  var ImagesLoaded = langx.Evented.inherit({
+  /**
+   * @param {Array, Element, NodeList, String} elem
+   * @param {Object or Function} options - if function, use as callback
+   * @param {Function} onAlways - callback function
+   */
+    init : function(elem, options, onAlways) {
+      // coerce ImagesLoaded() without new, to be new ImagesLoaded()
+      if ( !( this instanceof ImagesLoaded ) ) {
+        return new ImagesLoaded( elem, options, onAlways );
+      }
+      // use elem as selector string
+      if ( typeof elem == 'string' ) {
+        elem = document.querySelectorAll( elem );
+      }
+
+      this.elements = langx.makeArray( elem );
+      this.options = langx.mixin( {}, this.options );
+
+      if ( typeof options == 'function' ) {
+        onAlways = options;
+      } else {
+        langx.mixin( this.options, options );
+      }
+
+      if ( onAlways ) {
+        this.on( 'always', onAlways );
+      }
+
+      this.getImages();
+
+     // HACK check async to allow time to bind listeners
+      setTimeout( function() {
+        this.check();
+      }.bind( this ));
+
+    },
+
+    options : {},
+
+    getImages : function() {
+      this.images = [];
+
+      // filter & find items if we have an item selector
+      this.elements.forEach( this.addElementImages, this );
+    },
+
+    /**
+     * @param {Node} element
+     */
+    addElementImages : function( elem ) {
+      // filter siblings
+      if ( elem.nodeName == 'IMG' ) {
+        this.addImage( elem );
+      }
+      // get background image on element
+      if ( this.options.background === true ) {
+        this.addElementBackgroundImages( elem );
+      }
+
+      // find children
+      // no non-element nodes, #143
+      var nodeType = elem.nodeType;
+      if ( !nodeType || !elementNodeTypes[ nodeType ] ) {
+        return;
+      }
+      var childImgs = elem.querySelectorAll('img');
+      // concat childElems to filterFound array
+      for ( var i=0; i < childImgs.length; i++ ) {
+        var img = childImgs[i];
+        this.addImage( img );
+      }
+
+      // get child background images
+      if ( typeof this.options.background == 'string' ) {
+        var children = elem.querySelectorAll( this.options.background );
+        for ( i=0; i < children.length; i++ ) {
+          var child = children[i];
+          this.addElementBackgroundImages( child );
+        }
+      }
+    },
+
+    addElementBackgroundImages : function( elem ) {
+      var style = getComputedStyle( elem );
+      if ( !style ) {
+        // Firefox returns null if in a hidden iframe https://bugzil.la/548397
+        return;
+      }
+      // get url inside url("...")
+      var reURL = /url\((['"])?(.*?)\1\)/gi;
+      var matches = reURL.exec( style.backgroundImage );
+      while ( matches !== null ) {
+        var url = matches && matches[2];
+        if ( url ) {
+          this.addBackground( url, elem );
+        }
+        matches = reURL.exec( style.backgroundImage );
+      }
+    },
+
+    /**
+     * @param {Image} img
+     */
+    addImage : function( img ) {
+      var loadingImage = new LoadingImage( img );
+      this.images.push( loadingImage );
+    },
+
+    addBackground : function( url, elem ) {
+      var background = new Background( url, elem );
+      this.images.push( background );
+    },
+
+    check : function() {
+      var _this = this;
+      this.progressedCount = 0;
+      this.hasAnyBroken = false;
+      // complete if no images
+      if ( !this.images.length ) {
+        this.complete();
+        return;
+      }
+
+      function onProgress( e ) {
+        // HACK - Chrome triggers event before object properties have changed. #83
+        setTimeout( function() {
+          _this.progress( e );
+        });
+      }
+
+      this.images.forEach( function( loadingImage ) {
+        loadingImage.one( 'progress', onProgress );
+        loadingImage.check();
+      });
+    },
+
+    progress : function( e ) {
+
+      this.progressedCount++;
+      this.hasAnyBroken = this.hasAnyBroken || !e.isLoaded;
+      // progress event
+      this.trigger( langx.createEvent('progress', {
+        img : e.img,
+        element : e.element,
+        message : e.message,
+        isLoaded : e.isLoaded
+      }));
+
+      // check if completed
+      if ( this.progressedCount == this.images.length ) {
+        this.complete();
+      }
+
+      if ( this.options.debug && console ) {
+        console.log( 'progress: ' + message, e.target, e.element );
+      }
+    },
+
+    complete : function() {
+      var eventName = this.hasAnyBroken ? 'fail' : 'done';
+      this.isComplete = true;
+      this.trigger( eventName);
+      this.trigger( 'always');
+
+    }
+
+  });
+ 
+
+  // --------------------------  -------------------------- //
+
+  var LoadingImage = langx.Evented.inherit({
+    init: function( img ) {
+      this.img = img;
+    },
+    check : function() {
+      // If complete is true and browser supports natural sizes,
+      // try to check for image status manually.
+      var isComplete = this.getIsImageComplete();
+      if ( isComplete ) {
+        // report based on naturalWidth
+        this.confirm( this.img.naturalWidth !== 0, 'naturalWidth' );
+        return;
+      }
+
+      // If none of the checks above matched, simulate loading on detached element.
+      this.proxyImage = new Image();
+      this.proxyImage.addEventListener( 'load', this );
+      this.proxyImage.addEventListener( 'error', this );
+      // bind to image as well for Firefox. #191
+      this.img.addEventListener( 'load', this );
+      this.img.addEventListener( 'error', this );
+      this.proxyImage.src = this.img.src;
+    },
+
+    getIsImageComplete : function() {
+      return this.img.complete && this.img.naturalWidth !== undefined;
+    },
+
+    confirm : function( isLoaded, message ) {
+      this.isLoaded = isLoaded;
+      this.trigger( langx.createEvent('progress', {
+        img : this.img, 
+        element : this.img,
+        message : message ,
+        isLoaded : isLoaded
+      }));
+    },
+
+    // ----- events ----- //
+
+    // trigger specified handler for event type
+    handleEvent : function( event ) {
+      var method = 'on' + event.type;
+      if ( this[ method ] ) {
+        this[ method ]( event );
+      }
+    },
+
+    onload : function() {
+      this.confirm( true, 'onload' );
+      this.unbindEvents();
+    },
+
+    onerror : function() {
+      this.confirm( false, 'onerror' );
+      this.unbindEvents();
+    },
+
+    unbindEvents : function() {
+      this.proxyImage.removeEventListener( 'load', this );
+      this.proxyImage.removeEventListener( 'error', this );
+      this.img.removeEventListener( 'load', this );
+      this.img.removeEventListener( 'error', this );
+    },
+
+  });
+
+
+  // -------------------------- Background -------------------------- //
+  var Background = LoadingImage.inherit({
+
+    init : function( url, element ) {
+      this.url = url;
+      this.element = element;
+      this.img = new Image();
+    },
+
+    check : function() {
+      this.img.addEventListener( 'load', this );
+      this.img.addEventListener( 'error', this );
+      this.img.src = this.url;
+      // check if image is already complete
+      var isComplete = this.getIsImageComplete();
+      if ( isComplete ) {
+        this.confirm( this.img.naturalWidth !== 0, 'naturalWidth' );
+        this.unbindEvents();
+      }
+    },
+
+    unbindEvents : function() {
+      this.img.removeEventListener( 'load', this );
+      this.img.removeEventListener( 'error', this );
+    },
+
+    confirm : function( isLoaded, message ) {
+      this.isLoaded = isLoaded;
+      this.trigger( langx.createEvent('progress', {
+        img : this.img,
+        element : this.element, 
+        message : message,
+        isLoaded : isLoaded 
+      }));
+    }
+  });
+
+
+    function images() {
+        return images;
+    }
+
+    langx.mixin(images, {
+      loaded : ImagesLoaded
+    });
+
+    return skylark.images = images;
 });
 
 define('skylark-utils/mover',[
@@ -5283,7 +5726,14 @@ define('skylark-utils/query',[
                 push.apply(self, nodes);
 
                 if (props) {
-                    self.attr(props);
+                    for ( var name  in props ) {
+                        // Properties of context are called as methods if possible
+                        if ( langx.isFunction( this[ name ] ) ) {
+                            this[ name ]( props[ name ] );
+                        } else {
+                            this.attr( name, props[ name ] );
+                        }
+                    }
                 }
             }
 
@@ -5738,6 +6188,10 @@ define('skylark-utils/query',[
         $.fn.fadeIn = wrapper_every_act(fx.fadeIn, fx);
         $.fn.fadeOut = wrapper_every_act(fx.fadeOut, fx);
         $.fn.fadeToggle = wrapper_every_act(fx.fadeToggle, fx);
+
+        $.fn.slideDown = wrapper_every_act(fx.slideDown, fx);
+        $.fn.slideToggle = wrapper_every_act(fx.slideToggle, fx);
+        $.fn.slideUp = wrapper_every_act(fx.slideUp, fx);
     })(query);
 
 
@@ -5748,6 +6202,18 @@ define('skylark-utils/query',[
 
         $.fn.andSelf = function() {
             return this.add(this.prevObject || $())
+        }
+
+        $.fn.addBack = function(selector) {
+            if (this.prevObject) {
+                if (selector) {
+                    return this.add(this.prevObject.filter(selector));
+                } else {
+                    return this.add(this.prevObject);
+                }
+            } else {
+                return this;
+            }
         }
 
         'filter,add,not,eq,first,last,find,closest,parents,parent,children,siblings'.split(',').forEach(function(property) {
@@ -7058,7 +7524,180 @@ define('skylark-utils/velm',[
         "show",
         "toggleClass"
     ], styler);
+    
     return skylark.velm = velm;
+});
+
+define('skylark-utils/widget',[
+    "./skylark",
+    "./langx",
+    "./noder",
+    "./styler",
+    "./geom",
+    "./eventer",
+    "./query"
+], function(skylark,langx,noder,styler,geom,eventer,query) {
+  // Cached regex to split keys for `delegate`.
+  var delegateEventSplitter = /^(\S+)\s*(.*)$/;
+
+    function widget() {
+        return widget;
+    }
+
+	var Widget = langx.Evented.inherit({
+        init :function(el,options) {
+            if (!langx.isHtmlNode(el)) {
+                options = el;
+                el = null;
+            }
+            this.el = el;
+            if (options) {
+                langx.mixin(this,options);
+            }
+            if (!this.cid) {
+                this.cid = langx.uniqueId('w');
+            }
+            this._ensureElement();
+        },
+
+	    // The default `tagName` of a View's element is `"div"`.
+	    tagName: 'div',
+
+	    // jQuery delegate for element lookup, scoped to DOM elements within the
+	    // current view. This should be preferred to global lookups where possible.
+	    $: function(selector) {
+	      return this.$el.find(selector);
+	    },
+
+	    // **render** is the core function that your view should override, in order
+	    // to populate its element (`this.el`), with the appropriate HTML. The
+	    // convention is for **render** to always return `this`.
+	    render: function() {
+	      return this;
+	    },
+
+	    // Remove this view by taking the element out of the DOM, and removing any
+	    // applicable Backbone.Events listeners.
+	    remove: function() {
+	      this._removeElement();
+	      this.unlistenTo();
+	      return this;
+	    },
+
+	    // Remove this view's element from the document and all event listeners
+	    // attached to it. Exposed for subclasses using an alternative DOM
+	    // manipulation API.
+	    _removeElement: function() {
+	      this.$el.remove();
+	    },
+
+	    // Change the view's element (`this.el` property) and re-delegate the
+	    // view's events on the new element.
+	    setElement: function(element) {
+	      this.undelegateEvents();
+	      this._setElement(element);
+	      this.delegateEvents();
+	      return this;
+	    },
+
+	    // Creates the `this.el` and `this.$el` references for this view using the
+	    // given `el`. `el` can be a CSS selector or an HTML string, a jQuery
+	    // context or an element. Subclasses can override this to utilize an
+	    // alternative DOM manipulation API and are only required to set the
+	    // `this.el` property.
+	    _setElement: function(el) {
+	      this.$el = widget.$(el);
+	      this.el = this.$el[0];
+	    },
+
+	    // Set callbacks, where `this.events` is a hash of
+	    //
+	    // *{"event selector": "callback"}*
+	    //
+	    //     {
+	    //       'mousedown .title':  'edit',
+	    //       'click .button':     'save',
+	    //       'click .open':       function(e) { ... }
+	    //     }
+	    //
+	    // pairs. Callbacks will be bound to the view, with `this` set properly.
+	    // Uses event delegation for efficiency.
+	    // Omitting the selector binds the event to `this.el`.
+	    delegateEvents: function(events) {
+	      events || (events = langx.result(this, 'events'));
+	      if (!events) return this;
+	      this.undelegateEvents();
+	      for (var key in events) {
+	        var method = events[key];
+	        if (!langx.isFunction(method)) method = this[method];
+	        if (!method) continue;
+	        var match = key.match(delegateEventSplitter);
+	        this.delegate(match[1], match[2], langx.proxy(method, this));
+	      }
+	      return this;
+	    },
+
+	    // Add a single event listener to the view's element (or a child element
+	    // using `selector`). This only works for delegate-able events: not `focus`,
+	    // `blur`, and not `change`, `submit`, and `reset` in Internet Explorer.
+	    delegate: function(eventName, selector, listener) {
+	      this.$el.on(eventName + '.delegateEvents' + this.uid, selector, listener);
+	      return this;
+	    },
+
+	    // Clears all callbacks previously bound to the view by `delegateEvents`.
+	    // You usually don't need to use this, but may wish to if you have multiple
+	    // Backbone views attached to the same DOM element.
+	    undelegateEvents: function() {
+	      if (this.$el) this.$el.off('.delegateEvents' + this.uid);
+	      return this;
+	    },
+
+	    // A finer-grained `undelegateEvents` for removing a single delegated event.
+	    // `selector` and `listener` are both optional.
+	    undelegate: function(eventName, selector, listener) {
+	      this.$el.off(eventName + '.delegateEvents' + this.uid, selector, listener);
+	      return this;
+	    },
+
+	    // Produces a DOM element to be assigned to your view. Exposed for
+	    // subclasses using an alternative DOM manipulation API.
+	    _createElement: function(tagName,attrs) {
+	      return noder.createElement(tagName,attrs);
+	    },
+
+	    // Ensure that the View has a DOM element to render into.
+	    // If `this.el` is a string, pass it through `$()`, take the first
+	    // matching element, and re-assign it to `el`. Otherwise, create
+	    // an element from the `id`, `className` and `tagName` properties.
+	    _ensureElement: function() {
+	      if (!this.el) {
+	        var attrs = langx.mixin({}, langx.result(this, 'attributes'));
+	        if (this.id) attrs.id = langx.result(this, 'id');
+	        if (this.className) attrs['class'] = langx.result(this, 'className');
+	        this.setElement(this._createElement(langx.result(this, 'tagName'),attrs));
+	        this._setAttributes(attrs);
+	      } else {
+	        this.setElement(langx.result(this, 'el'));
+	      }
+	    },
+
+	    // Set attributes from a hash on this view's element.  Exposed for
+	    // subclasses using an alternative DOM manipulation API.
+	    _setAttributes: function(attributes) {
+	      this.$el.attr(attributes);
+	    }
+  	});
+
+
+    langx.mixin(widget, {
+    	$ : query,
+
+    	Widget : Widget
+    });
+
+
+    return skylark.widget = widget;
 });
 
 define('skylark-utils/main',[
@@ -7074,6 +7713,7 @@ define('skylark-utils/main',[
     "./fx",
     "./geom",
     "./http",
+    "./images",
     "./mover",
     "./noder",
     "./query",
@@ -7082,7 +7722,8 @@ define('skylark-utils/main',[
     "./styler",
     "./touchx",
     "./langx",
-    "./velm"
+    "./velm",
+    "./widget"
 ], function(skylark) {
     return skylark;
 })

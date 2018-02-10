@@ -185,7 +185,10 @@ define([
 
     langx.mixin(styler, {
         autocssfix: true,
+        cssHooks : {
 
+        },
+        
         addClass: addClass,
         className: className,
         css: css,

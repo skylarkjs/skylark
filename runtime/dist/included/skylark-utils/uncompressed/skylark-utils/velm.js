@@ -234,5 +234,6 @@ define([
         "show",
         "toggleClass"
     ], styler);
+    
     return skylark.velm = velm;
 });

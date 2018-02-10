@@ -93,7 +93,9 @@ define([
     function createElement(tag, props,parent) {
         var node = document.createElement(tag);
         if (props) {
-            langx.mixin(node, props);
+            for (var name in props) {
+                node.setAttribute(name, props[name]);
+            }
         }
         if (parent) {
             append(parent,node);
@@ -255,8 +257,12 @@ define([
 
     function remove(node) {
         if (node && node.parentNode) {
-            node.parentNode.removeChild(node);
-        }
+            try {
+               node.parentNode.removeChild(node);
+            } catch (e) {
+                console.warn("The node is already removed",e);
+            }
+         }
         return this;
     }
 

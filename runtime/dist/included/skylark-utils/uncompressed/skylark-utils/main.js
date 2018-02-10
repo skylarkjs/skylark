@@ -11,6 +11,7 @@ define([
     "./fx",
     "./geom",
     "./http",
+    "./images",
     "./mover",
     "./noder",
     "./query",
@@ -19,7 +20,8 @@ define([
     "./styler",
     "./touchx",
     "./langx",
-    "./velm"
+    "./velm",
+    "./widget"
 ], function(skylark) {
     return skylark;
 })

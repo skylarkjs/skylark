@@ -338,6 +338,10 @@ define('skylark-spa/spa',[
             app = this;
         },
 
+        baseUrl : function() {
+            return router.baseUrl();
+        },
+
         getConfig: function(key) {
             return key ? this._config[key] : this._config;
         },

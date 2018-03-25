@@ -540,12 +540,15 @@ define([
                 return geom.relativePosition(elem);
             },
 
-            offsetParent: wrapper_map(geom.offsetParent, geom),
+            offsetParent: wrapper_map(geom.offsetParent, geom)
         });
 
         // for now
         $.fn.detach = $.fn.remove;
 
+        $.fn.hover = function(fnOver, fnOut) {
+            return this.mouseenter(fnOver).mouseleave(fnOut || fnOver);
+        };
 
         $.fn.size = wrapper_value(geom.size, geom);
 

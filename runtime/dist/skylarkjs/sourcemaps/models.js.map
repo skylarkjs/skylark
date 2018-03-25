@@ -1,0 +1,1 @@
+{"version":3,"sources":["models.js"],"names":["define","models"],"mappings":";;;;;;;AAAAA,QACI,wBACD,SAASC,GACR,MAAOA","file":"../models.js","sourcesContent":["define([\r\n    \"skylark-utils/models\"\r\n], function(models) {\r\n    return models;\r\n});\r\n"]}

@@ -1,5 +1,6 @@
 define([
     "./core",
+    "./ajax",
     "./browser",
     "./css",
     "./datax",
@@ -9,12 +10,15 @@ define([
     "./finder",
     "./fx",
     "./geom",
-    "./http",
     "./images",
+    "./langx",
+    "./models",
     "./mover",
     "./noder",
     "./query",
+    "./resizer",
     "./scripter",
+    "./selector",
     "./styler",
     "./velm",
     "./widget"

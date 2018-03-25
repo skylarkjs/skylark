@@ -1,0 +1,1 @@
+{"version":3,"sources":["ajax.js"],"names":["define","ajax"],"mappings":";;;;;;;AAAAA,QACI,sBACD,SAASC,GACR,MAAOA","file":"../ajax.js","sourcesContent":["define([\r\n    \"skylark-utils/ajax\"\r\n], function(ajax) {\r\n    return ajax;\r\n});\r\n"]}

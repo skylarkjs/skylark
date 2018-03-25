@@ -1,0 +1,1 @@
+{"version":3,"sources":["resizer.js"],"names":["define","resizer"],"mappings":";;;;;;;AAAAA,QACI,yBACD,SAASC,GACR,MAAOA","file":"../resizer.js","sourcesContent":["define([\r\n    \"skylark-utils/resizer\"\r\n], function(resizer) {\r\n    return resizer;\r\n});\r\n"]}

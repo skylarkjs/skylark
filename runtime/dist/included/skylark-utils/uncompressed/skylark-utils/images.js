@@ -1,7 +1,8 @@
 define([
     "./skylark",
-    "./langx"
-], function(skylark,langx) {
+    "./langx",
+    "./query"
+], function(skylark,langx,$) {
 
   var elementNodeTypes = {
     1: true,
@@ -286,6 +287,26 @@ define([
     }
   });
 
+
+   $.fn.imagesLoaded = function( options, callback ) {
+      var inst = new ImagesLoaded( this, options, callback );
+
+      var d = new langx.Deferred();
+      
+      inst.on("progress",function(e){
+        d.progress(e);
+      });
+
+      inst.on("done",function(e){
+        d.resolve(e);
+      });
+
+      inst.on("fail",function(e){
+        d.reject(e);
+      });
+
+      return d.promise;
+   };
 
     function images() {
         return images;

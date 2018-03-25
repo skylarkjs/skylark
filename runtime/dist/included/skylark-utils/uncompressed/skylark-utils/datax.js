@@ -32,6 +32,10 @@ define([
         }
     }
 
+    function aria(elm,name,value) {
+        return this.attr(elm, "aria-"+name, value);
+    }
+
     function attr(elm, name, value) {
         if (value === undefined) {
             if (typeof name === "object") {
@@ -184,6 +188,8 @@ define([
     }
 
     langx.mixin(datax, {
+        aria: aria,
+        
         attr: attr,
 
         data: data,

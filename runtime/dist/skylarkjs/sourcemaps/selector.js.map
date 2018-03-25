@@ -1,0 +1,1 @@
+{"version":3,"sources":["selector.js"],"names":["define","selector"],"mappings":";;;;;;;AAAAA,QACI,0BACD,SAASC,GACR,MAAOA","file":"../selector.js","sourcesContent":["define([\r\n    \"skylark-utils/selector\"\r\n], function(selector) {\r\n    return selector;\r\n});\r\n"]}

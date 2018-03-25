@@ -90,95 +90,6 @@ define('skylark-utils/langx',[
     return langx;
 });
 
-define('skylark-utils/browser',[
-    "./skylark",
-    "./langx"
-], function(skylark,langx) {
-    var checkedCssProperties = {
-        "transitionproperty": "TransitionProperty",
-    };
-
-    var css3PropPrefix = "",
-        css3StylePrefix = "",
-        css3EventPrefix = "",
-
-        cssStyles = {},
-        cssProps = {},
-
-        vendorPrefix,
-        vendorPrefixRE,
-        vendorPrefixesRE = /^(Webkit|webkit|O|Moz|moz|ms)(.*)$/,
-
-        document = window.document,
-        testEl = document.createElement("div"),
-
-        matchesSelector = testEl.webkitMatchesSelector ||
-        testEl.mozMatchesSelector ||
-        testEl.oMatchesSelector ||
-        testEl.matchesSelector,
-
-        testStyle = testEl.style;
-
-    for (var name in testStyle) {
-        var matched = name.match(vendorPrefixRE || vendorPrefixesRE);
-        if (matched) {
-            if (!vendorPrefixRE) {
-                vendorPrefix = matched[1];
-                vendorPrefixRE = new RegExp("^(" + vendorPrefix + ")(.*)$");
-
-                css3StylePrefix = vendorPrefix;
-                css3PropPrefix = '-' + vendorPrefix.toLowerCase() + '-';
-                css3EventPrefix = vendorPrefix.toLowerCase();
-            }
-
-            cssStyles[langx.lowerFirst(matched[2])] = name;
-            var cssPropName = langx.dasherize(matched[2]);
-            cssProps[cssPropName] = css3PropPrefix + cssPropName;
-
-        }
-    }
-
-
-    function normalizeCssEvent(name) {
-        return css3EventPrefix ? css3EventPrefix + name : name.toLowerCase();
-    }
-
-    function normalizeCssProperty(name) {
-        return cssProps[name] || name;
-    }
-
-    function normalizeStyleProperty(name) {
-        return cssStyles[name] || name;
-    }
-
-    function browser() {
-        return browser;
-    }
-
-    langx.mixin(browser, {
-        css3PropPrefix: css3PropPrefix,
-
-        normalizeStyleProperty: normalizeStyleProperty,
-
-        normalizeCssProperty: normalizeCssProperty,
-
-        normalizeCssEvent: normalizeCssEvent,
-
-        matchesSelector: matchesSelector,
-
-        location: function() {
-            return window.location;
-        },
-
-        support : {}
-
-    });
-
-    testEl = null;
-
-    return skylark.browser = browser;
-});
-
 define('skylark-utils/styler',[
     "./skylark",
     "./langx"
@@ -809,1352 +720,6 @@ define('skylark-utils/noder',[
     return skylark.noder = noder;
 });
 
-define('skylark-utils/css',[
-    "./skylark",
-    "./langx",
-    "./noder"
-], function(skylark, langx, construct) {
-
-    var head = document.getElementsByTagName("head")[0],
-        count = 0,
-        sheetsByUrl = {},
-        sheetElementsById = {},
-        defaultSheetId = _createStyleSheet(),
-        defaultSheet = sheetElementsById[defaultSheetId],
-        rulesPropName = ("cssRules" in defaultSheet) ? "cssRules" : "rules",
-        insertRuleFunc,
-        deleteRuleFunc = defaultSheet.deleteRule || defaultSheet.removeRule;
-
-    if (defaultSheet.insertRule) {
-        var _insertRule = defaultSheet.insertRule;
-        insertRuleFunc = function(selector, css, index) {
-            _insertRule.call(this, selector + "{" + css + "}", index);
-        };
-    } else {
-        insertRuleFunc = defaultSheet.addRule;
-    }
-
-    function normalizeSelector(selectorText) {
-        var selector = [],
-            last, len;
-        last = defaultSheet[rulesPropName].length;
-        insertRuleFunc.call(defaultSheet, selectorText, ';');
-        len = defaultSheet[rulesPropName].length;
-        for (var i = len - 1; i >= last; i--) {
-            selector.push(_sheet[_rules][i].selectorText);
-            deleteRuleFunc.call(defaultSheet, i);
-        }
-        return selector.reverse().join(', ');
-    }
-
-    function _createStyleSheet() {
-        var link = document.createElement("link"),
-            id = (count++);
-
-        link.rel = "stylesheet";
-        link.type = "text/css";
-        link.async = false;
-        link.defer = false;
-
-        head.appendChild(link);
-        sheetElementsById[id] = link;
-
-        return id;
-    }
-
-    function css() {
-        return css;
-    }
-
-    langx.mixin(css, {
-        createStyleSheet: function(cssText) {
-            return _createStyleSheet();
-        },
-
-        loadStyleSheet: function(url, loadedCallback, errorCallback) {
-            var sheet = sheetsByUrl[url];
-            if (!sheet) {
-                sheet = sheetsByUrl[url] = {
-                    state: 0, //0:unload,1:loaded,-1:loaderror
-                    loadedCallbacks: [],
-                    errorCallbacks: []
-                };
-            }
-
-            sheet.loadedCallbacks.push(loadedCallback);
-            sheet.errorCallbacks.push(errorCallback);
-
-            if (sheet.state === 1) {
-                sheet.node.onload();
-            } else if (sheet.state === -1) {
-                sheet.node.onerror();
-            } else {
-                sheet.id = _createStyleSheet();
-                var node = sheet.node = sheetElementsById[sheet.id];
-
-                startTime = new Date().getTime();
-
-                node.onload = function() {
-                    sheet.state = 1;
-                    sheet.state = -1;
-                    var callbacks = sheet.loadedCallbacks,
-                        i = callbacks.length;
-
-                    while (i--) {
-                        callbacks[i]();
-                    }
-                    sheet.loadedCallbacks = [];
-                    sheet.errorCallbacks = [];
-                },
-                node.onerror = function() {
-                    sheet.state = -1;
-                    var callbacks = sheet.errorCallbacks,
-                        i = callbacks.length;
-
-                    while (i--) {
-                        callbacks[i]();
-                    }
-                    sheet.loadedCallbacks = [];
-                    sheet.errorCallbacks = [];
-                };
-
-                node.href = sheet.url = url;
-
-                sheetsByUrl[node.url] = sheet;
-
-            }
-            return sheet.id;
-        },
-
-        deleteSheetRule: function(sheetId, rule) {
-            var sheet = sheetElementsById[sheetId];
-            if (langx.isNumber(rule)) {
-                deleteRuleFunc.call(sheet, rule);
-            } else {
-                langx.each(sheet[rulesPropName], function(i, _rule) {
-                    if (rule === _rule) {
-                        deleteRuleFunc.call(sheet, i);
-                        return false;
-                    }
-                });
-            }
-        },
-
-        deleteRule: function(rule) {
-            this.deleteSheetRule(defaultSheetId, rule);
-            return this;
-        },
-
-        removeStyleSheet: function(sheetId) {
-            if (sheetId === defaultSheetId) {
-                throw new Error("The default stylesheet can not be deleted");
-            }
-            var sheet = sheetElementsById[sheetId];
-            delete sheetElementsById[sheetId];
-
-
-            construct.remove(sheet);
-            return this;
-        },
-
-        findRules: function(selector, sheetId) {
-            //return array of CSSStyleRule objects that match the selector text
-            var rules = [],
-                filters = parseSelector(selector);
-            $(document.styleSheets).each(function(i, styleSheet) {
-                if (filterStyleSheet(filters.styleSheet, styleSheet)) {
-                    $.merge(rules, $(styleSheet[_rules]).filter(function() {
-                        return matchSelector(this, filters.selectorText, filters.styleSheet === "*");
-                    }).map(function() {
-                        return normalizeRule($.support.nativeCSSStyleRule ? this : new CSSStyleRule(this), styleSheet);
-                    }));
-                }
-            });
-            return rules.reverse();
-        },
-
-        insertRule: function(selector, css, index) {
-            return this.insertSheetRule(defaultSheetId, selector, css, index);
-        },
-
-        insertSheetRule: function(sheetId, selector, css, index) {
-            if (!selector || !css) {
-                return -1;
-            }
-
-            var sheet = sheetElementsById[sheetId];
-            index = index || sheet[rulesPropName].length;
-
-            return insertRuleFunc.call(sheet, selector, css, index);
-
-        }
-    });
-
-    return skylark.css = css;
-});
-
-define('skylark-utils/finder',[
-    "./skylark",
-    "./langx",
-    "./browser",
-    "./noder"
-], function(skylark, langx, browser, noder, velm) {
-    var local = {},
-        filter = Array.prototype.filter,
-        slice = Array.prototype.slice,
-        nativeMatchesSelector = browser.matchesSelector;
-
-    /*
-    ---
-    name: Slick.Parser
-    description: Standalone CSS3 Selector parser
-    provides: Slick.Parser
-    ...
-    */
-    ;
-    (function() {
-
-        var parsed,
-            separatorIndex,
-            combinatorIndex,
-            reversed,
-            cache = {},
-            reverseCache = {},
-            reUnescape = /\\/g;
-
-        var parse = function(expression, isReversed) {
-            if (expression == null) return null;
-            if (expression.Slick === true) return expression;
-            expression = ('' + expression).replace(/^\s+|\s+$/g, '');
-            reversed = !!isReversed;
-            var currentCache = (reversed) ? reverseCache : cache;
-            if (currentCache[expression]) return currentCache[expression];
-            parsed = {
-                Slick: true,
-                expressions: [],
-                raw: expression,
-                reverse: function() {
-                    return parse(this.raw, true);
-                }
-            };
-            separatorIndex = -1;
-            while (expression != (expression = expression.replace(regexp, parser)));
-            parsed.length = parsed.expressions.length;
-            return currentCache[parsed.raw] = (reversed) ? reverse(parsed) : parsed;
-        };
-
-        var reverseCombinator = function(combinator) {
-            if (combinator === '!') return ' ';
-            else if (combinator === ' ') return '!';
-            else if ((/^!/).test(combinator)) return combinator.replace(/^!/, '');
-            else return '!' + combinator;
-        };
-
-        var reverse = function(expression) {
-            var expressions = expression.expressions;
-            for (var i = 0; i < expressions.length; i++) {
-                var exp = expressions[i];
-                var last = {
-                    parts: [],
-                    tag: '*',
-                    combinator: reverseCombinator(exp[0].combinator)
-                };
-
-                for (var j = 0; j < exp.length; j++) {
-                    var cexp = exp[j];
-                    if (!cexp.reverseCombinator) cexp.reverseCombinator = ' ';
-                    cexp.combinator = cexp.reverseCombinator;
-                    delete cexp.reverseCombinator;
-                }
-
-                exp.reverse().push(last);
-            }
-            return expression;
-        };
-
-        var escapeRegExp = (function() {
-            // Credit: XRegExp 0.6.1 (c) 2007-2008 Steven Levithan <http://stevenlevithan.com/regex/xregexp/> MIT License
-            var from = /(?=[\-\[\]{}()*+?.\\\^$|,#\s])/g,
-                to = '\\';
-            return function(string) {
-                return string.replace(from, to)
-            }
-        }())
-
-        var regexp = new RegExp(
-            "^(?:\\s*(,)\\s*|\\s*(<combinator>+)\\s*|(\\s+)|(<unicode>+|\\*)|\\#(<unicode>+)|\\.(<unicode>+)|\\[\\s*(<unicode1>+)(?:\\s*([*^$!~|]?=)(?:\\s*(?:([\"']?)(.*?)\\9)))?\\s*\\](?!\\])|(:+)(<unicode>+)(?:\\((?:(?:([\"'])([^\\13]*)\\13)|((?:\\([^)]+\\)|[^()]*)+))\\))?)"
-            .replace(/<combinator>/, '[' + escapeRegExp(">+~`!@$%^&={}\\;</") + ']')
-            .replace(/<unicode>/g, '(?:[\\w\\u00a1-\\uFFFF-]|\\\\[^\\s0-9a-f])')
-            .replace(/<unicode1>/g, '(?:[:\\w\\u00a1-\\uFFFF-]|\\\\[^\\s0-9a-f])')
-        );
-
-        function parser(
-            rawMatch,
-
-            separator,
-            combinator,
-            combinatorChildren,
-
-            tagName,
-            id,
-            className,
-
-            attributeKey,
-            attributeOperator,
-            attributeQuote,
-            attributeValue,
-
-            pseudoMarker,
-            pseudoClass,
-            pseudoQuote,
-            pseudoClassQuotedValue,
-            pseudoClassValue
-        ) {
-            if (separator || separatorIndex === -1) {
-                parsed.expressions[++separatorIndex] = [];
-                combinatorIndex = -1;
-                if (separator) return '';
-            }
-
-            if (combinator || combinatorChildren || combinatorIndex === -1) {
-                combinator = combinator || ' ';
-                var currentSeparator = parsed.expressions[separatorIndex];
-                if (reversed && currentSeparator[combinatorIndex])
-                    currentSeparator[combinatorIndex].reverseCombinator = reverseCombinator(combinator);
-                currentSeparator[++combinatorIndex] = {
-                    combinator: combinator,
-                    tag: '*'
-                };
-            }
-
-            var currentParsed = parsed.expressions[separatorIndex][combinatorIndex];
-
-            if (tagName) {
-                currentParsed.tag = tagName.replace(reUnescape, '');
-
-            } else if (id) {
-                currentParsed.id = id.replace(reUnescape, '');
-
-            } else if (className) {
-                className = className.replace(reUnescape, '');
-
-                if (!currentParsed.classList) currentParsed.classList = [];
-                if (!currentParsed.classes) currentParsed.classes = [];
-                currentParsed.classList.push(className);
-                currentParsed.classes.push({
-                    value: className,
-                    regexp: new RegExp('(^|\\s)' + escapeRegExp(className) + '(\\s|$)')
-                });
-
-            } else if (pseudoClass) {
-                pseudoClassValue = pseudoClassValue || pseudoClassQuotedValue;
-                pseudoClassValue = pseudoClassValue ? pseudoClassValue.replace(reUnescape, '') : null;
-
-                if (!currentParsed.pseudos) currentParsed.pseudos = [];
-                currentParsed.pseudos.push({
-                    key: pseudoClass.replace(reUnescape, ''),
-                    value: pseudoClassValue,
-                    type: pseudoMarker.length == 1 ? 'class' : 'element'
-                });
-
-            } else if (attributeKey) {
-                attributeKey = attributeKey.replace(reUnescape, '');
-                attributeValue = (attributeValue || '').replace(reUnescape, '');
-
-                var test, regexp;
-
-                switch (attributeOperator) {
-                    case '^=':
-                        regexp = new RegExp('^' + escapeRegExp(attributeValue));
-                        break;
-                    case '$=':
-                        regexp = new RegExp(escapeRegExp(attributeValue) + '$');
-                        break;
-                    case '~=':
-                        regexp = new RegExp('(^|\\s)' + escapeRegExp(attributeValue) + '(\\s|$)');
-                        break;
-                    case '|=':
-                        regexp = new RegExp('^' + escapeRegExp(attributeValue) + '(-|$)');
-                        break;
-                    case '=':
-                        test = function(value) {
-                            return attributeValue == value;
-                        };
-                        break;
-                    case '*=':
-                        test = function(value) {
-                            return value && value.indexOf(attributeValue) > -1;
-                        };
-                        break;
-                    case '!=':
-                        test = function(value) {
-                            return attributeValue != value;
-                        };
-                        break;
-                    default:
-                        test = function(value) {
-                            return !!value;
-                        };
-                }
-
-                if (attributeValue == '' && (/^[*$^]=$/).test(attributeOperator)) test = function() {
-                    return false;
-                };
-
-                if (!test) test = function(value) {
-                    return value && regexp.test(value);
-                };
-
-                if (!currentParsed.attributes) currentParsed.attributes = [];
-                currentParsed.attributes.push({
-                    key: attributeKey,
-                    operator: attributeOperator,
-                    value: attributeValue,
-                    test: test
-                });
-
-            }
-
-            return '';
-        };
-
-        // Slick NS
-
-        var Slick = (this.Slick || {});
-
-        Slick.parse = function(expression) {
-            return parse(expression);
-        };
-
-        Slick.escapeRegExp = escapeRegExp;
-
-        if (!this.Slick) this.Slick = Slick;
-
-    }).apply(local);
-
-
-    var simpleClassSelectorRE = /^\.([\w-]*)$/,
-        simpleIdSelectorRE = /^#([\w-]*)$/,
-        slice = Array.prototype.slice;
-
-
-    local.parseSelector = local.Slick.parse;
-
-
-    local.pseudos = {
-        // custom pseudos
-        'checkbox': function(elm){
-            return elm.type === "checkbox";
-        },
-        'checked': function(elm) {
-            return !!elm.checked;
-        },
-
-        'contains': function(elm, idx, nodes, text) {
-            if ($(this).text().indexOf(text) > -1) return this
-        },
-
-        'disabled': function(elm) {
-            return !!elm.disabled;
-        },
-
-        'enabled': function(elm) {
-            return !elm.disabled;
-        },
-
-        'eq': function(elm, idx, nodes, value) {
-            return (idx == value);
-        },
-
-        'focus': function(elm) {
-            return document.activeElement === elm && (elm.href || elm.type || elm.tabindex);
-        },
-
-        'first': function(elm, idx) {
-            return (idx === 0);
-        },
-
-        'gt': function(elm, idx, nodes, value) {
-            return (idx > value);
-        },
-
-        'has': function(elm, idx, nodes, sel) {
-            return matches(elm, sel);
-        },
-
-
-        'hidden': function(elm) {
-            return !local.pseudos["visible"](elm);
-        },
-
-        'last': function(elm, idx, nodes) {
-            return (idx === nodes.length - 1);
-        },
-
-        'lt': function(elm, idx, nodes, value) {
-            return (idx < value);
-        },
-
-        'not': function(elm, idx, nodes, sel) {
-            return !matches(elm, sel);
-        },
-
-        'parent': function(elm) {
-            return !!elm.parentNode;
-        },
-
-        'radio': function(elm){
-            return elm.type === "radio";
-        },
-
-        'selected': function(elm) {
-            return !!elm.selected;
-        },
-
-        'text': function(elm){
-            return elm.type === "text";
-        },
-
-        'visible': function(elm) {
-            return elm.offsetWidth && elm.offsetWidth
-        }
-    };
-
-    ["first","eq","last"].forEach(function(item){
-        local.pseudos[item].isArrayFilter = true;
-    });
-
-    local.divide = function(cond) {
-        var nativeSelector = "",
-            customPseudos = [],
-            tag,
-            id,
-            classes,
-            attributes,
-            pseudos;
-
-
-        if (id = cond.id) {
-            nativeSelector += ("#" + id);
-        }
-        if (classes = cond.classes) {
-            for (var i = classes.length; i--;) {
-                nativeSelector += ("." + classes[i].value);
-            }
-        }
-        if (attributes = cond.attributes) {
-            for (var i = 0; i < attributes.length; i++) {
-                if (attributes[i].operator) {
-                    nativeSelector += ("[" + attributes[i].key + attributes[i].operator + JSON.stringify(attributes[i].value)  +"]");
-                } else {
-                    nativeSelector += ("[" + attributes[i].key + "]");
-                }
-            }
-        }
-        if (pseudos = cond.pseudos) {
-            for (i = pseudos.length; i--;) {
-                part = pseudos[i];
-                if (this.pseudos[part.key]) {
-                    customPseudos.push(part);
-                } else {
-                    if (part.value !== undefined) {
-                        nativeSelector += (":" + part.key + "(" + JSON.stringify(part))
-                    }
-                }
-            }
-        }
-
-        if (tag = cond.tag) {
-            nativeSelector = tag.toUpperCase() + nativeSelector;
-        }
-
-        if (!nativeSelector) {
-            nativeSelector = "*";
-        }
-
-        return {
-            nativeSelector: nativeSelector,
-            customPseudos: customPseudos
-        }
-
-    };
-
-    local.check = function(node, cond, idx, nodes,arrayFilte) {
-        var tag,
-            id,
-            classes,
-            attributes,
-            pseudos,
-
-            i, part, cls, pseudo;
-
-        if (!arrayFilte) {
-            if (tag = cond.tag) {
-                var nodeName = node.nodeName.toUpperCase();
-                if (tag == '*') {
-                    if (nodeName < '@') return false; // Fix for comment nodes and closed nodes
-                } else {
-                    if (nodeName != (tag || "").toUpperCase()) return false;
-                }
-            }
-
-            if (id = cond.id) {
-                if (node.getAttribute('id') != id) {
-                    return false;
-                }
-            }
-
-
-            if (classes = cond.classes) {
-                for (i = classes.length; i--;) {
-                    cls = node.getAttribute('class');
-                    if (!(cls && classes[i].regexp.test(cls))) return false;
-                }
-            }
-
-            if (attributes) {
-                for (i = attributes.length; i--;) {
-                    part = attributes[i];
-                    if (part.operator ? !part.test(node.getAttribute(part.key)) : !node.hasAttribute(part.key)) return false;
-                }
-
-            }
-
-        }
-        if (pseudos = cond.pseudos) {
-            for (i = pseudos.length; i--;) {
-                part = pseudos[i];
-                if (pseudo = this.pseudos[part.key]) {
-                    if ((arrayFilte && pseudo.isArrayFilter) || (!arrayFilte && !pseudo.isArrayFilter)) {
-                        if (!pseudo(node, idx, nodes, part.value)) {
-                            return false;
-                        }
-                    }
-                } else {
-                    if (!arrayFilte && !nativeMatchesSelector.call(node, part.key)) {
-                        return false;
-                    }
-                }
-            }
-        }
-        return true;
-    }
-
-    local.match = function(node, selector) {
-
-        var parsed ;
-
-        if (langx.isString(selector)) {
-            parsed = local.Slick.parse(selector);
-        } else {
-            parsed = selector;            
-        }
-        
-        if (!parsed) {
-            return true;
-        }
-
-        // simple (single) selectors
-        var expressions = parsed.expressions,
-            simpleExpCounter = 0,
-            i,
-            currentExpression;
-        for (i = 0;
-            (currentExpression = expressions[i]); i++) {
-            if (currentExpression.length == 1) {
-                var exp = currentExpression[0];
-                if (this.check(node,exp)) {
-                    return true;
-                }
-                simpleExpCounter++;
-            }
-        }
-
-        if (simpleExpCounter == parsed.length) {
-            return false;
-        }
-
-        var nodes = this.query(document, parsed),
-            item;
-        for (i = 0; item = nodes[i++];) {
-            if (item === node) {
-                return true;
-            }
-        }
-        return false;
-    };
-
-
-    local.filterSingle = function(nodes, exp){
-        var matchs = filter.call(nodes, function(node, idx) {
-            return local.check(node, exp, idx, nodes,false);
-        });    
-
-        matchs = filter.call(matchs, function(node, idx) {
-            return local.check(node, exp, idx, matchs,true);
-        }); 
-        return matchs;
-    };
-
-    local.filter = function(nodes, selector) {
-        var parsed;
-
-        if (langx.isString(selector)) {
-            parsed = local.Slick.parse(selector);
-        } else {
-            return local.filterSingle(nodes,selector);           
-        }
-
-        // simple (single) selectors
-        var expressions = parsed.expressions,
-            i,
-            currentExpression,
-            ret = [];
-        for (i = 0;
-            (currentExpression = expressions[i]); i++) {
-            if (currentExpression.length == 1) {
-                var exp = currentExpression[0];
-
-                var matchs = local.filterSingle(nodes,exp);  
-
-                ret = langx.uniq(ret.concat(matchs));
-            } else {
-                throw new Error("not supported selector:" + selector);
-            }
-        }
-
-        return ret;
- 
-    };    
-
-    local.combine = function(elm, bit) {
-        var op = bit.combinator,
-            cond = bit,
-            node1,
-            nodes = [];
-
-        switch (op) {
-            case '>': // direct children
-                nodes = children(elm, cond);
-                break;
-            case '+': // next sibling
-                node1 = nextSibling(elm, cond, true);
-                if (node1) {
-                    nodes.push(node1);
-                }
-                break;
-            case '^': // first child
-                node1 = firstChild(elm, cond, true);
-                if (node1) {
-                    nodes.push(node1);
-                }
-                break;
-            case '~': // next siblings
-                nodes = nextSiblings(elm, cond);
-                break;
-            case '++': // next sibling and previous sibling
-                var prev = previousSibling(elm, cond, true),
-                    next = nextSibling(elm, cond, true);
-                if (prev) {
-                    nodes.push(prev);
-                }
-                if (next) {
-                    nodes.push(next);
-                }
-                break;
-            case '~~': // next siblings and previous siblings
-                nodes = siblings(elm, cond);
-                break;
-            case '!': // all parent nodes up to document
-                nodes = ancestors(elm, cond);
-                break;
-            case '!>': // direct parent (one level)
-                node1 = parent(elm, cond);
-                if (node1) {
-                    nodes.push(node1);
-                }
-                break;
-            case '!+': // previous sibling
-                nodes = previousSibling(elm, cond, true);
-                break;
-            case '!^': // last child
-                node1 = lastChild(elm, cond, true);
-                if (node1) {
-                    nodes.push(node1);
-                }
-                break;
-            case '!~': // previous siblings
-                nodes = previousSiblings(elm, cond);
-                break;
-            default:
-                var divided = this.divide(bit);
-                nodes = slice.call(elm.querySelectorAll(divided.nativeSelector));
-                if (divided.customPseudos) {
-                    for (var i = divided.customPseudos.length - 1; i >= 0; i--) {
-                        nodes = filter.call(nodes, function(item, idx) {
-                            return local.check(item, {
-                                pseudos: [divided.customPseudos[i]]
-                            }, idx, nodes,false)
-                        });
-
-                        nodes = filter.call(nodes, function(item, idx) {
-                            return local.check(item, {
-                                pseudos: [divided.customPseudos[i]]
-                            }, idx, nodes,true)
-                        });                        
-                    }
-                }
-                break;
-
-        }
-        return nodes;
-    }
-
-    local.query = function(node, selector, single) {
-
-
-        var parsed = this.Slick.parse(selector);
-
-        var
-            founds = [],
-            currentExpression, currentBit,
-            expressions = parsed.expressions;
-
-        for (var i = 0;
-            (currentExpression = expressions[i]); i++) {
-            var currentItems = [node],
-                found;
-            for (var j = 0;
-                (currentBit = currentExpression[j]); j++) {
-                found = langx.map(currentItems, function(item, i) {
-                    return local.combine(item, currentBit)
-                });
-                if (found) {
-                    currentItems = found;
-                }
-            }
-            if (found) {
-                founds = founds.concat(found);
-            }
-        }
-
-        return founds;
-    }
-
-
-    function ancestor(node, selector, root) {
-        var rootIsSelector = root && langx.isString(root);
-        while (node = node.parentNode) {
-            if (matches(node, selector)) {
-                return node;
-            }
-            if (root) {
-                if (rootIsSelector) {
-                    if (matches(node,root)) {
-                        break;
-                    }
-                } else if (node == root) {
-                    break;
-                }
-            } 
-        }
-        return null;
-    }
-
-    function ancestors(node, selector,root) {
-        var ret = [],
-            rootIsSelector = root && langx.isString(root);
-        while (node = node.parentNode) {
-                ret.push(node);
-            if (root) {
-                if (rootIsSelector) {
-                    if (matches(node,root)) {
-                        break;
-                    }
-                } else if (node == root) {
-                    break;
-                }
-            } 
-
-        }
-
-        if (selector) {
-            ret = local.filter(ret,selector);
-        }
-        return ret;
-    }
-
-    function byId(id, doc) {
-        doc = doc || noder.doc();
-        return doc.getElementById(id);
-    }
-
-    function children(node, selector) {
-        var childNodes = node.childNodes,
-            ret = [];
-        for (var i = 0; i < childNodes.length; i++) {
-            var node = childNodes[i];
-            if (node.nodeType == 1) {
-                ret.push(node);
-            }
-        }
-        if (selector) {
-            ret = local.filter(ret,selector);
-        }
-        return ret;
-    }
-
-    function closest(node, selector) {
-        while (node && !(matches(node, selector))) {
-            node = node.parentNode;
-        }
-
-        return node;
-    }
-
-    function descendants(elm, selector) {
-        // Selector
-        try {
-            return slice.call(elm.querySelectorAll(selector));
-        } catch (matchError) {
-            //console.log(matchError);
-        }
-        return local.query(elm, selector);
-    }
-
-    function descendant(elm, selector) {
-        // Selector
-        try {
-            return elm.querySelector(selector);
-        } catch (matchError) {
-            //console.log(matchError);
-        }
-        var nodes = local.query(elm, selector);
-        if (nodes.length > 0) {
-            return nodes[0];
-        } else {
-            return null;
-        }
-    }
-
-    function find(elm,selector) {
-        if (!selector) {
-            selector = elm;
-            elm = document.body;
-        }
-        if (matches(elm,selector)) {
-            return elm;
-        } else {
-            return descendant(elm, selector);
-        }
-    }
-
-    function findAll(elm,selector) {
-        if (!selector) {
-            selector = elm;
-            elm = document.body;
-        }
-        return descendants(elm, selector);
-    }
-
-    function firstChild(elm, selector, first) {
-        var childNodes = elm.childNodes,
-            node = childNodes[0];
-        while (node) {
-            if (node.nodeType == 1) {
-                if (!selector || matches(node, selector)) {
-                    return node;
-                }
-                if (first) {
-                    break;
-                }
-            }
-            node = node.nextSibling;
-        }
-
-        return null;
-    }
-
-    function lastChild(elm, selector, last) {
-        var childNodes = elm.childNodes,
-            node = childNodes[childNodes.length - 1];
-        while (node) {
-            if (node.nodeType == 1) {
-                if (!selector || matches(node, selector)) {
-                    return node;
-                }
-                if (last) {
-                    break;
-                }
-            }
-            node = node.previousSibling;
-        }
-
-        return null;
-    }
-
-    function matches(elm, selector) {
-        if (!selector || !elm || elm.nodeType !== 1) {
-            return false
-        }
-
-        if (langx.isString(selector)) {
-            try {
-                return nativeMatchesSelector.call(elm, selector.replace(/\[([^=]+)=\s*([^'"\]]+?)\s*\]/g, '[$1="$2"]'));
-            } catch (matchError) {
-                //console.log(matchError);
-            }
-            return local.match(elm, selector);
-        } else if (langx.isArrayLike(selector)) {
-            return langx.inArray(elm,selector) > -1;
-        } else if (langx.isPlainObject(selector)){    
-            return local.check(elm, selector);
-        } else {
-            return elm === selector;
-        }
-
-    }
-
-    function nextSibling(elm, selector, adjacent) {
-        var node = elm.nextSibling;
-        while (node) {
-            if (node.nodeType == 1) {
-                if (!selector || matches(node, selector)) {
-                    return node;
-                }
-                if (adjacent) {
-                    break;
-                }
-            }
-            node = node.nextSibling;
-        }
-        return null;
-    }
-
-    function nextSiblings(elm, selector) {
-        var node = elm.nextSibling,
-            ret = [];
-        while (node) {
-            if (node.nodeType == 1) {
-                if (!selector || matches(node, selector)) {
-                    ret.push(node);
-                }
-            }
-            node = node.nextSibling;
-        }
-        return ret;
-    }
-
-
-    function parent(elm, selector) {
-        var node = elm.parentNode;
-        if (node && (!selector || matches(node, selector))) {
-            return node;
-        }
-
-        return null;
-    }
-
-    function previousSibling(elm, selector, adjacent) {
-        var node = elm.previousSibling;
-        while (node) {
-            if (node.nodeType == 1) {
-                if (!selector || matches(node, selector)) {
-                    return node;
-                }
-                if (adjacent) {
-                    break;
-                }
-            }
-            node = node.previousSibling;
-        }
-        return null;
-    }
-
-    function previousSiblings(elm, selector) {
-        var node = elm.previousSibling,
-            ret = [];
-        while (node) {
-            if (node.nodeType == 1) {
-                if (!selector || matches(node, selector)) {
-                    ret.push(node);
-                }
-            }
-            node = node.previousSibling;
-        }
-        return ret;
-    }
-
-    function siblings(elm, selector) {
-        var node = elm.parentNode.firstChild,
-            ret = [];
-        while (node) {
-            if (node.nodeType == 1 && node !== elm) {
-                if (!selector || matches(node, selector)) {
-                    ret.push(node);
-                }
-            }
-            node = node.nextSibling;
-        }
-        return ret;
-    }
-
-    var finder = function() {
-        return finder;
-    };
-
-    langx.mixin(finder, {
-
-        ancestor: ancestor,
-
-        ancestors: ancestors,
-
-        byId: byId,
-
-        children: children,
-
-        closest: closest,
-
-        descendant: descendant,
-
-        descendants: descendants,
-
-        find: find,
-
-        findAll: findAll,
-
-        firstChild: firstChild,
-
-        lastChild: lastChild,
-
-        matches: matches,
-
-        nextSibling: nextSibling,
-
-        nextSiblings: nextSiblings,
-
-        parent: parent,
-
-        previousSibling: previousSibling,
-
-        previousSiblings: previousSiblings,
-
-        pseudos: local.pseudos,
-
-        siblings: siblings
-    });
-
-    return skylark.finder = finder;
-});
-
-define('skylark-utils/datax',[
-    "./skylark",
-    "./langx",
-    "./finder"
-], function(skylark, langx, finder) {
-    var map = Array.prototype.map,
-        filter = Array.prototype.filter,
-        camelCase = langx.camelCase,
-        deserializeValue = langx.deserializeValue,
-
-        capitalRE = /([A-Z])/g,
-        propMap = {
-            'tabindex': 'tabIndex',
-            'readonly': 'readOnly',
-            'for': 'htmlFor',
-            'class': 'className',
-            'maxlength': 'maxLength',
-            'cellspacing': 'cellSpacing',
-            'cellpadding': 'cellPadding',
-            'rowspan': 'rowSpan',
-            'colspan': 'colSpan',
-            'usemap': 'useMap',
-            'frameborder': 'frameBorder',
-            'contenteditable': 'contentEditable'
-        };
-
-    function setAttribute(elm, name, value) {
-        if (value == null) {
-            elm.removeAttribute(name);
-        } else {
-            elm.setAttribute(name, value);
-        }
-    }
-
-    function attr(elm, name, value) {
-        if (value === undefined) {
-            if (typeof name === "object") {
-                for (var attrName in name) {
-                    attr(elm, attrName, name[attrName]);
-                }
-                return this;
-            } else {
-                if (elm.hasAttribute(name)) {
-                    return elm.getAttribute(name);
-                }
-            }
-        } else {
-            elm.setAttribute(name, value);
-            return this;
-        }
-    }
-
-    // Read all "data-*" attributes from a node
-    function _attributeData(elm) {
-        var store = {}
-        langx.each(elm.attributes || [], function(i, attr) {
-            if (attr.name.indexOf('data-') == 0) {
-                store[camelCase(attr.name.replace('data-', ''))] = deserializeValue(attr.value);
-            }
-        })
-        return store;
-    }
-
-    function _store(elm, confirm) {
-        var store = elm["_$_store"];
-        if (!store && confirm) {
-            store = elm["_$_store"] = _attributeData(elm);
-        }
-        return store;
-    }
-
-    function _getData(elm, name) {
-        if (name === undefined) {
-            return _store(elm, true);
-        } else {
-            var store = _store(elm);
-            if (store) {
-                if (name in store) {
-                    return store[name];
-                }
-                var camelName = camelCase(name);
-                if (camelName in store) {
-                    return store[camelName];
-                }
-            }
-            var attrName = 'data-' + name.replace(capitalRE, "-$1").toLowerCase()
-            return attr(elm, attrName);
-        }
-
-    }
-
-    function _setData(elm, name, value) {
-        var store = _store(elm, true);
-        store[camelCase(name)] = value;
-    }
-
-
-    function data(elm, name, value) {
-
-        if (value === undefined) {
-            if (typeof name === "object") {
-                for (var dataAttrName in name) {
-                    _setData(elm, dataAttrName, name[dataAttrName]);
-                }
-                return this;
-            } else {
-                return _getData(elm, name);
-            }
-        } else {
-            _setData(elm, name, value);
-            return this;
-        }
-    }
-
-    function removeData(elm, names) {
-        if (langx.isString(names)) {
-            names = names.split(/\s+/);
-        }
-        var store = _store(elm, true);
-        names.forEach(function(name) {
-            delete store[name];
-        });
-        return this;
-    }
-
-    function pluck(nodes, property) {
-        return map.call(nodes, function(elm) {
-            return elm[property];
-        });
-    }
-
-    function prop(elm, name, value) {
-        name = propMap[name] || name;
-        if (value === undefined) {
-            return elm[name];
-        } else {
-            elm[name] = value;
-            return this;
-        }
-    }
-
-    function removeAttr(elm, name) {
-        name.split(' ').forEach(function(attr) {
-            setAttribute(elm, attr);
-        });
-        return this;
-    }
-
-    function removeProp(elm, name) {
-        name.split(' ').forEach(function(prop) {
-            delete elm[prop];
-        });
-        return this;
-    }
-
-    function text(elm, txt) {
-        if (txt === undefined) {
-            return elm.textContent;
-        } else {
-            elm.textContent = txt == null ? '' : '' + txt;
-            return this;
-        }
-    }
-
-    function val(elm, value) {
-        if (value === undefined) {
-            if (elm.multiple) {
-                // select multiple values
-                var selectedOptions = filter.call(finder.find(elm, "option"), (function(option) {
-                    return option.selected;
-                }));
-                return pluck(selectedOptions, "value");
-            } else {
-                return elm.value;
-            }
-        } else {
-            elm.value = value;
-            return this;
-        }
-    }
-
-    function datax() {
-        return datax;
-    }
-
-    langx.mixin(datax, {
-        attr: attr,
-
-        data: data,
-
-        pluck: pluck,
-
-        prop: prop,
-
-        removeAttr: removeAttr,
-
-        removeData: removeData,
-
-        removeProp: removeProp,
-
-        text: text,
-
-        val: val
-    });
-
-    return skylark.datax = datax;
-});
-
 define('skylark-utils/geom',[
     "./skylark",
     "./langx",
@@ -2608,6 +1173,1262 @@ define('skylark-utils/geom',[
     return skylark.geom = geom;
 });
 
+define('skylark-utils/browser',[
+    "./skylark",
+    "./langx"
+], function(skylark,langx) {
+    var checkedCssProperties = {
+        "transitionproperty": "TransitionProperty",
+    };
+
+    var css3PropPrefix = "",
+        css3StylePrefix = "",
+        css3EventPrefix = "",
+
+        cssStyles = {},
+        cssProps = {},
+
+        vendorPrefix,
+        vendorPrefixRE,
+        vendorPrefixesRE = /^(Webkit|webkit|O|Moz|moz|ms)(.*)$/,
+
+        document = window.document,
+        testEl = document.createElement("div"),
+
+        matchesSelector = testEl.webkitMatchesSelector ||
+        testEl.mozMatchesSelector ||
+        testEl.oMatchesSelector ||
+        testEl.matchesSelector,
+
+        testStyle = testEl.style;
+
+    for (var name in testStyle) {
+        var matched = name.match(vendorPrefixRE || vendorPrefixesRE);
+        if (matched) {
+            if (!vendorPrefixRE) {
+                vendorPrefix = matched[1];
+                vendorPrefixRE = new RegExp("^(" + vendorPrefix + ")(.*)$");
+
+                css3StylePrefix = vendorPrefix;
+                css3PropPrefix = '-' + vendorPrefix.toLowerCase() + '-';
+                css3EventPrefix = vendorPrefix.toLowerCase();
+            }
+
+            cssStyles[langx.lowerFirst(matched[2])] = name;
+            var cssPropName = langx.dasherize(matched[2]);
+            cssProps[cssPropName] = css3PropPrefix + cssPropName;
+
+        }
+    }
+
+
+    function normalizeCssEvent(name) {
+        return css3EventPrefix ? css3EventPrefix + name : name.toLowerCase();
+    }
+
+    function normalizeCssProperty(name) {
+        return cssProps[name] || name;
+    }
+
+    function normalizeStyleProperty(name) {
+        return cssStyles[name] || name;
+    }
+
+    function browser() {
+        return browser;
+    }
+
+    langx.mixin(browser, {
+        css3PropPrefix: css3PropPrefix,
+
+        normalizeStyleProperty: normalizeStyleProperty,
+
+        normalizeCssProperty: normalizeCssProperty,
+
+        normalizeCssEvent: normalizeCssEvent,
+
+        matchesSelector: matchesSelector,
+
+        location: function() {
+            return window.location;
+        },
+
+        support : {}
+
+    });
+
+    testEl = null;
+
+    return skylark.browser = browser;
+});
+
+define('skylark-utils/finder',[
+    "./skylark",
+    "./langx",
+    "./browser",
+    "./noder"
+], function(skylark, langx, browser, noder, velm) {
+    var local = {},
+        filter = Array.prototype.filter,
+        slice = Array.prototype.slice,
+        nativeMatchesSelector = browser.matchesSelector;
+
+    /*
+    ---
+    name: Slick.Parser
+    description: Standalone CSS3 Selector parser
+    provides: Slick.Parser
+    ...
+    */
+    ;
+    (function() {
+
+        var parsed,
+            separatorIndex,
+            combinatorIndex,
+            reversed,
+            cache = {},
+            reverseCache = {},
+            reUnescape = /\\/g;
+
+        var parse = function(expression, isReversed) {
+            if (expression == null) return null;
+            if (expression.Slick === true) return expression;
+            expression = ('' + expression).replace(/^\s+|\s+$/g, '');
+            reversed = !!isReversed;
+            var currentCache = (reversed) ? reverseCache : cache;
+            if (currentCache[expression]) return currentCache[expression];
+            parsed = {
+                Slick: true,
+                expressions: [],
+                raw: expression,
+                reverse: function() {
+                    return parse(this.raw, true);
+                }
+            };
+            separatorIndex = -1;
+            while (expression != (expression = expression.replace(regexp, parser)));
+            parsed.length = parsed.expressions.length;
+            return currentCache[parsed.raw] = (reversed) ? reverse(parsed) : parsed;
+        };
+
+        var reverseCombinator = function(combinator) {
+            if (combinator === '!') return ' ';
+            else if (combinator === ' ') return '!';
+            else if ((/^!/).test(combinator)) return combinator.replace(/^!/, '');
+            else return '!' + combinator;
+        };
+
+        var reverse = function(expression) {
+            var expressions = expression.expressions;
+            for (var i = 0; i < expressions.length; i++) {
+                var exp = expressions[i];
+                var last = {
+                    parts: [],
+                    tag: '*',
+                    combinator: reverseCombinator(exp[0].combinator)
+                };
+
+                for (var j = 0; j < exp.length; j++) {
+                    var cexp = exp[j];
+                    if (!cexp.reverseCombinator) cexp.reverseCombinator = ' ';
+                    cexp.combinator = cexp.reverseCombinator;
+                    delete cexp.reverseCombinator;
+                }
+
+                exp.reverse().push(last);
+            }
+            return expression;
+        };
+
+        var escapeRegExp = (function() {
+            // Credit: XRegExp 0.6.1 (c) 2007-2008 Steven Levithan <http://stevenlevithan.com/regex/xregexp/> MIT License
+            var from = /(?=[\-\[\]{}()*+?.\\\^$|,#\s])/g,
+                to = '\\';
+            return function(string) {
+                return string.replace(from, to)
+            }
+        }())
+
+        var regexp = new RegExp(
+            "^(?:\\s*(,)\\s*|\\s*(<combinator>+)\\s*|(\\s+)|(<unicode>+|\\*)|\\#(<unicode>+)|\\.(<unicode>+)|\\[\\s*(<unicode1>+)(?:\\s*([*^$!~|]?=)(?:\\s*(?:([\"']?)(.*?)\\9)))?\\s*\\](?!\\])|(:+)(<unicode>+)(?:\\((?:(?:([\"'])([^\\13]*)\\13)|((?:\\([^)]+\\)|[^()]*)+))\\))?)"
+            .replace(/<combinator>/, '[' + escapeRegExp(">+~`!@$%^&={}\\;</") + ']')
+            .replace(/<unicode>/g, '(?:[\\w\\u00a1-\\uFFFF-]|\\\\[^\\s0-9a-f])')
+            .replace(/<unicode1>/g, '(?:[:\\w\\u00a1-\\uFFFF-]|\\\\[^\\s0-9a-f])')
+        );
+
+        function parser(
+            rawMatch,
+
+            separator,
+            combinator,
+            combinatorChildren,
+
+            tagName,
+            id,
+            className,
+
+            attributeKey,
+            attributeOperator,
+            attributeQuote,
+            attributeValue,
+
+            pseudoMarker,
+            pseudoClass,
+            pseudoQuote,
+            pseudoClassQuotedValue,
+            pseudoClassValue
+        ) {
+            if (separator || separatorIndex === -1) {
+                parsed.expressions[++separatorIndex] = [];
+                combinatorIndex = -1;
+                if (separator) return '';
+            }
+
+            if (combinator || combinatorChildren || combinatorIndex === -1) {
+                combinator = combinator || ' ';
+                var currentSeparator = parsed.expressions[separatorIndex];
+                if (reversed && currentSeparator[combinatorIndex])
+                    currentSeparator[combinatorIndex].reverseCombinator = reverseCombinator(combinator);
+                currentSeparator[++combinatorIndex] = {
+                    combinator: combinator,
+                    tag: '*'
+                };
+            }
+
+            var currentParsed = parsed.expressions[separatorIndex][combinatorIndex];
+
+            if (tagName) {
+                currentParsed.tag = tagName.replace(reUnescape, '');
+
+            } else if (id) {
+                currentParsed.id = id.replace(reUnescape, '');
+
+            } else if (className) {
+                className = className.replace(reUnescape, '');
+
+                if (!currentParsed.classList) currentParsed.classList = [];
+                if (!currentParsed.classes) currentParsed.classes = [];
+                currentParsed.classList.push(className);
+                currentParsed.classes.push({
+                    value: className,
+                    regexp: new RegExp('(^|\\s)' + escapeRegExp(className) + '(\\s|$)')
+                });
+
+            } else if (pseudoClass) {
+                pseudoClassValue = pseudoClassValue || pseudoClassQuotedValue;
+                pseudoClassValue = pseudoClassValue ? pseudoClassValue.replace(reUnescape, '') : null;
+
+                if (!currentParsed.pseudos) currentParsed.pseudos = [];
+                currentParsed.pseudos.push({
+                    key: pseudoClass.replace(reUnescape, ''),
+                    value: pseudoClassValue,
+                    type: pseudoMarker.length == 1 ? 'class' : 'element'
+                });
+
+            } else if (attributeKey) {
+                attributeKey = attributeKey.replace(reUnescape, '');
+                attributeValue = (attributeValue || '').replace(reUnescape, '');
+
+                var test, regexp;
+
+                switch (attributeOperator) {
+                    case '^=':
+                        regexp = new RegExp('^' + escapeRegExp(attributeValue));
+                        break;
+                    case '$=':
+                        regexp = new RegExp(escapeRegExp(attributeValue) + '$');
+                        break;
+                    case '~=':
+                        regexp = new RegExp('(^|\\s)' + escapeRegExp(attributeValue) + '(\\s|$)');
+                        break;
+                    case '|=':
+                        regexp = new RegExp('^' + escapeRegExp(attributeValue) + '(-|$)');
+                        break;
+                    case '=':
+                        test = function(value) {
+                            return attributeValue == value;
+                        };
+                        break;
+                    case '*=':
+                        test = function(value) {
+                            return value && value.indexOf(attributeValue) > -1;
+                        };
+                        break;
+                    case '!=':
+                        test = function(value) {
+                            return attributeValue != value;
+                        };
+                        break;
+                    default:
+                        test = function(value) {
+                            return !!value;
+                        };
+                }
+
+                if (attributeValue == '' && (/^[*$^]=$/).test(attributeOperator)) test = function() {
+                    return false;
+                };
+
+                if (!test) test = function(value) {
+                    return value && regexp.test(value);
+                };
+
+                if (!currentParsed.attributes) currentParsed.attributes = [];
+                currentParsed.attributes.push({
+                    key: attributeKey,
+                    operator: attributeOperator,
+                    value: attributeValue,
+                    test: test
+                });
+
+            }
+
+            return '';
+        };
+
+        // Slick NS
+
+        var Slick = (this.Slick || {});
+
+        Slick.parse = function(expression) {
+            return parse(expression);
+        };
+
+        Slick.escapeRegExp = escapeRegExp;
+
+        if (!this.Slick) this.Slick = Slick;
+
+    }).apply(local);
+
+
+    var simpleClassSelectorRE = /^\.([\w-]*)$/,
+        simpleIdSelectorRE = /^#([\w-]*)$/,
+        slice = Array.prototype.slice;
+
+
+    local.parseSelector = local.Slick.parse;
+
+
+    local.pseudos = {
+        // custom pseudos
+        'checkbox': function(elm){
+            return elm.type === "checkbox";
+        },
+        'checked': function(elm) {
+            return !!elm.checked;
+        },
+
+        'contains': function(elm, idx, nodes, text) {
+            if ($(this).text().indexOf(text) > -1) return this
+        },
+
+        'disabled': function(elm) {
+            return !!elm.disabled;
+        },
+
+        'enabled': function(elm) {
+            return !elm.disabled;
+        },
+
+        'eq': function(elm, idx, nodes, value) {
+            return (idx == value);
+        },
+
+        'focus': function(elm) {
+            return document.activeElement === elm && (elm.href || elm.type || elm.tabindex);
+        },
+
+        'first': function(elm, idx) {
+            return (idx === 0);
+        },
+
+        'gt': function(elm, idx, nodes, value) {
+            return (idx > value);
+        },
+
+        'has': function(elm, idx, nodes, sel) {
+            return find(elm, sel);
+        },
+
+
+        'hidden': function(elm) {
+            return !local.pseudos["visible"](elm);
+        },
+
+        'last': function(elm, idx, nodes) {
+            return (idx === nodes.length - 1);
+        },
+
+        'lt': function(elm, idx, nodes, value) {
+            return (idx < value);
+        },
+
+        'not': function(elm, idx, nodes, sel) {
+            return !matches(elm, sel);
+        },
+
+        'parent': function(elm) {
+            return !!elm.parentNode;
+        },
+
+        'radio': function(elm){
+            return elm.type === "radio";
+        },
+
+        'selected': function(elm) {
+            return !!elm.selected;
+        },
+
+        'text': function(elm){
+            return elm.type === "text";
+        },
+
+        'visible': function(elm) {
+            return elm.offsetWidth && elm.offsetWidth
+        }
+    };
+
+    ["first","eq","last"].forEach(function(item){
+        local.pseudos[item].isArrayFilter = true;
+    });
+
+    local.divide = function(cond) {
+        var nativeSelector = "",
+            customPseudos = [],
+            tag,
+            id,
+            classes,
+            attributes,
+            pseudos;
+
+
+        if (id = cond.id) {
+            nativeSelector += ("#" + id);
+        }
+        if (classes = cond.classes) {
+            for (var i = classes.length; i--;) {
+                nativeSelector += ("." + classes[i].value);
+            }
+        }
+        if (attributes = cond.attributes) {
+            for (var i = 0; i < attributes.length; i++) {
+                if (attributes[i].operator) {
+                    nativeSelector += ("[" + attributes[i].key + attributes[i].operator + JSON.stringify(attributes[i].value)  +"]");
+                } else {
+                    nativeSelector += ("[" + attributes[i].key + "]");
+                }
+            }
+        }
+        if (pseudos = cond.pseudos) {
+            for (i = pseudos.length; i--;) {
+                part = pseudos[i];
+                if (this.pseudos[part.key]) {
+                    customPseudos.push(part);
+                } else {
+                    if (part.value !== undefined) {
+                        nativeSelector += (":" + part.key + "(" + JSON.stringify(part))
+                    }
+                }
+            }
+        }
+
+        if (tag = cond.tag) {
+            nativeSelector = tag.toUpperCase() + nativeSelector;
+        }
+
+        if (!nativeSelector) {
+            nativeSelector = "*";
+        }
+
+        return {
+            nativeSelector: nativeSelector,
+            customPseudos: customPseudos
+        }
+
+    };
+
+    local.check = function(node, cond, idx, nodes,arrayFilte) {
+        var tag,
+            id,
+            classes,
+            attributes,
+            pseudos,
+
+            i, part, cls, pseudo;
+
+        if (!arrayFilte) {
+            if (tag = cond.tag) {
+                var nodeName = node.nodeName.toUpperCase();
+                if (tag == '*') {
+                    if (nodeName < '@') return false; // Fix for comment nodes and closed nodes
+                } else {
+                    if (nodeName != (tag || "").toUpperCase()) return false;
+                }
+            }
+
+            if (id = cond.id) {
+                if (node.getAttribute('id') != id) {
+                    return false;
+                }
+            }
+
+
+            if (classes = cond.classes) {
+                for (i = classes.length; i--;) {
+                    cls = node.getAttribute('class');
+                    if (!(cls && classes[i].regexp.test(cls))) return false;
+                }
+            }
+
+            if (attributes = cond.attributes) {
+                 for (i = attributes.length; i--;) {
+                    part = attributes[i];
+                    if (part.operator ? !part.test(node.getAttribute(part.key)) : !node.hasAttribute(part.key)) return false;
+                }
+            }
+
+        }
+        if (pseudos = cond.pseudos) {
+            for (i = pseudos.length; i--;) {
+                part = pseudos[i];
+                if (pseudo = this.pseudos[part.key]) {
+                    if ((arrayFilte && pseudo.isArrayFilter) || (!arrayFilte && !pseudo.isArrayFilter)) {
+                        if (!pseudo(node, idx, nodes, part.value)) {
+                            return false;
+                        }
+                    }
+                } else {
+                    if (!arrayFilte && !nativeMatchesSelector.call(node, part.key)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    local.match = function(node, selector) {
+
+        var parsed ;
+
+        if (langx.isString(selector)) {
+            parsed = local.Slick.parse(selector);
+        } else {
+            parsed = selector;            
+        }
+        
+        if (!parsed) {
+            return true;
+        }
+
+        // simple (single) selectors
+        var expressions = parsed.expressions,
+            simpleExpCounter = 0,
+            i,
+            currentExpression;
+        for (i = 0;
+            (currentExpression = expressions[i]); i++) {
+            if (currentExpression.length == 1) {
+                var exp = currentExpression[0];
+                if (this.check(node,exp)) {
+                    return true;
+                }
+                simpleExpCounter++;
+            }
+        }
+
+        if (simpleExpCounter == parsed.length) {
+            return false;
+        }
+
+        var nodes = this.query(document, parsed),
+            item;
+        for (i = 0; item = nodes[i++];) {
+            if (item === node) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+
+    local.filterSingle = function(nodes, exp){
+        var matchs = filter.call(nodes, function(node, idx) {
+            return local.check(node, exp, idx, nodes,false);
+        });    
+
+        matchs = filter.call(matchs, function(node, idx) {
+            return local.check(node, exp, idx, matchs,true);
+        }); 
+        return matchs;
+    };
+
+    local.filter = function(nodes, selector) {
+        var parsed;
+
+        if (langx.isString(selector)) {
+            parsed = local.Slick.parse(selector);
+        } else {
+            return local.filterSingle(nodes,selector);           
+        }
+
+        // simple (single) selectors
+        var expressions = parsed.expressions,
+            i,
+            currentExpression,
+            ret = [];
+        for (i = 0;
+            (currentExpression = expressions[i]); i++) {
+            if (currentExpression.length == 1) {
+                var exp = currentExpression[0];
+
+                var matchs = local.filterSingle(nodes,exp);  
+
+                ret = langx.uniq(ret.concat(matchs));
+            } else {
+                throw new Error("not supported selector:" + selector);
+            }
+        }
+
+        return ret;
+ 
+    };    
+
+    local.combine = function(elm, bit) {
+        var op = bit.combinator,
+            cond = bit,
+            node1,
+            nodes = [];
+
+        switch (op) {
+            case '>': // direct children
+                nodes = children(elm, cond);
+                break;
+            case '+': // next sibling
+                node1 = nextSibling(elm, cond, true);
+                if (node1) {
+                    nodes.push(node1);
+                }
+                break;
+            case '^': // first child
+                node1 = firstChild(elm, cond, true);
+                if (node1) {
+                    nodes.push(node1);
+                }
+                break;
+            case '~': // next siblings
+                nodes = nextSiblings(elm, cond);
+                break;
+            case '++': // next sibling and previous sibling
+                var prev = previousSibling(elm, cond, true),
+                    next = nextSibling(elm, cond, true);
+                if (prev) {
+                    nodes.push(prev);
+                }
+                if (next) {
+                    nodes.push(next);
+                }
+                break;
+            case '~~': // next siblings and previous siblings
+                nodes = siblings(elm, cond);
+                break;
+            case '!': // all parent nodes up to document
+                nodes = ancestors(elm, cond);
+                break;
+            case '!>': // direct parent (one level)
+                node1 = parent(elm, cond);
+                if (node1) {
+                    nodes.push(node1);
+                }
+                break;
+            case '!+': // previous sibling
+                nodes = previousSibling(elm, cond, true);
+                break;
+            case '!^': // last child
+                node1 = lastChild(elm, cond, true);
+                if (node1) {
+                    nodes.push(node1);
+                }
+                break;
+            case '!~': // previous siblings
+                nodes = previousSiblings(elm, cond);
+                break;
+            default:
+                var divided = this.divide(bit);
+                nodes = slice.call(elm.querySelectorAll(divided.nativeSelector));
+                if (divided.customPseudos) {
+                    for (var i = divided.customPseudos.length - 1; i >= 0; i--) {
+                        nodes = filter.call(nodes, function(item, idx) {
+                            return local.check(item, {
+                                pseudos: [divided.customPseudos[i]]
+                            }, idx, nodes,false)
+                        });
+
+                        nodes = filter.call(nodes, function(item, idx) {
+                            return local.check(item, {
+                                pseudos: [divided.customPseudos[i]]
+                            }, idx, nodes,true)
+                        });                        
+                    }
+                }
+                break;
+
+        }
+        return nodes;
+    }
+
+    local.query = function(node, selector, single) {
+
+
+        var parsed = this.Slick.parse(selector);
+
+        var
+            founds = [],
+            currentExpression, currentBit,
+            expressions = parsed.expressions;
+
+        for (var i = 0;
+            (currentExpression = expressions[i]); i++) {
+            var currentItems = [node],
+                found;
+            for (var j = 0;
+                (currentBit = currentExpression[j]); j++) {
+                found = langx.map(currentItems, function(item, i) {
+                    return local.combine(item, currentBit)
+                });
+                if (found) {
+                    currentItems = found;
+                }
+            }
+            if (found) {
+                founds = founds.concat(found);
+            }
+        }
+
+        return founds;
+    }
+
+
+    function ancestor(node, selector, root) {
+        var rootIsSelector = root && langx.isString(root);
+        while (node = node.parentNode) {
+            if (matches(node, selector)) {
+                return node;
+            }
+            if (root) {
+                if (rootIsSelector) {
+                    if (matches(node,root)) {
+                        break;
+                    }
+                } else if (node == root) {
+                    break;
+                }
+            } 
+        }
+        return null;
+    }
+
+    function ancestors(node, selector,root) {
+        var ret = [],
+            rootIsSelector = root && langx.isString(root);
+        while ((node = node.parentNode) && (node.nodeType !== 9)) {
+            ret.push(node);
+            if (root) {
+                if (rootIsSelector) {
+                    if (matches(node,root)) {
+                        break;
+                    }
+                } else if (node == root) {
+                    break;
+                }
+            } 
+
+        }
+
+        if (selector) {
+            ret = local.filter(ret,selector);
+        }
+        return ret;
+    }
+
+    function byId(id, doc) {
+        doc = doc || noder.doc();
+        return doc.getElementById(id);
+    }
+
+    function children(node, selector) {
+        var childNodes = node.childNodes,
+            ret = [];
+        for (var i = 0; i < childNodes.length; i++) {
+            var node = childNodes[i];
+            if (node.nodeType == 1) {
+                ret.push(node);
+            }
+        }
+        if (selector) {
+            ret = local.filter(ret,selector);
+        }
+        return ret;
+    }
+
+    function closest(node, selector) {
+        while (node && !(matches(node, selector))) {
+            node = node.parentNode;
+        }
+
+        return node;
+    }
+
+    function descendants(elm, selector) {
+        // Selector
+        try {
+            return slice.call(elm.querySelectorAll(selector));
+        } catch (matchError) {
+            //console.log(matchError);
+        }
+        return local.query(elm, selector);
+    }
+
+    function descendant(elm, selector) {
+        // Selector
+        try {
+            return elm.querySelector(selector);
+        } catch (matchError) {
+            //console.log(matchError);
+        }
+        var nodes = local.query(elm, selector);
+        if (nodes.length > 0) {
+            return nodes[0];
+        } else {
+            return null;
+        }
+    }
+
+    function find(elm,selector) {
+        if (!selector) {
+            selector = elm;
+            elm = document.body;
+        }
+        if (matches(elm,selector)) {
+            return elm;
+        } else {
+            return descendant(elm, selector);
+        }
+    }
+
+    function findAll(elm,selector) {
+        if (!selector) {
+            selector = elm;
+            elm = document.body;
+        }
+        return descendants(elm, selector);
+    }
+
+    function firstChild(elm, selector, first) {
+        var childNodes = elm.childNodes,
+            node = childNodes[0];
+        while (node) {
+            if (node.nodeType == 1) {
+                if (!selector || matches(node, selector)) {
+                    return node;
+                }
+                if (first) {
+                    break;
+                }
+            }
+            node = node.nextSibling;
+        }
+
+        return null;
+    }
+
+    function lastChild(elm, selector, last) {
+        var childNodes = elm.childNodes,
+            node = childNodes[childNodes.length - 1];
+        while (node) {
+            if (node.nodeType == 1) {
+                if (!selector || matches(node, selector)) {
+                    return node;
+                }
+                if (last) {
+                    break;
+                }
+            }
+            node = node.previousSibling;
+        }
+
+        return null;
+    }
+
+    function matches(elm, selector) {
+        if (!selector || !elm || elm.nodeType !== 1) {
+            return false
+        }
+
+        if (langx.isString(selector)) {
+            try {
+                return nativeMatchesSelector.call(elm, selector.replace(/\[([^=]+)=\s*([^'"\]]+?)\s*\]/g, '[$1="$2"]'));
+            } catch (matchError) {
+                //console.log(matchError);
+            }
+            return local.match(elm, selector);
+        } else if (langx.isArrayLike(selector)) {
+            return langx.inArray(elm,selector) > -1;
+        } else if (langx.isPlainObject(selector)){    
+            return local.check(elm, selector);
+        } else {
+            return elm === selector;
+        }
+
+    }
+
+    function nextSibling(elm, selector, adjacent) {
+        var node = elm.nextSibling;
+        while (node) {
+            if (node.nodeType == 1) {
+                if (!selector || matches(node, selector)) {
+                    return node;
+                }
+                if (adjacent) {
+                    break;
+                }
+            }
+            node = node.nextSibling;
+        }
+        return null;
+    }
+
+    function nextSiblings(elm, selector) {
+        var node = elm.nextSibling,
+            ret = [];
+        while (node) {
+            if (node.nodeType == 1) {
+                if (!selector || matches(node, selector)) {
+                    ret.push(node);
+                }
+            }
+            node = node.nextSibling;
+        }
+        return ret;
+    }
+
+
+    function parent(elm, selector) {
+        var node = elm.parentNode;
+        if (node && (!selector || matches(node, selector))) {
+            return node;
+        }
+
+        return null;
+    }
+
+    function previousSibling(elm, selector, adjacent) {
+        var node = elm.previousSibling;
+        while (node) {
+            if (node.nodeType == 1) {
+                if (!selector || matches(node, selector)) {
+                    return node;
+                }
+                if (adjacent) {
+                    break;
+                }
+            }
+            node = node.previousSibling;
+        }
+        return null;
+    }
+
+    function previousSiblings(elm, selector) {
+        var node = elm.previousSibling,
+            ret = [];
+        while (node) {
+            if (node.nodeType == 1) {
+                if (!selector || matches(node, selector)) {
+                    ret.push(node);
+                }
+            }
+            node = node.previousSibling;
+        }
+        return ret;
+    }
+
+    function siblings(elm, selector) {
+        var node = elm.parentNode.firstChild,
+            ret = [];
+        while (node) {
+            if (node.nodeType == 1 && node !== elm) {
+                if (!selector || matches(node, selector)) {
+                    ret.push(node);
+                }
+            }
+            node = node.nextSibling;
+        }
+        return ret;
+    }
+
+    var finder = function() {
+        return finder;
+    };
+
+    langx.mixin(finder, {
+
+        ancestor: ancestor,
+
+        ancestors: ancestors,
+
+        byId: byId,
+
+        children: children,
+
+        closest: closest,
+
+        descendant: descendant,
+
+        descendants: descendants,
+
+        find: find,
+
+        findAll: findAll,
+
+        firstChild: firstChild,
+
+        lastChild: lastChild,
+
+        matches: matches,
+
+        nextSibling: nextSibling,
+
+        nextSiblings: nextSiblings,
+
+        parent: parent,
+
+        previousSibling: previousSibling,
+
+        previousSiblings: previousSiblings,
+
+        pseudos: local.pseudos,
+
+        siblings: siblings
+    });
+
+    return skylark.finder = finder;
+});
+
+define('skylark-utils/datax',[
+    "./skylark",
+    "./langx",
+    "./finder"
+], function(skylark, langx, finder) {
+    var map = Array.prototype.map,
+        filter = Array.prototype.filter,
+        camelCase = langx.camelCase,
+        deserializeValue = langx.deserializeValue,
+
+        capitalRE = /([A-Z])/g,
+        propMap = {
+            'tabindex': 'tabIndex',
+            'readonly': 'readOnly',
+            'for': 'htmlFor',
+            'class': 'className',
+            'maxlength': 'maxLength',
+            'cellspacing': 'cellSpacing',
+            'cellpadding': 'cellPadding',
+            'rowspan': 'rowSpan',
+            'colspan': 'colSpan',
+            'usemap': 'useMap',
+            'frameborder': 'frameBorder',
+            'contenteditable': 'contentEditable'
+        };
+
+    function setAttribute(elm, name, value) {
+        if (value == null) {
+            elm.removeAttribute(name);
+        } else {
+            elm.setAttribute(name, value);
+        }
+    }
+
+    function aria(elm,name,value) {
+        return this.attr(elm, "aria-"+name, value);
+    }
+
+    function attr(elm, name, value) {
+        if (value === undefined) {
+            if (typeof name === "object") {
+                for (var attrName in name) {
+                    attr(elm, attrName, name[attrName]);
+                }
+                return this;
+            } else {
+                if (elm.hasAttribute(name)) {
+                    return elm.getAttribute(name);
+                }
+            }
+        } else {
+            elm.setAttribute(name, value);
+            return this;
+        }
+    }
+
+    // Read all "data-*" attributes from a node
+    function _attributeData(elm) {
+        var store = {}
+        langx.each(elm.attributes || [], function(i, attr) {
+            if (attr.name.indexOf('data-') == 0) {
+                store[camelCase(attr.name.replace('data-', ''))] = deserializeValue(attr.value);
+            }
+        })
+        return store;
+    }
+
+    function _store(elm, confirm) {
+        var store = elm["_$_store"];
+        if (!store && confirm) {
+            store = elm["_$_store"] = _attributeData(elm);
+        }
+        return store;
+    }
+
+    function _getData(elm, name) {
+        if (name === undefined) {
+            return _store(elm, true);
+        } else {
+            var store = _store(elm);
+            if (store) {
+                if (name in store) {
+                    return store[name];
+                }
+                var camelName = camelCase(name);
+                if (camelName in store) {
+                    return store[camelName];
+                }
+            }
+            var attrName = 'data-' + name.replace(capitalRE, "-$1").toLowerCase()
+            return attr(elm, attrName);
+        }
+
+    }
+
+    function _setData(elm, name, value) {
+        var store = _store(elm, true);
+        store[camelCase(name)] = value;
+    }
+
+
+    function data(elm, name, value) {
+
+        if (value === undefined) {
+            if (typeof name === "object") {
+                for (var dataAttrName in name) {
+                    _setData(elm, dataAttrName, name[dataAttrName]);
+                }
+                return this;
+            } else {
+                return _getData(elm, name);
+            }
+        } else {
+            _setData(elm, name, value);
+            return this;
+        }
+    }
+
+    function removeData(elm, names) {
+        if (langx.isString(names)) {
+            names = names.split(/\s+/);
+        }
+        var store = _store(elm, true);
+        names.forEach(function(name) {
+            delete store[name];
+        });
+        return this;
+    }
+
+    function pluck(nodes, property) {
+        return map.call(nodes, function(elm) {
+            return elm[property];
+        });
+    }
+
+    function prop(elm, name, value) {
+        name = propMap[name] || name;
+        if (value === undefined) {
+            return elm[name];
+        } else {
+            elm[name] = value;
+            return this;
+        }
+    }
+
+    function removeAttr(elm, name) {
+        name.split(' ').forEach(function(attr) {
+            setAttribute(elm, attr);
+        });
+        return this;
+    }
+
+    function removeProp(elm, name) {
+        name.split(' ').forEach(function(prop) {
+            delete elm[prop];
+        });
+        return this;
+    }
+
+    function text(elm, txt) {
+        if (txt === undefined) {
+            return elm.textContent;
+        } else {
+            elm.textContent = txt == null ? '' : '' + txt;
+            return this;
+        }
+    }
+
+    function val(elm, value) {
+        if (value === undefined) {
+            if (elm.multiple) {
+                // select multiple values
+                var selectedOptions = filter.call(finder.find(elm, "option"), (function(option) {
+                    return option.selected;
+                }));
+                return pluck(selectedOptions, "value");
+            } else {
+                return elm.value;
+            }
+        } else {
+            elm.value = value;
+            return this;
+        }
+    }
+
+    function datax() {
+        return datax;
+    }
+
+    langx.mixin(datax, {
+        aria: aria,
+        
+        attr: attr,
+
+        data: data,
+
+        pluck: pluck,
+
+        prop: prop,
+
+        removeAttr: removeAttr,
+
+        removeData: removeData,
+
+        removeProp: removeProp,
+
+        text: text,
+
+        val: val
+    });
+
+    return skylark.datax = datax;
+});
+
 define('skylark-utils/eventer',[
     "./skylark",
     "./langx",
@@ -2858,6 +2679,14 @@ define('skylark-utils/eventer',[
                                 }
                             }
 
+                            var originalEvent = self._event;
+                            if (originalEvent in hover) {
+                                var related = e.relatedTarget;
+                                if (related && (related === match || noder.contains(match, related))) {
+                                    return;
+                                }
+                            }                           
+
                             if (langx.isDefined(data)) {
                                 e.data = data;
                             }
@@ -2876,6 +2705,7 @@ define('skylark-utils/eventer',[
                     };
 
                     var event = self._event;
+/*
                     if (event in hover) {
                         var l = self._listener;
                         self._listener = function(e) {
@@ -2885,6 +2715,7 @@ define('skylark-utils/eventer',[
                             }
                         }
                     }
+*/
 
                     if (self._target.addEventListener) {
                         self._target.addEventListener(realEvent(event), self._listener, false);
@@ -2955,12 +2786,22 @@ define('skylark-utils/eventer',[
                     parsed = parse(event);
                 event = parsed.type;
 
-                var listener = events[event];
+                if (event) {
+                    var listener = events[event];
 
-                if (listener) {
-                    listener.remove(fn, langx.mixin({
-                        ns: parsed.ns
-                    }, options));
+                    if (listener) {
+                        listener.remove(fn, langx.mixin({
+                            ns: parsed.ns
+                        }, options));
+                    }
+                } else {
+                    //remove all events
+                    for (event in events) {
+                        var listener = events[event];
+                        listener.remove(fn, langx.mixin({
+                            ns: parsed.ns
+                        }, options));
+                    }
                 }
             }
         }),
@@ -3204,6 +3045,2196 @@ define('skylark-utils/eventer',[
     });
 
     return skylark.eventer = eventer;
+});
+
+define('skylark-utils/fx',[
+    "./skylark",
+    "./langx",
+    "./browser",
+    "./geom",
+    "./styler",
+    "./eventer"
+], function(skylark, langx, browser, geom, styler, eventer) {
+    var animationName,
+        animationDuration,
+        animationTiming,
+        animationDelay,
+        transitionProperty,
+        transitionDuration,
+        transitionTiming,
+        transitionDelay,
+
+        animationEnd = browser.normalizeCssEvent('AnimationEnd'),
+        transitionEnd = browser.normalizeCssEvent('TransitionEnd'),
+
+        supportedTransforms = /^((translate|rotate|scale)(X|Y|Z|3d)?|matrix(3d)?|perspective|skew(X|Y)?)$/i,
+        transform = browser.css3PropPrefix + "transform",
+        cssReset = {};
+
+
+    cssReset[animationName = browser.normalizeCssProperty("animation-name")] =
+        cssReset[animationDuration = browser.normalizeCssProperty("animation-duration")] =
+        cssReset[animationDelay = browser.normalizeCssProperty("animation-delay")] =
+        cssReset[animationTiming = browser.normalizeCssProperty("animation-timing-function")] = "";
+
+    cssReset[transitionProperty = browser.normalizeCssProperty("transition-property")] =
+        cssReset[transitionDuration = browser.normalizeCssProperty("transition-duration")] =
+        cssReset[transitionDelay = browser.normalizeCssProperty("transition-delay")] =
+        cssReset[transitionTiming = browser.normalizeCssProperty("transition-timing-function")] = "";
+
+
+
+    function animate(elm, properties, duration, ease, callback, delay) {
+        var key,
+            cssValues = {},
+            cssProperties = [],
+            transforms = "",
+            that = this,
+            endEvent,
+            wrappedCallback,
+            fired = false,
+            hasScrollTop = false;
+
+        if (langx.isPlainObject(duration)) {
+            ease = duration.easing;
+            callback = duration.complete;
+            delay = duration.delay;
+            duration = duration.duration;
+        }
+
+        if (langx.isString(duration)) {
+            duration = fx.speeds[duration];
+        }
+        if (duration === undefined) {
+            duration = fx.speeds.normal;
+        }
+        duration = duration / 1000;
+        if (fx.off) {
+            duration = 0;
+        }
+
+        if (langx.isFunction(ease)) {
+            callback = ease;
+            eace = "swing";
+        } else {
+            ease = ease || "swing";
+        }
+
+        if (delay) {
+            delay = delay / 1000;
+        } else {
+            delay = 0;
+        }
+
+        if (langx.isString(properties)) {
+            // keyframe animation
+            cssValues[animationName] = properties;
+            cssValues[animationDuration] = duration + "s";
+            cssValues[animationTiming] = ease;
+            endEvent = animationEnd;
+        } else {
+            // CSS transitions
+            for (key in properties) {
+                if (supportedTransforms.test(key)) {
+                    transforms += key + "(" + properties[key] + ") ";
+                } else {
+                    if (key === "scrollTop") {
+                        hasScrollTop = true;
+                    }
+                    cssValues[key] = properties[key];
+                    cssProperties.push(langx.dasherize(key));
+                }
+            }
+            endEvent = transitionEnd;
+        }
+
+        if (transforms) {
+            cssValues[transform] = transforms;
+            cssProperties.push(transform);
+        }
+
+        if (duration > 0 && langx.isPlainObject(properties)) {
+            cssValues[transitionProperty] = cssProperties.join(", ");
+            cssValues[transitionDuration] = duration + "s";
+            cssValues[transitionDelay] = delay + "s";
+            cssValues[transitionTiming] = ease;
+        }
+
+        wrappedCallback = function(event) {
+            fired = true;
+            if (event) {
+                if (event.target !== event.currentTarget) {
+                    return // makes sure the event didn't bubble from "below"
+                }
+                eventer.off(event.target, endEvent, wrappedCallback)
+            } else {
+                eventer.off(elm, animationEnd, wrappedCallback) // triggered by setTimeout
+            }
+            styler.css(elm, cssReset);
+            callback && callback.call(this);
+        };
+
+        if (duration > 0) {
+            eventer.on(elm, endEvent, wrappedCallback);
+            // transitionEnd is not always firing on older Android phones
+            // so make sure it gets fired
+            langx.debounce(function() {
+                if (fired) {
+                    return;
+                }
+                wrappedCallback.call(that);
+            }, ((duration + delay) * 1000) + 25)();
+        }
+
+        // trigger page reflow so new elements can animate
+        elm.clientLeft;
+
+        styler.css(elm, cssValues);
+
+        if (duration <= 0) {
+            langx.debounce(function() {
+                if (fired) {
+                    return;
+                }
+                wrappedCallback.call(that);
+            }, 0)();
+        }
+
+        if (hasScrollTop) {
+            scrollToTop(elm, properties["scrollTop"], duration, callback);
+        }
+
+        return this;
+    }
+
+    function show(elm, speed, callback) {
+        styler.show(elm);
+        if (speed) {
+            if (!callback && langx.isFunction(speed)) {
+                callback = speed;
+                speed = "normal";
+            }
+            styler.css(elm, "opacity", 0)
+            animate(elm, { opacity: 1, scale: "1,1" }, speed, callback);
+        }
+        return this;
+    }
+
+
+    function hide(elm, speed, callback) {
+        if (speed) {
+            if (!callback && langx.isFunction(speed)) {
+                callback = speed;
+                speed = "normal";
+            }
+            animate(elm, { opacity: 0, scale: "0,0" }, speed, function() {
+                styler.hide(elm);
+                if (callback) {
+                    callback.call(elm);
+                }
+            });
+        } else {
+            styler.hide(elm);
+        }
+        return this;
+    }
+
+    function scrollToTop(elm, pos, speed, callback) {
+        var scrollFrom = parseInt(elm.scrollTop),
+            i = 0,
+            runEvery = 5, // run every 5ms
+            freq = speed * 1000 / runEvery,
+            scrollTo = parseInt(pos);
+
+        var interval = setInterval(function() {
+            i++;
+
+            if (i <= freq) elm.scrollTop = (scrollTo - scrollFrom) / freq * i + scrollFrom;
+
+            if (i >= freq + 1) {
+                clearInterval(interval);
+                if (callback) langx.debounce(callback, 1000)();
+            }
+        }, runEvery);
+    }
+
+    function toggle(elm, speed, callback) {
+        if (styler.isInvisible(elm)) {
+            show(elm, speed, callback);
+        } else {
+            hide(elm, speed, callback);
+        }
+        return this;
+    }
+
+    function fadeTo(elm, speed, opacity, easing, callback) {
+        animate(elm, { opacity: opacity }, speed, easing, callback);
+        return this;
+    }
+
+    function fadeIn(elm, speed, easing, callback) {
+        var target = styler.css(elm, "opacity");
+        if (target > 0) {
+            styler.css(elm, "opacity", 0);
+        } else {
+            target = 1;
+        }
+        styler.show(elm);
+
+        fadeTo(elm, speed, target, easing, callback);
+
+        return this;
+    }
+
+    function fadeOut(elm, speed, easing, callback) {
+        var _elm = elm,
+            complete,
+            options = {};
+
+        if (langx.isPlainObject(speed)) {
+            options.easing = speed.easing;
+            options.duration = speed.duration;
+            complete = speed.complete;
+        } else {
+            options.duration = speed;
+            if (callback) {
+                complete = callback;
+                options.easing = easing;
+            } else {
+                complete = easing;
+            }
+        }
+        options.complete = function() {
+            styler.hide(elm);
+            if (complete) {
+                complete.call(elm);
+            }
+        }
+
+        fadeTo(elm, options, 0);
+
+        return this;
+    }
+
+    function fadeToggle(elm, speed, ceasing, allback) {
+        if (styler.isInvisible(elm)) {
+            fadeIn(elm, speed, easing, callback);
+        } else {
+            fadeOut(elm, speed, easing, callback);
+        }
+        return this;
+    }
+
+    function slideDown(elm,duration,callback) {    
+    
+        // get the element position to restore it then
+        var position = styler.css(elm,'position');
+        
+        // show element if it is hidden
+        show(elm);
+        
+        // place it so it displays as usually but hidden
+        styler.css(elm,{
+            position: 'absolute',
+            visibility: 'hidden'
+        });
+        
+        // get naturally height, margin, padding
+        var marginTop = styler.css(elm,'margin-top');
+        var marginBottom = styler.css(elm,'margin-bottom');
+        var paddingTop = styler.css(elm,'padding-top');
+        var paddingBottom = styler.css(elm,'padding-bottom');
+        var height = styler.css(elm,'height');
+        
+        // set initial css for animation
+        styler.css(elm,{
+            position: position,
+            visibility: 'visible',
+            overflow: 'hidden',
+            height: 0,
+            marginTop: 0,
+            marginBottom: 0,
+            paddingTop: 0,
+            paddingBottom: 0
+        });
+        
+        // animate to gotten height, margin and padding
+        animate(elm,{
+            height: height,
+            marginTop: marginTop,
+            marginBottom: marginBottom,
+            paddingTop: paddingTop,
+            paddingBottom: paddingBottom
+        }, {
+            duration : duration,
+            complete: function(){
+                if (callback) {
+                    callback.apply(elm); 
+                }
+            }    
+        }
+    );
+        
+        return this;
+    };
+
+    function slideUp(elm,duration,callback) {
+        // active the function only if the element is visible
+        if (geom.height(elm) > 0) {
+                   
+            // get the element position to restore it then
+            var position = styler.css(elm,'position');
+            
+            // get the element height, margin and padding to restore them then
+            var height = styler.css(elm,'height');
+            var marginTop = styler.css(elm,'margin-top');
+            var marginBottom = styler.css(elm,'margin-bottom');
+            var paddingTop = styler.css(elm,'padding-top');
+            var paddingBottom = styler.css(elm,'padding-bottom');
+            
+            // set initial css for animation
+            styler.css(elm,{
+                visibility: 'visible',
+                overflow: 'hidden',
+                height: height,
+                marginTop: marginTop,
+                marginBottom: marginBottom,
+                paddingTop: paddingTop,
+                paddingBottom: paddingBottom
+            });
+            
+            // animate element height, margin and padding to zero
+            animate(elm,{
+                height: 0,
+                marginTop: 0,
+                marginBottom: 0,
+                paddingTop: 0,
+                paddingBottom: 0
+            }, { 
+                // callback : restore the element position, height, margin and padding to original values
+                duration: duration,
+                queue: false,
+                complete: function(){
+                    hide(elm);
+                    styler.css(elm,{
+                        visibility: 'visible',
+                        overflow: 'hidden',
+                        height: height,
+                        marginTop: marginTop,
+                        marginBottom: marginBottom,
+                        paddingTop: paddingTop,
+                        paddingBottom: paddingBottom
+                    });
+                    if (callback) {
+                        callback.apply(elm); 
+                    }
+                }
+            });
+        }
+        return this;
+    };
+    
+    /* SlideToggle */
+    function slideToggle(elm,duration,callback) {
+    
+        // if the element is hidden, slideDown !
+        if (geom.height(elm) == 0) {
+            slideDown(elm,duration,callback);
+        } 
+        // if the element is visible, slideUp !
+        else {
+            slideUp(elm,duration,callback);
+        }
+        return this;
+    };
+
+
+    function fx() {
+        return fx;
+    }
+
+    langx.mixin(fx, {
+        off: false,
+
+        speeds: {
+            normal: 400,
+            fast: 200,
+            slow: 600
+        },
+
+        animate: animate,
+        fadeIn: fadeIn,
+        fadeOut: fadeOut,
+        fadeTo: fadeTo,
+        fadeToggle: fadeToggle,
+        hide: hide,
+        scrollToTop: scrollToTop,
+
+        slideDown : slideDown,
+        slideToggle : slideToggle,
+        slideUp : slideUp,
+        show: show,
+        toggle: toggle
+    });
+
+    return skylark.fx = fx;
+});
+define('skylark-utils/query',[
+    "./skylark",
+    "./langx",
+    "./noder",
+    "./datax",
+    "./eventer",
+    "./finder",
+    "./geom",
+    "./styler",
+    "./fx"
+], function(skylark, langx, noder, datax, eventer, finder, geom, styler, fx) {
+    var some = Array.prototype.some,
+        push = Array.prototype.push,
+        every = Array.prototype.every,
+        concat = Array.prototype.concat,
+        slice = Array.prototype.slice,
+        map = Array.prototype.map,
+        filter = Array.prototype.filter,
+        forEach = Array.prototype.forEach,
+        isQ;
+
+    var rquickExpr = /^(?:[^#<]*(<[\w\W]+>)[^>]*$|#([\w\-]*)$)/;
+
+    var funcArg = langx.funcArg,
+        isArrayLike = langx.isArrayLike,
+        isString = langx.isString,
+        uniq = langx.uniq,
+        isFunction = langx.isFunction;
+
+    var type = langx.type,
+        isArray = langx.isArray,
+
+        isWindow = langx.isWindow,
+
+        isDocument = langx.isDocument,
+
+        isObject = langx.isObject,
+
+        isPlainObject = langx.isPlainObject,
+
+        compact = langx.compact,
+
+        flatten = langx.flatten,
+
+        camelCase = langx.camelCase,
+
+        dasherize = langx.dasherize,
+        children = finder.children;
+
+    function wrapper_map(func, context) {
+        return function() {
+            var self = this,
+                params = slice.call(arguments);
+            var result = $.map(self, function(elem, idx) {
+                return func.apply(context, [elem].concat(params));
+            });
+            return $(uniq(result));
+        }
+    }
+
+    function wrapper_selector(func, context, last) {
+        return function(selector) {
+            var self = this,
+                params = slice.call(arguments);
+            var result = this.map(function(idx, elem) {
+                // if (elem.nodeType == 1) {
+                if (elem.querySelector) {
+                    return func.apply(context, last ? [elem] : [elem, selector]);
+                }
+            });
+            if (last && selector) {
+                return result.filter(selector);
+            } else {
+                return result;
+            }
+        }
+    }
+
+    function wrapper_selector_until(func, context, last) {
+        return function(util, selector) {
+            var self = this,
+                params = slice.call(arguments);
+            if (selector === undefined) {
+                selector = util;
+                util = undefined;
+            }
+            var result = this.map(function(idx, elem) {
+                // if (elem.nodeType == 1) {
+                if (elem.querySelector) {
+                    return func.apply(context, last ? [elem, util] : [elem, selector, util]);
+                }
+            });
+            if (last && selector) {
+                return result.filter(selector);
+            } else {
+                return result;
+            }
+        }
+    }
+
+
+    function wrapper_every_act(func, context) {
+        return function() {
+            var self = this,
+                params = slice.call(arguments);
+            this.each(function(idx) {
+                func.apply(context, [this].concat(params));
+            });
+            return self;
+        }
+    }
+
+    function wrapper_every_act_firstArgFunc(func, context, oldValueFunc) {
+        return function(arg1) {
+            var self = this,
+                params = slice.call(arguments);
+            forEach.call(self, function(elem, idx) {
+                var newArg1 = funcArg(elem, arg1, idx, oldValueFunc(elem));
+                func.apply(context, [elem, arg1].concat(params.slice(1)));
+            });
+            return self;
+        }
+    }
+
+    function wrapper_some_chk(func, context) {
+        return function() {
+            var self = this,
+                params = slice.call(arguments);
+            return some.call(self, function(elem) {
+                return func.apply(context, [elem].concat(params));
+            });
+        }
+    }
+
+    function wrapper_name_value(func, context, oldValueFunc) {
+        return function(name, value) {
+            var self = this,
+                params = slice.call(arguments);
+
+            if (langx.isPlainObject(name) || langx.isDefined(value)) {
+                forEach.call(self, function(elem, idx) {
+                    var newValue;
+                    if (oldValueFunc) {
+                        newValue = funcArg(elem, value, idx, oldValueFunc(elem, name));
+                    } else {
+                        newValue = value
+                    }
+                    func.apply(context, [elem].concat(params));
+                });
+                return self;
+            } else {
+                if (self[0]) {
+                    return func.apply(context, [self[0], name]);
+                }
+            }
+
+        }
+    }
+
+    function wrapper_value(func, context, oldValueFunc) {
+        return function(value) {
+            var self = this;
+
+            if (langx.isDefined(value)) {
+                forEach.call(self, function(elem, idx) {
+                    var newValue;
+                    if (oldValueFunc) {
+                        newValue = funcArg(elem, value, idx, oldValueFunc(elem));
+                    } else {
+                        newValue = value
+                    }
+                    func.apply(context, [elem, newValue]);
+                });
+                return self;
+            } else {
+                if (self[0]) {
+                    return func.apply(context, [self[0]]);
+                }
+            }
+
+        }
+    }
+
+    var NodeList = langx.klass({
+        klassName: "SkNodeList",
+        init: function(selector, context) {
+            var self = this,
+                match, nodes, node, props;
+
+            if (selector) {
+                self.context = context = context || noder.doc();
+
+                if (isString(selector)) {
+                    // a html string or a css selector is expected
+                    self.selector = selector;
+
+                    if (selector.charAt(0) === "<" && selector.charAt(selector.length - 1) === ">" && selector.length >= 3) {
+                        match = [null, selector, null];
+                    } else {
+                        match = rquickExpr.exec(selector);
+                    }
+
+                    if (match) {
+                        if (match[1]) {
+                            // if selector is html
+                            nodes = noder.createFragment(selector);
+
+                            if (langx.isPlainObject(context)) {
+                                props = context;
+                            }
+
+                        } else {
+                            node = finder.byId(match[2], noder.ownerDoc(context));
+
+                            if (node) {
+                                // if selector is id
+                                nodes = [node];
+                            }
+
+                        }
+                    } else {
+                        // if selector is css selector
+                        nodes = finder.descendants(context, selector);
+                    }
+                } else {
+                    if (isArray(selector)) {
+                        // a dom node array is expected
+                        nodes = selector;
+                    } else {
+                        // a dom node is expected
+                        nodes = [selector];
+                    }
+                    //self.add(selector, false);
+                }
+            }
+
+
+            if (nodes) {
+
+                push.apply(self, nodes);
+
+                if (props) {
+                    for ( var name  in props ) {
+                        // Properties of context are called as methods if possible
+                        if ( langx.isFunction( this[ name ] ) ) {
+                            this[ name ]( props[ name ] );
+                        } else {
+                            this.attr( name, props[ name ] );
+                        }
+                    }
+                }
+            }
+
+            return self;
+        }
+    }, Array);
+
+    var query = (function() {
+        isQ = function(object) {
+            return object instanceof NodeList;
+        }
+        init = function(selector, context) {
+            return new NodeList(selector, context);
+        }
+
+        var $ = function(selector, context) {
+            if (isFunction(selector)) {
+                eventer.ready(function() {
+                    selector($);
+                });
+            } else if (isQ(selector)) {
+                return selector;
+            } else {
+                if (context && isQ(context) && isString(selector)) {
+                    return context.find(selector);
+                }
+                return init(selector, context);
+            }
+        };
+
+        $.fn = NodeList.prototype;
+        langx.mixin($.fn, {
+            // `map` and `slice` in the jQuery API work differently
+            // from their array counterparts
+
+            map: function(fn) {
+                return $(uniq(langx.map(this, function(el, i) {
+                    return fn.call(el, i, el)
+                })));
+            },
+
+            slice: function() {
+                return $(slice.apply(this, arguments))
+            },
+
+            get: function(idx) {
+                return idx === undefined ? slice.call(this) : this[idx >= 0 ? idx : idx + this.length]
+            },
+
+            toArray: function() {
+                return slice.call(this);
+            },
+
+            size: function() {
+                return this.length
+            },
+
+            remove: wrapper_every_act(noder.remove, noder),
+
+            each: function(callback) {
+                langx.each(this, callback);
+                return this;
+            },
+
+            filter: function(selector) {
+                if (isFunction(selector)) return this.not(this.not(selector))
+                return $(filter.call(this, function(element) {
+                    return finder.matches(element, selector)
+                }))
+            },
+
+            add: function(selector, context) {
+                return $(uniq(this.toArray().concat($(selector, context).toArray())));
+            },
+
+            is: function(selector) {
+                return this.length > 0 && finder.matches(this[0], selector)
+            },
+
+            not: function(selector) {
+                var nodes = []
+                if (isFunction(selector) && selector.call !== undefined)
+                    this.each(function(idx) {
+                        if (!selector.call(this, idx)) nodes.push(this)
+                    })
+                else {
+                    var excludes = typeof selector == 'string' ? this.filter(selector) :
+                        (isArrayLike(selector) && isFunction(selector.item)) ? slice.call(selector) : $(selector)
+                    this.forEach(function(el) {
+                        if (excludes.indexOf(el) < 0) nodes.push(el)
+                    })
+                }
+                return $(nodes)
+            },
+
+            has: function(selector) {
+                return this.filter(function() {
+                    return isObject(selector) ?
+                        noder.contains(this, selector) :
+                        $(this).find(selector).size()
+                })
+            },
+
+            eq: function(idx) {
+                return idx === -1 ? this.slice(idx) : this.slice(idx, +idx + 1);
+            },
+
+            first: function() {
+                return this.eq(0);
+            },
+
+            last: function() {
+                return this.eq(-1);
+            },
+
+            find: wrapper_selector(finder.descendants, finder),
+
+            closest: wrapper_selector(finder.closest, finder),
+            /*
+                        closest: function(selector, context) {
+                            var node = this[0],
+                                collection = false
+                            if (typeof selector == 'object') collection = $(selector)
+                            while (node && !(collection ? collection.indexOf(node) >= 0 : finder.matches(node, selector)))
+                                node = node !== context && !isDocument(node) && node.parentNode
+                            return $(node)
+                        },
+            */
+
+
+            parents: wrapper_selector(finder.ancestors, finder),
+
+            parentsUntil: wrapper_selector_until(finder.ancestors, finder),
+
+
+            parent: wrapper_selector(finder.parent, finder),
+
+            children: wrapper_selector(finder.children, finder),
+
+            contents: wrapper_map(noder.contents, noder),
+
+            empty: wrapper_every_act(noder.empty, noder),
+
+            // `pluck` is borrowed from Prototype.js
+            pluck: function(property) {
+                return langx.map(this, function(el) {
+                    return el[property]
+                })
+            },
+
+            show: wrapper_every_act(fx.show, fx),
+
+            replaceWith: function(newContent) {
+                return this.before(newContent).remove();
+            },
+
+            wrap: function(structure) {
+                var func = isFunction(structure)
+                if (this[0] && !func)
+                    var dom = $(structure).get(0),
+                        clone = dom.parentNode || this.length > 1
+
+                return this.each(function(index) {
+                    $(this).wrapAll(
+                        func ? structure.call(this, index) :
+                        clone ? dom.cloneNode(true) : dom
+                    )
+                })
+            },
+
+            wrapAll: function(wrappingElement) {
+                if (this[0]) {
+                    $(this[0]).before(wrappingElement = $(wrappingElement));
+                    var children;
+                    // drill down to the inmost element
+                    while ((children = wrappingElement.children()).length) {
+                        wrappingElement = children.first();
+                    }
+                    $(wrappingElement).append(this);
+                }
+                return this
+            },
+
+            wrapInner: function(wrappingElement) {
+                var func = isFunction(wrappingElement)
+                return this.each(function(index) {
+                    var self = $(this),
+                        contents = self.contents(),
+                        dom = func ? wrappingElement.call(this, index) : wrappingElement
+                    contents.length ? contents.wrapAll(dom) : self.append(dom)
+                })
+            },
+
+            unwrap: function(selector) {
+                if (this.parent().children().length === 0) {
+                    // remove dom without text
+                    this.parent(selector).not("body").each(function() {
+                        $(this).replaceWith(document.createTextNode(this.childNodes[0].textContent));
+                    });
+                } else {
+                    this.parent().each(function() {
+                        $(this).replaceWith($(this).children())
+                    });
+                }
+                return this
+            },
+
+            clone: function() {
+                return this.map(function() {
+                    return this.cloneNode(true)
+                })
+            },
+
+            hide: wrapper_every_act(fx.hide, fx),
+
+            toggle: function(setting) {
+                return this.each(function() {
+                    var el = $(this);
+                    (setting === undefined ? el.css("display") == "none" : setting) ? el.show(): el.hide()
+                })
+            },
+
+            prev: function(selector) {
+                return $(this.pluck('previousElementSibling')).filter(selector || '*')
+            },
+
+            prevAll: wrapper_selector(finder.previousSibling, finder),
+
+            next: function(selector) {
+                return $(this.pluck('nextElementSibling')).filter(selector || '*')
+            },
+
+            nextAll: wrapper_selector(finder.nextSiblings, finder),
+
+            siblings: wrapper_selector(finder.siblings, finder),
+
+            html: wrapper_value(noder.html, noder, noder.html),
+
+            text: wrapper_value(datax.text, datax, datax.text),
+
+            attr: wrapper_name_value(datax.attr, datax, datax.attr),
+
+            removeAttr: wrapper_every_act(datax.removeAttr, datax),
+
+            prop: wrapper_name_value(datax.prop, datax, datax.prop),
+
+            removeProp: wrapper_every_act(datax.removeProp, datax),
+
+            data: wrapper_name_value(datax.data, datax, datax.data),
+
+            removeData: wrapper_every_act(datax.removeData, datax),
+
+            val: wrapper_value(datax.val, datax, datax.val),
+
+            offset: wrapper_value(geom.pageRect, geom, geom.pageRect),
+
+            style: wrapper_name_value(styler.css, styler),
+
+            css: wrapper_name_value(styler.css, styler),
+
+            index: function(elem) {
+                if (elem) {
+                    return this.indexOf($(elem)[0]);
+                } else {
+                    return this.parent().children().indexOf(this[0]);
+                }
+            },
+
+            //hasClass(name)
+            hasClass: wrapper_some_chk(styler.hasClass, styler),
+
+            //addClass(name)
+            addClass: wrapper_every_act_firstArgFunc(styler.addClass, styler, styler.className),
+
+            //removeClass(name)
+            removeClass: wrapper_every_act_firstArgFunc(styler.removeClass, styler, styler.className),
+
+            //toogleClass(name,when)
+            toggleClass: wrapper_every_act_firstArgFunc(styler.toggleClass, styler, styler.className),
+
+            scrollTop: wrapper_value(geom.scrollTop, geom),
+
+            scrollLeft: wrapper_value(geom.scrollLeft, geom),
+
+            position: function() {
+                if (!this.length) return
+
+                var elem = this[0];
+
+                return geom.relativePosition(elem);
+            },
+
+            offsetParent: wrapper_map(geom.offsetParent, geom)
+        });
+
+        // for now
+        $.fn.detach = $.fn.remove;
+
+        $.fn.hover = function(fnOver, fnOut) {
+            return this.mouseenter(fnOver).mouseleave(fnOut || fnOver);
+        };
+
+        $.fn.size = wrapper_value(geom.size, geom);
+
+        $.fn.width = wrapper_value(geom.width, geom, geom.width);
+
+        $.fn.height = wrapper_value(geom.height, geom, geom.height);
+
+        ['width', 'height'].forEach(function(dimension) {
+            var offset, Dimension = dimension.replace(/./, function(m) {
+                return m[0].toUpperCase()
+            });
+
+            $.fn['outer' + Dimension] = function(margin, value) {
+                if (arguments.length) {
+                    if (typeof margin !== 'boolean') {
+                        value = margin;
+                        margin = false;
+                    }
+                } else {
+                    margin = false;
+                    value = undefined;
+                }
+
+                if (value === undefined) {
+                    var el = this[0];
+                    if (!el) {
+                        return undefined;
+                    }
+                    var cb = geom.size(el);
+                    if (margin) {
+                        var me = geom.marginExtents(el);
+                        cb.width = cb.width + me.left + me.right;
+                        cb.height = cb.height + me.top + me.bottom;
+                    }
+                    return dimension === "width" ? cb.width : cb.height;
+                } else {
+                    return this.each(function(idx, el) {
+                        var mb = {};
+                        var me = geom.marginExtents(el);
+                        if (dimension === "width") {
+                            mb.width = value;
+                            if (margin) {
+                                mb.width = mb.width - me.left - me.right
+                            }
+                        } else {
+                            mb.height = value;
+                            if (margin) {
+                                mb.height = mb.height - me.top - me.bottom;
+                            }
+                        }
+                        geom.size(el, mb);
+                    })
+
+                }
+            };
+        })
+
+        $.fn.innerWidth = wrapper_value(geom.width, geom, geom.width);
+
+        $.fn.innerHeight = wrapper_value(geom.height, geom, geom.height);
+
+
+        var traverseNode = noder.traverse;
+
+        function wrapper_node_operation(func, context, oldValueFunc) {
+            return function(html) {
+                var argType, nodes = langx.map(arguments, function(arg) {
+                    argType = type(arg)
+                    return argType == "object" || argType == "array" || arg == null ?
+                        arg : noder.createFragment(arg)
+                });
+                if (nodes.length < 1) {
+                    return this
+                }
+                this.each(function(idx) {
+                    func.apply(context, [this, nodes, idx > 0]);
+                });
+                return this;
+            }
+        }
+
+
+        $.fn.after = wrapper_node_operation(noder.after, noder);
+
+        $.fn.prepend = wrapper_node_operation(noder.prepend, noder);
+
+        $.fn.before = wrapper_node_operation(noder.before, noder);
+
+        $.fn.append = wrapper_node_operation(noder.append, noder);
+
+        $.fn.insertAfter = function(html) {
+            $(html).after(this);
+            return this;
+        };
+
+        $.fn.insertBefore = function(html) {
+            $(html).before(this);
+            return this;
+        };
+
+        $.fn.appendTo = function(html) {
+            $(html).append(this);
+            return this;
+        };
+
+        $.fn.prependTo = function(html) {
+            $(html).prepend(this);
+            return this;
+        };
+
+        return $
+    })();
+
+    (function($) {
+        $.fn.on = wrapper_every_act(eventer.on, eventer);
+
+        $.fn.off = wrapper_every_act(eventer.off, eventer);
+
+        $.fn.trigger = wrapper_every_act(eventer.trigger, eventer);
+
+
+        ('focusin focusout focus blur load resize scroll unload click dblclick ' +
+            'mousedown mouseup mousemove mouseover mouseout mouseenter mouseleave ' +
+            'change select keydown keypress keyup error').split(' ').forEach(function(event) {
+            $.fn[event] = function(data, callback) {
+                return (0 in arguments) ?
+                    this.on(event, data, callback) :
+                    this.trigger(event)
+            }
+        });
+
+
+        $.fn.one = function(event, selector, data, callback) {
+            if (!langx.isString(selector) && !langx.isFunction(callback)) {
+                callback = data;
+                data = selector;
+                selector = null;
+            }
+
+            if (langx.isFunction(data)) {
+                callback = data;
+                data = null;
+            }
+
+            return this.on(event, selector, data, callback, 1)
+        };
+
+        $.fn.animate = wrapper_every_act(fx.animate, fx);
+
+        $.fn.show = wrapper_every_act(fx.show, fx);
+        $.fn.hide = wrapper_every_act(fx.hide, fx);
+        $.fn.toogle = wrapper_every_act(fx.toogle, fx);
+        $.fn.fadeTo = wrapper_every_act(fx.fadeTo, fx);
+        $.fn.fadeIn = wrapper_every_act(fx.fadeIn, fx);
+        $.fn.fadeOut = wrapper_every_act(fx.fadeOut, fx);
+        $.fn.fadeToggle = wrapper_every_act(fx.fadeToggle, fx);
+
+        $.fn.slideDown = wrapper_every_act(fx.slideDown, fx);
+        $.fn.slideToggle = wrapper_every_act(fx.slideToggle, fx);
+        $.fn.slideUp = wrapper_every_act(fx.slideUp, fx);
+    })(query);
+
+
+    (function($) {
+        $.fn.end = function() {
+            return this.prevObject || $()
+        }
+
+        $.fn.andSelf = function() {
+            return this.add(this.prevObject || $())
+        }
+
+        $.fn.addBack = function(selector) {
+            if (this.prevObject) {
+                if (selector) {
+                    return this.add(this.prevObject.filter(selector));
+                } else {
+                    return this.add(this.prevObject);
+                }
+            } else {
+                return this;
+            }
+        }
+
+        'filter,add,not,eq,first,last,find,closest,parents,parent,children,siblings'.split(',').forEach(function(property) {
+            var fn = $.fn[property]
+            $.fn[property] = function() {
+                var ret = fn.apply(this, arguments)
+                ret.prevObject = this
+                return ret
+            }
+        })
+    })(query);
+
+
+    (function($) {
+        $.fn.query = $.fn.find;
+
+        $.fn.place = function(refNode, position) {
+            // summary:
+            //      places elements of this node list relative to the first element matched
+            //      by queryOrNode. Returns the original NodeList. See: `dojo/dom-construct.place`
+            // queryOrNode:
+            //      may be a string representing any valid CSS3 selector or a DOM node.
+            //      In the selector case, only the first matching element will be used
+            //      for relative positioning.
+            // position:
+            //      can be one of:
+            //
+            //      -   "last" (default)
+            //      -   "first"
+            //      -   "before"
+            //      -   "after"
+            //      -   "only"
+            //      -   "replace"
+            //
+            //      or an offset in the childNodes
+            if (langx.isString(refNode)) {
+                refNode = finder.descendant(refNode);
+            } else if (isQ(refNode)) {
+                refNode = refNode[0];
+            }
+            return this.each(function(i, node) {
+                switch (position) {
+                    case "before":
+                        noder.before(refNode, node);
+                        break;
+                    case "after":
+                        noder.after(refNode, node);
+                        break;
+                    case "replace":
+                        noder.replace(refNode, node);
+                        break;
+                    case "only":
+                        noder.empty(refNode);
+                        noder.append(refNode, node);
+                        break;
+                    case "first":
+                        noder.prepend(refNode, node);
+                        break;
+                        // else fallthrough...
+                    default: // aka: last
+                        noder.append(refNode, node);
+                }
+            });
+        };
+
+        $.fn.addContent = function(content, position) {
+            if (content.template) {
+                content = langx.substitute(content.template, content);
+            }
+            return this.append(content);
+        };
+
+        $.fn.replaceClass = function(newClass, oldClass) {
+            this.removeClass(oldClass);
+            this.addClass(newClass);
+            return this;
+        };
+
+    })(query);
+
+
+    return skylark.query = query;
+});
+define('skylark-utils/ajax',[
+    "./skylark",
+    "./langx",
+    "./noder",
+    "./styler",
+    "./geom",
+    "./eventer",
+    "./query"
+], function(skylark,langx,noder,styler,geom,eventer,query) {
+
+    //     This module is borrow from zepto.callback.js
+    //     (c) 2010-2014 Thomas Fuchs
+    //     Zepto.js may be freely distributed under the MIT license.
+
+    // Create a collection of callbacks to be fired in a sequence, with configurable behaviour
+    // Option flags:
+    //   - once: Callbacks fired at most one time.
+    //   - memory: Remember the most recent context and arguments
+    //   - stopOnFalse: Cease iterating over callback list
+    //   - unique: Permit adding at most one instance of the same callback
+    var Callbacks = function(options) {
+        options = langx.mixin({}, options)
+
+        var memory, // Last fire value (for non-forgettable lists)
+            fired, // Flag to know if list was already fired
+            firing, // Flag to know if list is currently firing
+            firingStart, // First callback to fire (used internally by add and fireWith)
+            firingLength, // End of the loop when firing
+            firingIndex, // Index of currently firing callback (modified by remove if needed)
+            list = [], // Actual callback list
+            stack = !options.once && [], // Stack of fire calls for repeatable lists
+            fire = function(data) {
+                memory = options.memory && data
+                fired = true
+                firingIndex = firingStart || 0
+                firingStart = 0
+                firingLength = list.length
+                firing = true
+                for (; list && firingIndex < firingLength; ++firingIndex) {
+                    if (list[firingIndex].apply(data[0], data[1]) === false && options.stopOnFalse) {
+                        memory = false
+                        break
+                    }
+                }
+                firing = false
+                if (list) {
+                    if (stack) stack.length && fire(stack.shift())
+                    else if (memory) list.length = 0
+                    else Callbacks.disable()
+                }
+            },
+
+            Callbacks = {
+                add: function() {
+                    if (list) {
+                        var start = list.length,
+                            add = function(args) {
+                                langx.each(args, function(_, arg) {
+                                    if (typeof arg === "function") {
+                                        if (!options.unique || !Callbacks.has(arg)) list.push(arg)
+                                    } else if (arg && arg.length && typeof arg !== 'string') add(arg)
+                                })
+                            }
+                        add(arguments)
+                        if (firing) firingLength = list.length
+                        else if (memory) {
+                            firingStart = start
+                            fire(memory)
+                        }
+                    }
+                    return this
+                },
+                remove: function() {
+                    if (list) {
+                        langx.each(arguments, function(_, arg) {
+                            var index
+                            while ((index = langx.inArray(arg, list, index)) > -1) {
+                                list.splice(index, 1)
+                                // Handle firing indexes
+                                if (firing) {
+                                    if (index <= firingLength) --firingLength
+                                    if (index <= firingIndex) --firingIndex
+                                }
+                            }
+                        })
+                    }
+                    return this
+                },
+                has: function(fn) {
+                    return !!(list && (fn ? langx.inArray(fn, list) > -1 : list.length))
+                },
+                empty: function() {
+                    firingLength = list.length = 0
+                    return this
+                },
+                disable: function() {
+                    list = stack = memory = undefined
+                    return this
+                },
+                disabled: function() {
+                    return !list
+                },
+                lock: function() {
+                    stack = undefined;
+                    if (!memory) Callbacks.disable()
+                    return this
+                },
+                locked: function() {
+                    return !stack
+                },
+                fireWith: function(context, args) {
+                    if (list && (!fired || stack)) {
+                        args = args || []
+                        args = [context, args.slice ? args.slice() : args]
+                        if (firing) stack.push(args)
+                        else fire(args)
+                    }
+                    return this
+                },
+                fire: function() {
+                    return Callbacks.fireWith(this, arguments)
+                },
+                fired: function() {
+                    return !!fired
+                }
+            }
+
+        return Callbacks
+    };
+
+    //     This module is borrow from zepto.deferred.js
+    //     (c) 2010-2014 Thomas Fuchs
+    //     Zepto.js may be freely distributed under the MIT license.
+    //
+    //     Some code (c) 2005, 2013 jQuery Foundation, Inc. and other contributors
+
+    var slice = Array.prototype.slice
+
+    function Deferred(func) {
+        var tuples = [
+                // action, add listener, listener list, final state
+                ["resolve", "done", Callbacks({ once: 1, memory: 1 }), "resolved"],
+                ["reject", "fail", Callbacks({ once: 1, memory: 1 }), "rejected"],
+                ["notify", "progress", Callbacks({ memory: 1 })]
+            ],
+            state = "pending",
+            promise = {
+                state: function() {
+                    return state
+                },
+                always: function() {
+                    deferred.done(arguments).fail(arguments)
+                    return this
+                },
+                then: function( /* fnDone [, fnFailed [, fnProgress]] */ ) {
+                    var fns = arguments
+                    return Deferred(function(defer) {
+                        langx.each(tuples, function(i, tuple) {
+                            var fn = $.isFunction(fns[i]) && fns[i]
+                            deferred[tuple[1]](function() {
+                                var returned = fn && fn.apply(this, arguments)
+                                if (returned && langx.isFunction(returned.promise)) {
+                                    returned.promise()
+                                        .done(defer.resolve)
+                                        .fail(defer.reject)
+                                        .progress(defer.notify)
+                                } else {
+                                    var context = this === promise ? defer.promise() : this,
+                                        values = fn ? [returned] : arguments
+                                    defer[tuple[0] + "With"](context, values)
+                                }
+                            })
+                        })
+                        fns = null
+                    }).promise()
+                },
+
+                promise: function(obj) {
+                    return obj != null ? langx.mixin(obj, promise) : promise
+                }
+            },
+            deferred = {}
+
+        langx.each(tuples, function(i, tuple) {
+            var list = tuple[2],
+                stateString = tuple[3]
+
+            promise[tuple[1]] = list.add
+
+            if (stateString) {
+                list.add(function() {
+                    state = stateString
+                }, tuples[i ^ 1][2].disable, tuples[2][2].lock)
+            }
+
+            deferred[tuple[0]] = function() {
+                deferred[tuple[0] + "With"](this === deferred ? promise : this, arguments)
+                return this
+            }
+            deferred[tuple[0] + "With"] = list.fireWith
+        })
+
+        promise.promise(deferred)
+        if (func) func.call(deferred, deferred)
+        return deferred
+    }
+
+    var when = function(sub) {
+        var resolveValues = slice.call(arguments),
+            len = resolveValues.length,
+            i = 0,
+            remain = len !== 1 || (sub && langx.isFunction(sub.promise)) ? len : 0,
+            deferred = remain === 1 ? sub : Deferred(),
+            progressValues, progressContexts, resolveContexts,
+            updateFn = function(i, ctx, val) {
+                return function(value) {
+                    ctx[i] = this
+                    val[i] = arguments.length > 1 ? slice.call(arguments) : value
+                    if (val === progressValues) {
+                        deferred.notifyWith(ctx, val)
+                    } else if (!(--remain)) {
+                        deferred.resolveWith(ctx, val)
+                    }
+                }
+            }
+
+        if (len > 1) {
+            progressValues = new Array(len)
+            progressContexts = new Array(len)
+            resolveContexts = new Array(len)
+            for (; i < len; ++i) {
+                if (resolveValues[i] && langx.isFunction(resolveValues[i].promise)) {
+                    resolveValues[i].promise()
+                        .done(updateFn(i, resolveContexts, resolveValues))
+                        .fail(deferred.reject)
+                        .progress(updateFn(i, progressContexts, progressValues))
+                } else {
+                    --remain
+                }
+            }
+        }
+        if (!remain) deferred.resolveWith(resolveContexts, resolveValues)
+        return deferred.promise()
+    };
+
+    //     zepto.ajax.js
+    //     (c) 2010-2014 Thomas Fuchs
+    //     Zepto.js may be freely distributed under the MIT license.
+    var jsonpID = 0,
+        document = window.document,
+        key,
+        name,
+        rscript = /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+        scriptTypeRE = /^(?:text|application)\/javascript/i,
+        xmlTypeRE = /^(?:text|application)\/xml/i,
+        jsonType = 'application/json',
+        htmlType = 'text/html',
+        blankRE = /^\s*$/,
+        originAnchor = document.createElement('a');
+
+    originAnchor.href = window.location.href;
+
+    // trigger a custom event and return false if it was cancelled
+    function triggerAndReturn(context, eventName, data) {
+        var event = eventer.create(eventName);
+        $(context).trigger(event, data)
+        return !event.isDefaultPrevented()
+    }
+
+    // trigger an Ajax "global" event
+    function triggerGlobal(settings, context, eventName, data) {
+        if (settings.global) return triggerAndReturn(context || document, eventName, data)
+    }
+
+    // Number of active Ajax requests
+    var active = 0;
+
+    function ajaxStart(settings) {
+        if (settings.global && active++ === 0) triggerGlobal(settings, null, 'ajaxStart')
+    }
+
+    function ajaxStop(settings) {
+        if (settings.global && !(--active)) triggerGlobal(settings, null, 'ajaxStop')
+    }
+
+    // triggers an extra global event "ajaxBeforeSend" that's like "ajaxSend" but cancelable
+    function ajaxBeforeSend(xhr, settings) {
+        var context = settings.context
+        if (settings.beforeSend.call(context, xhr, settings) === false ||
+            triggerGlobal(settings, context, 'ajaxBeforeSend', [xhr, settings]) === false)
+            return false
+
+        triggerGlobal(settings, context, 'ajaxSend', [xhr, settings])
+    }
+
+    function ajaxSuccess(data, xhr, settings, deferred) {
+        var context = settings.context,
+            status = 'success'
+        settings.success.call(context, data, status, xhr)
+        if (deferred) deferred.resolveWith(context, [data, status, xhr])
+        triggerGlobal(settings, context, 'ajaxSuccess', [xhr, settings, data])
+        ajaxComplete(status, xhr, settings)
+    }
+    // type: "timeout", "error", "abort", "parsererror"
+    function ajaxError(error, type, xhr, settings, deferred) {
+        var context = settings.context
+        settings.error.call(context, xhr, type, error)
+        if (deferred) deferred.rejectWith(context, [xhr, type, error])
+        triggerGlobal(settings, context, 'ajaxError', [xhr, settings, error || type])
+        ajaxComplete(type, xhr, settings)
+    }
+    // status: "success", "notmodified", "error", "timeout", "abort", "parsererror"
+    function ajaxComplete(status, xhr, settings) {
+        var context = settings.context
+        settings.complete.call(context, xhr, status)
+        triggerGlobal(settings, context, 'ajaxComplete', [xhr, settings])
+        ajaxStop(settings)
+    }
+
+    // Empty function, used as default callback
+    function empty() {}
+
+    var ajaxJSONP = function(options, deferred) {
+        if (!('type' in options)) return ajax(options)
+
+        var _callbackName = options.jsonpCallback,
+            callbackName = (langx.isFunction(_callbackName) ?
+                _callbackName() : _callbackName) || ('jsonp' + (++jsonpID)),
+            script = document.createElement('script'),
+            originalCallback = window[callbackName],
+            responseData,
+            abort = function(errorType) {
+                $(script).triggerHandler('error', errorType || 'abort')
+            },
+            xhr = { abort: abort },
+            abortTimeout
+
+        if (deferred) deferred.promise(xhr)
+
+        $(script).on('load error', function(e, errorType) {
+            clearTimeout(abortTimeout)
+            $(script).off().remove()
+
+            if (e.type == 'error' || !responseData) {
+                ajaxError(null, errorType || 'error', xhr, options, deferred)
+            } else {
+                ajaxSuccess(responseData[0], xhr, options, deferred)
+            }
+
+            window[callbackName] = originalCallback
+            if (responseData && langx.isFunction(originalCallback))
+                originalCallback(responseData[0])
+
+            originalCallback = responseData = undefined
+        })
+
+        if (ajaxBeforeSend(xhr, options) === false) {
+            abort('abort')
+            return xhr
+        }
+
+        window[callbackName] = function() {
+            responseData = arguments
+        }
+
+        script.src = options.url.replace(/\?(.+)=\?/, '?$1=' + callbackName)
+        document.head.appendChild(script)
+
+        if (options.timeout > 0) abortTimeout = setTimeout(function() {
+            abort('timeout')
+        }, options.timeout)
+
+        return xhr;
+    };
+
+    var ajaxSettings = {
+        // Default type of request
+        type: 'GET',
+        // Callback that is executed before request
+        beforeSend: empty,
+        // Callback that is executed if the request succeeds
+        success: empty,
+        // Callback that is executed the the server drops error
+        error: empty,
+        // Callback that is executed on request complete (both: error and success)
+        complete: empty,
+        // The context for the callbacks
+        context: null,
+        // Whether to trigger "global" Ajax events
+        global: true,
+        // Transport
+        xhr: function() {
+            return new window.XMLHttpRequest()
+        },
+        // MIME types mapping
+        // IIS returns Javascript as "application/x-javascript"
+        accepts: {
+            script: 'text/javascript, application/javascript, application/x-javascript',
+            json: jsonType,
+            xml: 'application/xml, text/xml',
+            html: htmlType,
+            text: 'text/plain'
+        },
+        // Whether the request is to another domain
+        crossDomain: false,
+        // Default timeout
+        timeout: 0,
+        // Whether data should be serialized to string
+        processData: true,
+        // Whether the browser should be allowed to cache GET responses
+        cache: true
+    };
+
+    function mimeToDataType(mime) {
+        if (mime) mime = mime.split(';', 2)[0]
+        return mime && (mime == htmlType ? 'html' :
+            mime == jsonType ? 'json' :
+            scriptTypeRE.test(mime) ? 'script' :
+            xmlTypeRE.test(mime) && 'xml') || 'text'
+    }
+
+    function appendQuery(url, query) {
+        if (query == '') return url
+        return (url + '&' + query).replace(/[&?]{1,2}/, '?')
+    }
+
+    // serialize payload and append it to the URL for GET requests
+    function serializeData(options) {
+        if (options.processData && options.data && langx.type(options.data) != "string")
+            options.data = param(options.data, options.traditional)
+        if (options.data && (!options.type || options.type.toUpperCase() == 'GET'))
+            options.url = appendQuery(options.url, options.data), options.data = undefined
+    }
+
+    function ajax(options) {
+        var settings = langx.mixin({}, options || {}),
+            deferred = Deferred(),
+            urlAnchor
+        for (key in ajaxSettings)
+            if (settings[key] === undefined) settings[key] = ajaxSettings[key]
+
+        ajaxStart(settings)
+
+        if (!settings.crossDomain) {
+            urlAnchor = document.createElement('a')
+            urlAnchor.href = settings.url
+            urlAnchor.href = urlAnchor.href
+            settings.crossDomain = (originAnchor.protocol + '//' + originAnchor.host) !== (urlAnchor.protocol + '//' + urlAnchor.host)
+        }
+
+        if (!settings.url) settings.url = window.location.toString()
+        serializeData(settings)
+
+        var dataType = settings.dataType,
+            hasPlaceholder = /\?.+=\?/.test(settings.url)
+        if (hasPlaceholder) dataType = 'jsonp'
+
+        if (settings.cache === false || (
+                (!options || options.cache !== true) &&
+                ('script' == dataType || 'jsonp' == dataType)
+            ))
+            settings.url = appendQuery(settings.url, '_=' + Date.now())
+
+        if ('jsonp' == dataType) {
+            if (!hasPlaceholder)
+                settings.url = appendQuery(settings.url,
+                    settings.jsonp ? (settings.jsonp + '=?') : settings.jsonp === false ? '' : 'callback=?')
+            return ajaxJSONP(settings, deferred)
+        }
+
+        var mime = settings.accepts[dataType],
+            headers = {},
+            setHeader = function(name, value) { headers[name.toLowerCase()] = [name, value] },
+            protocol = /^([\w-]+:)\/\//.test(settings.url) ? RegExp.$1 : window.location.protocol,
+            xhr = settings.xhr(),
+            nativeSetHeader = xhr.setRequestHeader,
+            abortTimeout
+
+        if (deferred) deferred.promise(xhr)
+
+        if (!settings.crossDomain) setHeader('X-Requested-With', 'XMLHttpRequest')
+        setHeader('Accept', mime || '*/*')
+        if (mime = settings.mimeType || mime) {
+            if (mime.indexOf(',') > -1) mime = mime.split(',', 2)[0]
+            xhr.overrideMimeType && xhr.overrideMimeType(mime)
+        }
+        if (settings.contentType || (settings.contentType !== false && settings.data && settings.type.toUpperCase() != 'GET'))
+            setHeader('Content-Type', settings.contentType || 'application/x-www-form-urlencoded')
+
+        if (settings.headers)
+            for (name in settings.headers) setHeader(name, settings.headers[name])
+        xhr.setRequestHeader = setHeader
+
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState == 4) {
+                xhr.onreadystatechange = empty
+                clearTimeout(abortTimeout)
+                var result, error = false
+                if ((xhr.status >= 200 && xhr.status < 300) || xhr.status == 304 || (xhr.status == 0 && protocol == 'file:')) {
+                    dataType = dataType || mimeToDataType(settings.mimeType || xhr.getResponseHeader('content-type'))
+                    result = xhr.responseText
+
+                    try {
+                        // http://perfectionkills.com/global-eval-what-are-the-options/
+                        if (dataType == 'script')(1, eval)(result)
+                        else if (dataType == 'xml') result = xhr.responseXML
+                        else if (dataType == 'json') result = blankRE.test(result) ? null : JSON.parse(result)
+                    } catch (e) { error = e }
+
+                    if (error) ajaxError(error, 'parsererror', xhr, settings, deferred)
+                    else ajaxSuccess(result, xhr, settings, deferred)
+                } else {
+                    ajaxError(xhr.statusText || null, xhr.status ? 'error' : 'abort', xhr, settings, deferred)
+                }
+            }
+        }
+
+        if (ajaxBeforeSend(xhr, settings) === false) {
+            xhr.abort()
+            ajaxError(null, 'abort', xhr, settings, deferred)
+            return xhr
+        }
+
+        if (settings.xhrFields)
+            for (name in settings.xhrFields) xhr[name] = settings.xhrFields[name]
+
+        var async = 'async' in settings ? settings.async : true
+        xhr.open(settings.type, settings.url, async, settings.username, settings.password)
+
+        for (name in headers) nativeSetHeader.apply(xhr, headers[name])
+
+        if (settings.timeout > 0) abortTimeout = setTimeout(function() {
+            xhr.onreadystatechange = empty
+            xhr.abort()
+            ajaxError(null, 'timeout', xhr, settings, deferred)
+        }, settings.timeout)
+
+        // avoid sending empty string (#319)
+        xhr.send(settings.data ? settings.data : null)
+        return xhr
+    }
+
+    // handle optional data/success arguments
+    function parseArguments(url, data, success, dataType) {
+        if (langx.isFunction(data)) dataType = success, success = data, data = undefined
+        if (!langx.isFunction(success)) dataType = success, success = undefined
+        return {
+            url: url,
+            data: data,
+            success: success,
+            dataType: dataType
+        }
+    }
+
+    var get = function( /* url, data, success, dataType */ ) {
+        return ajax(parseArguments.apply(null, arguments))
+    };
+
+    var post = function( /* url, data, success, dataType */ ) {
+        var options = parseArguments.apply(null, arguments)
+        options.type = 'POST'
+        return ajax(options)
+    };
+
+    var getJSON = function( /* url, data, success */ ) {
+        var options = parseArguments.apply(null, arguments)
+        options.dataType = 'json'
+        return ajax(options)
+    }
+
+    query.fn.load = function(url, data, success) {
+        if (!this.length) return this
+        var self = this,
+            parts = url.split(/\s/),
+            selector,
+            options = parseArguments(url, data, success),
+            callback = options.success
+        if (parts.length > 1) options.url = parts[0], selector = parts[1]
+        options.success = function(response) {
+            self.html(selector ?
+                $('<div>').html(response.replace(rscript, "")).find(selector) : response)
+            callback && callback.apply(self, arguments)
+        }
+        ajax(options)
+        return this
+    }
+
+    var escape = encodeURIComponent
+
+    function serialize(params, obj, traditional, scope) {
+        var type, array = langx.isArray(obj),
+            hash = langx.isPlainObject(obj)
+        langx.each(obj, function(key, value) {
+            type = langx.type(value)
+            if (scope) key = traditional ? scope :
+                scope + '[' + (hash || type == 'object' || type == 'array' ? key : '') + ']'
+            // handle data in serializeArray() format
+            if (!scope && array) params.add(value.name, value.value)
+            // recurse into nested objects
+            else if (type == "array" || (!traditional && type == "object"))
+                serialize(params, value, traditional, key)
+            else params.add(key, value)
+        })
+    }
+
+    var param = function(obj, traditional) {
+        var params = []
+        params.add = function(key, value) {
+            if (langx.isFunction(value)) value = value()
+            if (value == null) value = ""
+            this.push(escape(key) + '=' + escape(value))
+        }
+        serialize(params, obj, traditional)
+        return params.join('&').replace(/%20/g, '+')
+    };
+
+    var
+        /* Prefilters
+         * 1) They are useful to introduce custom dataTypes (see ajax/jsonp.js for an example)
+         * 2) These are called:
+         *    - BEFORE asking for a transport
+         *    - AFTER param serialization (s.data is a string if s.processData is true)
+         * 3) key is the dataType
+         * 4) the catchall symbol "*" can be used
+         * 5) execution will start with transport dataType and THEN continue down to "*" if needed
+         */
+        prefilters = {},
+
+        /* Transports bindings
+         * 1) key is the dataType
+         * 2) the catchall symbol "*" can be used
+         * 3) selection will start with transport dataType and THEN go to "*" if needed
+         */
+        transports = {},
+        rnotwhite = (/\S+/g);
+
+
+    // Base "constructor" for jQuery.ajaxPrefilter and jQuery.ajaxTransport
+    function addToPrefiltersOrTransports(structure) {
+
+        // dataTypeExpression is optional and defaults to "*"
+        return function(dataTypeExpression, func) {
+
+            if (typeof dataTypeExpression !== "string") {
+                func = dataTypeExpression;
+                dataTypeExpression = "*";
+            }
+
+            var dataType,
+                i = 0,
+                dataTypes = dataTypeExpression.toLowerCase().match(rnotwhite) || [];
+
+            if (jQuery.isFunction(func)) {
+
+                // For each dataType in the dataTypeExpression
+                while ((dataType = dataTypes[i++])) {
+
+                    // Prepend if requested
+                    if (dataType[0] === "+") {
+                        dataType = dataType.slice(1) || "*";
+                        (structure[dataType] = structure[dataType] || []).unshift(func);
+
+                        // Otherwise append
+                    } else {
+                        (structure[dataType] = structure[dataType] || []).push(func);
+                    }
+                }
+            }
+        };
+    }
+
+    var ajaxPrefilter = addToPrefiltersOrTransports(prefilters);
+    var ajaxTransport = addToPrefiltersOrTransports(transports);
+
+    // A special extend for ajax options
+    // that takes "flat" options (not to be deep extended)
+    // Fixes #9887
+    function ajaxExtend(target, src) {
+        var key, deep,
+            flatOptions = ajaxSettings.flatOptions || {};
+
+        for (key in src) {
+            if (src[key] !== undefined) {
+                (flatOptions[key] ? target : (deep || (deep = {})))[key] = src[key];
+            }
+        }
+        if (deep) {
+            jQuery.extend(true, target, deep);
+        }
+
+        return target;
+    }
+
+    // Creates a full fledged settings object into target
+    // with both ajaxSettings and settings fields.
+    // If target is omitted, writes into ajaxSettings.
+    var ajaxSetup = function(target, settings) {
+        return settings ?
+
+            // Building a settings object
+            ajaxExtend(ajaxExtend(target, ajaxSettings), settings) :
+
+            // Extending ajaxSettings
+            ajaxExtend(ajaxSettings, target);
+    };
+
+    // Base inspection function for prefilters and transports
+    function inspectPrefiltersOrTransports(structure, options, originalOptions, jqXHR) {
+
+        var inspected = {},
+            seekingTransport = (structure === transports);
+
+        function inspect(dataType) {
+            var selected;
+            inspected[dataType] = true;
+            jQuery.each(structure[dataType] || [], function(_, prefilterOrFactory) {
+                var dataTypeOrTransport = prefilterOrFactory(options, originalOptions, jqXHR);
+                if (typeof dataTypeOrTransport === "string" &&
+                    !seekingTransport && !inspected[dataTypeOrTransport]) {
+
+                    options.dataTypes.unshift(dataTypeOrTransport);
+                    inspect(dataTypeOrTransport);
+                    return false;
+                } else if (seekingTransport) {
+                    return !(selected = dataTypeOrTransport);
+                }
+            });
+            return selected;
+        }
+
+        return inspect(options.dataTypes[0]) || !inspected["*"] && inspect("*");
+    }
+
+
+    langx.mixin(ajax, {
+    	ajaxJSONP : ajaxJSONP,
+    	ajaxPrefilter : ajaxPrefilter,
+    	ajaxTransport: ajaxTransport,
+    	ajaxSettings : ajaxSettings,
+    	ajaxSetup : ajaxSetup,
+
+    	Callbacks:Callbacks,
+
+    	Deferred: Deferred,
+
+    	get : get,
+    	getJSON : getJSON,
+    	param: param,
+    	post: post,
+
+    	when: when
+
+    });
+
+
+    return skylark.ajax = ajax;
+});
+
+define('skylark-utils/css',[
+    "./skylark",
+    "./langx",
+    "./noder"
+], function(skylark, langx, construct) {
+
+    var head = document.getElementsByTagName("head")[0],
+        count = 0,
+        sheetsByUrl = {},
+        sheetElementsById = {},
+        defaultSheetId = _createStyleSheet(),
+        defaultSheet = sheetElementsById[defaultSheetId],
+        rulesPropName = ("cssRules" in defaultSheet) ? "cssRules" : "rules",
+        insertRuleFunc,
+        deleteRuleFunc = defaultSheet.deleteRule || defaultSheet.removeRule;
+
+    if (defaultSheet.insertRule) {
+        var _insertRule = defaultSheet.insertRule;
+        insertRuleFunc = function(selector, css, index) {
+            _insertRule.call(this, selector + "{" + css + "}", index);
+        };
+    } else {
+        insertRuleFunc = defaultSheet.addRule;
+    }
+
+    function normalizeSelector(selectorText) {
+        var selector = [],
+            last, len;
+        last = defaultSheet[rulesPropName].length;
+        insertRuleFunc.call(defaultSheet, selectorText, ';');
+        len = defaultSheet[rulesPropName].length;
+        for (var i = len - 1; i >= last; i--) {
+            selector.push(_sheet[_rules][i].selectorText);
+            deleteRuleFunc.call(defaultSheet, i);
+        }
+        return selector.reverse().join(', ');
+    }
+
+    function _createStyleSheet() {
+        var link = document.createElement("link"),
+            id = (count++);
+
+        link.rel = "stylesheet";
+        link.type = "text/css";
+        link.async = false;
+        link.defer = false;
+
+        head.appendChild(link);
+        sheetElementsById[id] = link;
+
+        return id;
+    }
+
+    function css() {
+        return css;
+    }
+
+    langx.mixin(css, {
+        createStyleSheet: function(cssText) {
+            return _createStyleSheet();
+        },
+
+        loadStyleSheet: function(url, loadedCallback, errorCallback) {
+            var sheet = sheetsByUrl[url];
+            if (!sheet) {
+                sheet = sheetsByUrl[url] = {
+                    state: 0, //0:unload,1:loaded,-1:loaderror
+                    loadedCallbacks: [],
+                    errorCallbacks: []
+                };
+            }
+
+            sheet.loadedCallbacks.push(loadedCallback);
+            sheet.errorCallbacks.push(errorCallback);
+
+            if (sheet.state === 1) {
+                sheet.node.onload();
+            } else if (sheet.state === -1) {
+                sheet.node.onerror();
+            } else {
+                sheet.id = _createStyleSheet();
+                var node = sheet.node = sheetElementsById[sheet.id];
+
+                startTime = new Date().getTime();
+
+                node.onload = function() {
+                    sheet.state = 1;
+                    sheet.state = -1;
+                    var callbacks = sheet.loadedCallbacks,
+                        i = callbacks.length;
+
+                    while (i--) {
+                        callbacks[i]();
+                    }
+                    sheet.loadedCallbacks = [];
+                    sheet.errorCallbacks = [];
+                },
+                node.onerror = function() {
+                    sheet.state = -1;
+                    var callbacks = sheet.errorCallbacks,
+                        i = callbacks.length;
+
+                    while (i--) {
+                        callbacks[i]();
+                    }
+                    sheet.loadedCallbacks = [];
+                    sheet.errorCallbacks = [];
+                };
+
+                node.href = sheet.url = url;
+
+                sheetsByUrl[node.url] = sheet;
+
+            }
+            return sheet.id;
+        },
+
+        deleteSheetRule: function(sheetId, rule) {
+            var sheet = sheetElementsById[sheetId];
+            if (langx.isNumber(rule)) {
+                deleteRuleFunc.call(sheet, rule);
+            } else {
+                langx.each(sheet[rulesPropName], function(i, _rule) {
+                    if (rule === _rule) {
+                        deleteRuleFunc.call(sheet, i);
+                        return false;
+                    }
+                });
+            }
+        },
+
+        deleteRule: function(rule) {
+            this.deleteSheetRule(defaultSheetId, rule);
+            return this;
+        },
+
+        removeStyleSheet: function(sheetId) {
+            if (sheetId === defaultSheetId) {
+                throw new Error("The default stylesheet can not be deleted");
+            }
+            var sheet = sheetElementsById[sheetId];
+            delete sheetElementsById[sheetId];
+
+
+            construct.remove(sheet);
+            return this;
+        },
+
+        findRules: function(selector, sheetId) {
+            //return array of CSSStyleRule objects that match the selector text
+            var rules = [],
+                filters = parseSelector(selector);
+            $(document.styleSheets).each(function(i, styleSheet) {
+                if (filterStyleSheet(filters.styleSheet, styleSheet)) {
+                    $.merge(rules, $(styleSheet[_rules]).filter(function() {
+                        return matchSelector(this, filters.selectorText, filters.styleSheet === "*");
+                    }).map(function() {
+                        return normalizeRule($.support.nativeCSSStyleRule ? this : new CSSStyleRule(this), styleSheet);
+                    }));
+                }
+            });
+            return rules.reverse();
+        },
+
+        insertRule: function(selector, css, index) {
+            return this.insertSheetRule(defaultSheetId, selector, css, index);
+        },
+
+        insertSheetRule: function(sheetId, selector, css, index) {
+            if (!selector || !css) {
+                return -1;
+            }
+
+            var sheet = sheetElementsById[sheetId];
+            index = index || sheet[rulesPropName].length;
+
+            return insertRuleFunc.call(sheet, selector, css, index);
+
+        }
+    });
+
+    return skylark.css = css;
 });
 
 define('skylark-utils/dnd',[
@@ -4004,724 +6035,11 @@ define('skylark-utils/filer',[
     return skylark.filer = filer;
 });
 
-define('skylark-utils/fx',[
-    "./skylark",
-    "./langx",
-    "./browser",
-    "./geom",
-    "./styler",
-    "./eventer"
-], function(skylark, langx, browser, geom, styler, eventer) {
-    var animationName,
-        animationDuration,
-        animationTiming,
-        animationDelay,
-        transitionProperty,
-        transitionDuration,
-        transitionTiming,
-        transitionDelay,
-
-        animationEnd = browser.normalizeCssEvent('AnimationEnd'),
-        transitionEnd = browser.normalizeCssEvent('TransitionEnd'),
-
-        supportedTransforms = /^((translate|rotate|scale)(X|Y|Z|3d)?|matrix(3d)?|perspective|skew(X|Y)?)$/i,
-        transform = browser.css3PropPrefix + "transform",
-        cssReset = {};
-
-
-    cssReset[animationName = browser.normalizeCssProperty("animation-name")] =
-        cssReset[animationDuration = browser.normalizeCssProperty("animation-duration")] =
-        cssReset[animationDelay = browser.normalizeCssProperty("animation-delay")] =
-        cssReset[animationTiming = browser.normalizeCssProperty("animation-timing-function")] = "";
-
-    cssReset[transitionProperty = browser.normalizeCssProperty("transition-property")] =
-        cssReset[transitionDuration = browser.normalizeCssProperty("transition-duration")] =
-        cssReset[transitionDelay = browser.normalizeCssProperty("transition-delay")] =
-        cssReset[transitionTiming = browser.normalizeCssProperty("transition-timing-function")] = "";
-
-
-
-    function animate(elm, properties, duration, ease, callback, delay) {
-        var key,
-            cssValues = {},
-            cssProperties = [],
-            transforms = "",
-            that = this,
-            endEvent,
-            wrappedCallback,
-            fired = false,
-            hasScrollTop = false;
-
-        if (langx.isPlainObject(duration)) {
-            ease = duration.easing;
-            callback = duration.complete;
-            delay = duration.delay;
-            duration = duration.duration;
-        }
-
-        if (langx.isString(duration)) {
-            duration = fx.speeds[duration];
-        }
-        if (duration === undefined) {
-            duration = fx.speeds.normal;
-        }
-        duration = duration / 1000;
-        if (fx.off) {
-            duration = 0;
-        }
-
-        if (langx.isFunction(ease)) {
-            callback = ease;
-            eace = "swing";
-        } else {
-            ease = ease || "swing";
-        }
-
-        if (delay) {
-            delay = delay / 1000;
-        } else {
-            delay = 0;
-        }
-
-        if (langx.isString(properties)) {
-            // keyframe animation
-            cssValues[animationName] = properties;
-            cssValues[animationDuration] = duration + "s";
-            cssValues[animationTiming] = ease;
-            endEvent = animationEnd;
-        } else {
-            // CSS transitions
-            for (key in properties) {
-                if (supportedTransforms.test(key)) {
-                    transforms += key + "(" + properties[key] + ") ";
-                } else {
-                    if (key === "scrollTop") {
-                        hasScrollTop = true;
-                    }
-                    cssValues[key] = properties[key];
-                    cssProperties.push(langx.dasherize(key));
-                }
-            }
-            endEvent = transitionEnd;
-        }
-
-        if (transforms) {
-            cssValues[transform] = transforms;
-            cssProperties.push(transform);
-        }
-
-        if (duration > 0 && langx.isPlainObject(properties)) {
-            cssValues[transitionProperty] = cssProperties.join(", ");
-            cssValues[transitionDuration] = duration + "s";
-            cssValues[transitionDelay] = delay + "s";
-            cssValues[transitionTiming] = ease;
-        }
-
-        wrappedCallback = function(event) {
-            fired = true;
-            if (event) {
-                if (event.target !== event.currentTarget) {
-                    return // makes sure the event didn't bubble from "below"
-                }
-                eventer.off(event.target, endEvent, wrappedCallback)
-            } else {
-                eventer.off(elm, animationEnd, wrappedCallback) // triggered by setTimeout
-            }
-            styler.css(elm, cssReset);
-            callback && callback.call(this);
-        };
-
-        if (duration > 0) {
-            eventer.on(elm, endEvent, wrappedCallback);
-            // transitionEnd is not always firing on older Android phones
-            // so make sure it gets fired
-            langx.debounce(function() {
-                if (fired) {
-                    return;
-                }
-                wrappedCallback.call(that);
-            }, ((duration + delay) * 1000) + 25)();
-        }
-
-        // trigger page reflow so new elements can animate
-        elm.clientLeft;
-
-        styler.css(elm, cssValues);
-
-        if (duration <= 0) {
-            langx.debounce(function() {
-                if (fired) {
-                    return;
-                }
-                wrappedCallback.call(that);
-            }, 0)();
-        }
-
-        if (hasScrollTop) {
-            scrollToTop(elm, properties["scrollTop"], duration, callback);
-        }
-
-        return this;
-    }
-
-    function show(elm, speed, callback) {
-        styler.show(elm);
-        if (speed) {
-            if (!callback && langx.isFunction(speed)) {
-                callback = speed;
-                speed = "normal";
-            }
-            styler.css(elm, "opacity", 0)
-            animate(elm, { opacity: 1, scale: "1,1" }, speed, callback);
-        }
-        return this;
-    }
-
-
-    function hide(elm, speed, callback) {
-        if (speed) {
-            if (!callback && langx.isFunction(speed)) {
-                callback = speed;
-                speed = "normal";
-            }
-            animate(elm, { opacity: 0, scale: "0,0" }, speed, function() {
-                styler.hide(elm);
-                if (callback) {
-                    callback.call(elm);
-                }
-            });
-        } else {
-            styler.hide(elm);
-        }
-        return this;
-    }
-
-    function scrollToTop(elm, pos, speed, callback) {
-        var scrollFrom = parseInt(elm.scrollTop),
-            i = 0,
-            runEvery = 5, // run every 5ms
-            freq = speed * 1000 / runEvery,
-            scrollTo = parseInt(pos);
-
-        var interval = setInterval(function() {
-            i++;
-
-            if (i <= freq) elm.scrollTop = (scrollTo - scrollFrom) / freq * i + scrollFrom;
-
-            if (i >= freq + 1) {
-                clearInterval(interval);
-                if (callback) langx.debounce(callback, 1000)();
-            }
-        }, runEvery);
-    }
-
-    function toggle(elm, speed, callback) {
-        if (styler.isInvisible(elm)) {
-            show(elm, speed, callback);
-        } else {
-            hide(elm, speed, callback);
-        }
-        return this;
-    }
-
-    function fadeTo(elm, speed, opacity, easing, callback) {
-        animate(elm, { opacity: opacity }, speed, easing, callback);
-        return this;
-    }
-
-    function fadeIn(elm, speed, easing, callback) {
-        var target = styler.css(elm, "opacity");
-        if (target > 0) {
-            styler.css(elm, "opacity", 0);
-        } else {
-            target = 1;
-        }
-        styler.show(elm);
-
-        fadeTo(elm, speed, target, easing, callback);
-
-        return this;
-    }
-
-    function fadeOut(elm, speed, easing, callback) {
-        var _elm = elm,
-            complete,
-            options = {};
-
-        if (langx.isPlainObject(speed)) {
-            options.easing = speed.easing;
-            options.duration = speed.duration;
-            complete = speed.complete;
-        } else {
-            options.duration = speed;
-            if (callback) {
-                complete = callback;
-                options.easing = easing;
-            } else {
-                complete = easing;
-            }
-        }
-        options.complete = function() {
-            styler.hide(elm);
-            if (complete) {
-                complete.call(elm);
-            }
-        }
-
-        fadeTo(elm, options, 0);
-
-        return this;
-    }
-
-    function fadeToggle(elm, speed, ceasing, allback) {
-        if (styler.isInvisible(elm)) {
-            fadeIn(elm, speed, easing, callback);
-        } else {
-            fadeOut(elm, speed, easing, callback);
-        }
-        return this;
-    }
-
-    function slideDown(elm,duration,callback) {    
-    
-        // get the element position to restore it then
-        var position = styler.css(elm,'position');
-        
-        // show element if it is hidden
-        show(elm);
-        
-        // place it so it displays as usually but hidden
-        styler.css(elm,{
-            position: 'absolute',
-            visibility: 'hidden'
-        });
-        
-        // get naturally height, margin, padding
-        var marginTop = styler.css(elm,'margin-top');
-        var marginBottom = styler.css(elm,'margin-bottom');
-        var paddingTop = styler.css(elm,'padding-top');
-        var paddingBottom = styler.css(elm,'padding-bottom');
-        var height = styler.css(elm,'height');
-        
-        // set initial css for animation
-        styler.css(elm,{
-            position: position,
-            visibility: 'visible',
-            overflow: 'hidden',
-            height: 0,
-            marginTop: 0,
-            marginBottom: 0,
-            paddingTop: 0,
-            paddingBottom: 0
-        });
-        
-        // animate to gotten height, margin and padding
-        animate(elm,{
-            height: height,
-            marginTop: marginTop,
-            marginBottom: marginBottom,
-            paddingTop: paddingTop,
-            paddingBottom: paddingBottom
-        }, {
-            duration : duration,
-            complete: function(){
-                if (callback) {
-                    callback.apply(elm); 
-                }
-            }    
-        }
-    );
-        
-        return this;
-    };
-
-    function slideUp(elm,duration,callback) {
-        // active the function only if the element is visible
-        if (geom.height(elm) > 0) {
-                   
-            // get the element position to restore it then
-            var position = styler.css(elm,'position');
-            
-            // get the element height, margin and padding to restore them then
-            var height = styler.css(elm,'height');
-            var marginTop = styler.css(elm,'margin-top');
-            var marginBottom = styler.css(elm,'margin-bottom');
-            var paddingTop = styler.css(elm,'padding-top');
-            var paddingBottom = styler.css(elm,'padding-bottom');
-            
-            // set initial css for animation
-            styler.css(elm,{
-                visibility: 'visible',
-                overflow: 'hidden',
-                height: height,
-                marginTop: marginTop,
-                marginBottom: marginBottom,
-                paddingTop: paddingTop,
-                paddingBottom: paddingBottom
-            });
-            
-            // animate element height, margin and padding to zero
-            animate(elm,{
-                height: 0,
-                marginTop: 0,
-                marginBottom: 0,
-                paddingTop: 0,
-                paddingBottom: 0
-            }, { 
-                // callback : restore the element position, height, margin and padding to original values
-                duration: duration,
-                queue: false,
-                complete: function(){
-                    hide(elm);
-                    styler.css(elm,{
-                        visibility: 'visible',
-                        overflow: 'hidden',
-                        height: height,
-                        marginTop: marginTop,
-                        marginBottom: marginBottom,
-                        paddingTop: paddingTop,
-                        paddingBottom: paddingBottom
-                    });
-                    if (callback) {
-                        callback.apply(elm); 
-                    }
-                }
-            });
-        }
-        return this;
-    };
-    
-    /* SlideToggle */
-    function slideToggle(elm,duration,callback) {
-    
-        // if the element is hidden, slideDown !
-        if (geom.height(elm) == 0) {
-            slideDown(elm,duration,callback);
-        } 
-        // if the element is visible, slideUp !
-        else {
-            slideUp(elm,duration,callback);
-        }
-        return this;
-    };
-
-
-    function fx() {
-        return fx;
-    }
-
-    langx.mixin(fx, {
-        off: false,
-
-        speeds: {
-            normal: 400,
-            fast: 200,
-            slow: 600
-        },
-
-        animate: animate,
-        fadeIn: fadeIn,
-        fadeOut: fadeOut,
-        fadeTo: fadeTo,
-        fadeToggle: fadeToggle,
-        hide: hide,
-        scrollToTop: scrollToTop,
-
-        slideDown : slideDown,
-        slideToggle : slideToggle,
-        slideUp : slideUp,
-        show: show,
-        toggle: toggle
-    });
-
-    return skylark.fx = fx;
-});
-define('skylark-utils/http',[
-    "./skylark",
-    "./langx"
-],function(skylark, langx){
-    var Deferred = langx.Deferred,
-        blankRE = /^\s*$/,
-        scriptTypeRE = /^(?:text|application)\/javascript/i,
-        xmlTypeRE = /^(?:text|application)\/xml/i;
-
-
-    function empty() {}
-
-    var ajaxSettings = {
-        // Default type of request
-        type: 'GET',
-        // Callback that is executed before request
-        beforeSend: empty,
-        // Callback that is executed if the request succeeds
-        success: empty,
-        // Callback that is executed the the server drops error
-        error: empty,
-        // Callback that is executed on request complete (both: error and success)
-        complete: empty,
-        // The context for the callbacks
-        context: null,
-        // Whether to trigger "global" Ajax events
-        global: true,
-        // Transport
-        xhr: function() {
-            return new window.XMLHttpRequest();
-        },
-        // MIME types mapping
-        // IIS returns Javascript as "application/x-javascript"
-        accepts: {
-            script: 'text/javascript, application/javascript, application/x-javascript',
-            json: 'application/json',
-            xml: 'application/xml, text/xml',
-            html: 'text/html',
-            text: 'text/plain'
-        },
-        // Whether the request is to another domain
-        crossDomain: false,
-        // Default timeout
-        timeout: 0,
-        // Whether data should be serialized to string
-        processData: true,
-        // Whether the browser should be allowed to cache GET responses
-        cache: true
-    }
-
-    function mimeToDataType(mime) {
-        if (mime) {
-            mime = mime.split(';', 2)[0];
-        }
-        return mime && (mime == 'text/html' ? 'html' :
-            mime == 'application/json' ? 'json' :
-            scriptTypeRE.test(mime) ? 'script' :
-            xmlTypeRE.test(mime) && 'xml') || 'text';
-    }
-
-    function appendQuery(url, query) {
-        if (query == '') {
-            return url;
-        }
-        return (url + '&' + query).replace(/[&?]{1,2}/, '?');
-    }
-
-    function serialize(params, obj, traditional, scope) {
-        var type, array = langx.isArray(obj),
-            hash = langx.isPlainObject(obj)
-        langx.each(obj, function(key, value) {
-            type = langx.type(value);
-            if (scope) {
-                key = traditional ? scope :
-                        scope + '[' + (hash || type == 'object' || type == 'array' ? key : '') + ']' ;
-            }
-            // handle data in serializeArray() format
-            if (!scope && array) {
-                params.add(value.name, value.value);
-            // recurse into nested objects
-            } else if (type == "array" || (!traditional && type == "object")) {
-                serialize(params, value, traditional, key);
-            } else {
-                params.add(key, value);
-            }
-        })
-    }    
-
-    function param(obj, traditional) {
-        var params = []
-        params.add = function(key, value) {
-            if (langx.isFunction(value)) {
-                value = value();
-            }
-            if (value == null) {
-                value = "";
-            }
-            this.push(escape(key) + '=' + escape(value));
-        }
-        
-        serialize(params, obj, traditional);
-
-        return params.join('&').replace(/%20/g, '+')
-    }
-
-    // serialize payload and append it to the URL for GET requests
-    function serializeData(options) {
-        if (options.processData && options.data && !langx.isString(options.data)) {
-            options.data = $.param(options.data, options.traditional)
-        }
-        if (options.data && (!options.type || options.type.toUpperCase() == 'GET')) {
-            options.url = appendQuery(options.url, options.data);
-            options.data = undefined;
-        }
-    }
-
-    function ajaxSuccess(data, xhr, settings, deferred) {
-        var context = settings.context,
-            status = 'success'
-        settings.success.call(context, data, status, xhr)
-        //if (deferred) deferred.resolveWith(context, [data, status, xhr])
-        //triggerGlobal(settings, context, 'ajaxSuccess', [xhr, settings, data])
-        ajaxComplete(status, xhr, settings)
-    }
-    // type: "timeout", "error", "abort", "parsererror"
-    function ajaxError(error, type, xhr, settings, deferred) {
-        var context = settings.context
-        settings.error.call(context, xhr, type, error)
-        //if (deferred) deferred.rejectWith(context, [xhr, type, error])
-        //triggerGlobal(settings, context, 'ajaxError', [xhr, settings, error || type])
-        ajaxComplete(type, xhr, settings)
-    }
-    // status: "success", "notmodified", "error", "timeout", "abort", "parsererror"
-    function ajaxComplete(status, xhr, settings) {
-        var context = settings.context
-        settings.complete.call(context, xhr, status)
-        //triggerGlobal(settings, context, 'ajaxComplete', [xhr, settings])
-        //ajaxStop(settings)
-    }    
-
-    function ajax(options) {
-        var settings = langx.mixin({}, options),
-            deferred = new Deferred();
-
-        langx.safeMixin(settings,ajaxSettings);
-
-        //ajaxStart(settings)
-        if (!settings.crossDomain) {
-        //    settings.crossDomain = !langx.isSameOrigin(settings.url);
-        }
-
-        serializeData(settings);
-        var dataType = settings.dataType;
-
-        var mime = settings.accepts[dataType],
-            headers = {},
-            setHeader = function(name, value) { headers[name.toLowerCase()] = [name, value] },
-            protocol = /^([\w-]+:)\/\//.test(settings.url) ? RegExp.$1 : window.location.protocol,
-            xhr = settings.xhr(),
-            nativeSetHeader = xhr.setRequestHeader,
-            abortTimeout;
-
-        //if (deferred) deferred.promise(xhr)
-
-        if (!settings.crossDomain) {
-            setHeader('X-Requested-With', 'XMLHttpRequest');
-        }
-        setHeader('Accept', mime || '*/*')
-        if (mime = settings.mimeType || mime) {
-            if (mime.indexOf(',') > -1) mime = mime.split(',', 2)[0]
-            xhr.overrideMimeType && xhr.overrideMimeType(mime)
-        }
-        if (settings.contentType || (settings.contentType !== false && settings.data && settings.type.toUpperCase() != 'GET')) {
-            setHeader('Content-Type', settings.contentType || 'application/x-www-form-urlencoded')
-        }
-
-        if (settings.headers) {
-            for (name in settings.headers) {
-                setHeader(name, settings.headers[name]);
-            }    
-        }
-        xhr.setRequestHeader = setHeader;
-
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState == 4) {
-                xhr.onreadystatechange = empty
-                clearTimeout(abortTimeout)
-                var result, error = false
-                if ((xhr.status >= 200 && xhr.status < 300) || xhr.status == 304 || (xhr.status == 0 && protocol == 'file:')) {
-                    dataType = dataType || mimeToDataType(settings.mimeType || xhr.getResponseHeader('content-type'))
-                    result = xhr.responseText
-
-                    try {
-                        // http://perfectionkills.com/global-eval-what-are-the-options/
-                        if (dataType == 'script') {
-                            (1, eval)(result);
-                        } else if (dataType == 'xml') {
-                            result = xhr.responseXML
-                        } else if (dataType == 'json') {
-                            result = blankRE.test(result) ? null : JSON.parse(result);
-                        }
-                    } catch (e) { 
-                        error = e 
-                    }
-
-                    if (error) {
-                        ajaxError(error, 'parsererror', xhr, settings, deferred);
-                    } else {
-                        ajaxSuccess(result, xhr, settings, deferred);
-                    }
-                } else {
-                    ajaxError(xhr.statusText || null, xhr.status ? 'error' : 'abort', xhr, settings, deferred);
-                }
-            }
-        }
-
-        /*
-        if (ajaxBeforeSend(xhr, settings) === false) {
-            xhr.abort()
-            ajaxError(null, 'abort', xhr, settings, deferred)
-            return xhr
-        }
-
-        if (settings.xhrFields)
-            for (name in settings.xhrFields) xhr[name] = settings.xhrFields[name]
-        */
-        var async = 'async' in settings ? settings.async : true
-        xhr.open(settings.type, settings.url, async, settings.username, settings.password)
-
-        for (name in headers) {
-            nativeSetHeader.apply(xhr, headers[name]);
-        }
-
-        if (settings.timeout > 0) {
-            abortTimeout = setTimeout(function() {
-                xhr.onreadystatechange = empty;
-                xhr.abort();
-                ajaxError(null, 'timeout', xhr, settings, deferred);
-            }, settings.timeout);
-        }
-
-        // avoid sending empty string (#319)
-        xhr.send(settings.data ? settings.data : null)
-        return xhr;
-    }
-
-
-    function get( /* url, data, success, dataType */ ) {
-        return ajax(parseArguments.apply(null, arguments))
-    }
-
-    function post( /* url, data, success, dataType */ ) {
-        var options = parseArguments.apply(null, arguments);
-        options.type = 'POST';
-        return ajax(options);
-    }
-
-    function getJSON( /* url, data, success */ ) {
-        var options = parseArguments.apply(null, arguments);
-        options.dataType = 'json';
-        return ajax(options);
-    }    
-
-
-    function http(){
-      return http;
-    }
-
-    langx.mixin(http, {
-        ajax: ajax,
-
-        get: get,
-        
-        gtJSON: getJSON,
-
-        post: post
-
-    });
-
-    return skylark.http = http;
-});
-
 define('skylark-utils/images',[
     "./skylark",
-    "./langx"
-], function(skylark,langx) {
+    "./langx",
+    "./query"
+], function(skylark,langx,$) {
 
   var elementNodeTypes = {
     1: true,
@@ -5007,6 +6325,26 @@ define('skylark-utils/images',[
   });
 
 
+   $.fn.imagesLoaded = function( options, callback ) {
+      var inst = new ImagesLoaded( this, options, callback );
+
+      var d = new langx.Deferred();
+      
+      inst.on("progress",function(e){
+        d.progress(e);
+      });
+
+      inst.on("done",function(e){
+        d.resolve(e);
+      });
+
+      inst.on("fail",function(e){
+        d.reject(e);
+      });
+
+      return d.promise;
+   };
+
     function images() {
         return images;
     }
@@ -5016,6 +6354,681 @@ define('skylark-utils/images',[
     });
 
     return skylark.images = images;
+});
+
+define('skylark-utils/models',[
+    "./skylark",
+    "./langx",
+    "./ajax"
+], function(skylark,langx,ajax) {
+
+  // Map from CRUD to HTTP for our default `Backbone.sync` implementation.
+  var methodMap = {
+    'create': 'POST',
+    'update': 'PUT',
+    'patch': 'PATCH',
+    'delete': 'DELETE',
+    'read': 'GET'
+  };
+  
+
+  var sync = function(method, entity, options) {
+    var type = methodMap[method];
+
+    // Default options, unless specified.
+    langx.defaults(options || (options = {}), {
+      emulateHTTP: models.emulateHTTP,
+      emulateJSON: models.emulateJSON
+    });
+
+    // Default JSON-request options.
+    var params = {type: type, dataType: 'json'};
+
+    // Ensure that we have a URL.
+    if (!options.url) {
+      params.url = langx.result(entity, 'url') || urlError();
+    }
+
+    // Ensure that we have the appropriate request data.
+    if (options.data == null && entity && (method === 'create' || method === 'update' || method === 'patch')) {
+      params.contentType = 'application/json';
+      params.data = JSON.stringify(options.attrs || entity.toJSON(options));
+    }
+
+    // For older servers, emulate JSON by encoding the request into an HTML-form.
+    if (options.emulateJSON) {
+      params.contentType = 'application/x-www-form-urlencoded';
+      params.data = params.data ? {entity: params.data} : {};
+    }
+
+    // For older servers, emulate HTTP by mimicking the HTTP method with `_method`
+    // And an `X-HTTP-Method-Override` header.
+    if (options.emulateHTTP && (type === 'PUT' || type === 'DELETE' || type === 'PATCH')) {
+      params.type = 'POST';
+      if (options.emulateJSON) params.data._method = type;
+      var beforeSend = options.beforeSend;
+      options.beforeSend = function(xhr) {
+        xhr.setRequestHeader('X-HTTP-Method-Override', type);
+        if (beforeSend) return beforeSend.apply(this, arguments);
+      };
+    }
+
+    // Don't process data on a non-GET request.
+    if (params.type !== 'GET' && !options.emulateJSON) {
+      params.processData = false;
+    }
+
+    // Pass along `textStatus` and `errorThrown` from jQuery.
+    var error = options.error;
+    options.error = function(xhr, textStatus, errorThrown) {
+      options.textStatus = textStatus;
+      options.errorThrown = errorThrown;
+      if (error) error.call(options.context, xhr, textStatus, errorThrown);
+    };
+
+    // Make the request, allowing the user to override any Ajax options.
+    var xhr = options.xhr = ajax(langx.mixin(params, options));
+    entity.trigger('request', entity, xhr, options);
+    return xhr;
+  };
+
+
+  var Entity = langx.Stateful.inherit({
+    sync: function() {
+      return models.sync.apply(this, arguments);
+    },
+
+    // Get the HTML-escaped value of an attribute.
+    //escape: function(attr) {
+    //  return _.escape(this.get(attr));
+    //},
+
+    // Special-cased proxy to underscore's `_.matches` method.
+    matches: function(attrs) {
+      return langx.isMatch(this.attributes,attrs);
+    },
+
+    // Fetch the entity from the server, merging the response with the entity's
+    // local attributes. Any changed attributes will trigger a "change" event.
+    fetch: function(options) {
+      options = langx.mixin({parse: true}, options);
+      var entity = this;
+      var success = options.success;
+      options.success = function(resp) {
+        var serverAttrs = options.parse ? entity.parse(resp, options) : resp;
+        if (!entity.set(serverAttrs, options)) return false;
+        if (success) success.call(options.context, entity, resp, options);
+        entity.trigger('sync', entity, resp, options);
+      };
+      wrapError(this, options);
+      return this.sync('read', this, options);
+    },
+
+    // Set a hash of entity attributes, and sync the entity to the server.
+    // If the server returns an attributes hash that differs, the entity's
+    // state will be `set` again.
+    save: function(key, val, options) {
+      // Handle both `"key", value` and `{key: value}` -style arguments.
+      var attrs;
+      if (key == null || typeof key === 'object') {
+        attrs = key;
+        options = val;
+      } else {
+        (attrs = {})[key] = val;
+      }
+
+      options = langx.mixin({validate: true, parse: true}, options);
+      var wait = options.wait;
+
+      // If we're not waiting and attributes exist, save acts as
+      // `set(attr).save(null, opts)` with validation. Otherwise, check if
+      // the entity will be valid when the attributes, if any, are set.
+      if (attrs && !wait) {
+        if (!this.set(attrs, options)) return false;
+      } else if (!this._validate(attrs, options)) {
+        return false;
+      }
+
+      // After a successful server-side save, the client is (optionally)
+      // updated with the server-side state.
+      var entity = this;
+      var success = options.success;
+      var attributes = this.attributes;
+      options.success = function(resp) {
+        // Ensure attributes are restored during synchronous saves.
+        entity.attributes = attributes;
+        var serverAttrs = options.parse ? entity.parse(resp, options) : resp;
+        if (wait) serverAttrs = langx.mixin({}, attrs, serverAttrs);
+        if (serverAttrs && !entity.set(serverAttrs, options)) return false;
+        if (success) success.call(options.context, entity, resp, options);
+        entity.trigger('sync', entity, resp, options);
+      };
+      wrapError(this, options);
+
+      // Set temporary attributes if `{wait: true}` to properly find new ids.
+      if (attrs && wait) this.attributes = langx.mixin({}, attributes, attrs);
+
+      var method = this.isNew() ? 'create' : (options.patch ? 'patch' : 'update');
+      if (method === 'patch' && !options.attrs) options.attrs = attrs;
+      var xhr = this.sync(method, this, options);
+
+      // Restore attributes.
+      this.attributes = attributes;
+
+      return xhr;
+    },
+
+    // Destroy this entity on the server if it was already persisted.
+    // Optimistically removes the entity from its collection, if it has one.
+    // If `wait: true` is passed, waits for the server to respond before removal.
+    destroy: function(options) {
+      options = options ? langx.clone(options) : {};
+      var entity = this;
+      var success = options.success;
+      var wait = options.wait;
+
+      var destroy = function() {
+        entity.stopListening();
+        entity.trigger('destroy', entity, entity.collection, options);
+      };
+
+      options.success = function(resp) {
+        if (wait) destroy();
+        if (success) success.call(options.context, entity, resp, options);
+        if (!entity.isNew()) entity.trigger('sync', entity, resp, options);
+      };
+
+      var xhr = false;
+      if (this.isNew()) {
+        langx.defer(options.success);
+      } else {
+        wrapError(this, options);
+        xhr = this.sync('delete', this, options);
+      }
+      if (!wait) destroy();
+      return xhr;
+    },
+
+    // Default URL for the entity's representation on the server -- if you're
+    // using Backbone's restful methods, override this to change the endpoint
+    // that will be called.
+    url: function() {
+      var base =
+        langx.result(this, 'urlRoot') ||
+        langx.result(this.collection, 'url') ||
+        urlError();
+      if (this.isNew()) return base;
+      var id = this.get(this.idAttribute);
+      return base.replace(/[^\/]$/, '$&/') + encodeURIComponent(id);
+    },
+
+    // **parse** converts a response into the hash of attributes to be `set` on
+    // the entity. The default implementation is just to pass the response along.
+    parse: function(resp, options) {
+      return resp;
+    }
+  });
+
+  var Collection  = langx.Evented.inherit({
+    "init" : function(entities, options) {
+      options || (options = {});
+      if (options.entity) this.entity = options.entity;
+      if (options.comparator !== void 0) this.comparator = options.comparator;
+      this._reset();
+      if (entities) this.reset(entities, langx.mixin({silent: true}, options));
+    }
+  }); 
+
+  // Default options for `Collection#set`.
+  var setOptions = {add: true, remove: true, merge: true};
+  var addOptions = {add: true, remove: false};
+
+  // Splices `insert` into `array` at index `at`.
+  var splice = function(array, insert, at) {
+    at = Math.min(Math.max(at, 0), array.length);
+    var tail = Array(array.length - at);
+    var length = insert.length;
+    var i;
+    for (i = 0; i < tail.length; i++) tail[i] = array[i + at];
+    for (i = 0; i < length; i++) array[i + at] = insert[i];
+    for (i = 0; i < tail.length; i++) array[i + length + at] = tail[i];
+  };
+
+  // Define the Collection's inheritable methods.
+  Collection.partial({
+
+    // The default entity for a collection is just a **Entity**.
+    // This should be overridden in most cases.
+    entity: Entity,
+
+    // Initialize is an empty function by default. Override it with your own
+    // initialization logic.
+    initialize: function(){},
+
+    // The JSON representation of a Collection is an array of the
+    // entities' attributes.
+    toJSON: function(options) {
+      return this.map(function(entity) { return entity.toJSON(options); });
+    },
+
+    // Proxy `models.sync` by default.
+    sync: function() {
+      return models.sync.apply(this, arguments);
+    },
+
+    // Add a entity, or list of entities to the set. `entities` may be Backbone
+    // Entitys or raw JavaScript objects to be converted to Entitys, or any
+    // combination of the two.
+    add: function(entities, options) {
+      return this.set(entities, langx.mixin({merge: false}, options, addOptions));
+    },
+
+    // Remove a entity, or a list of entities from the set.
+    remove: function(entities, options) {
+      options = langx.mixin({}, options);
+      var singular = !langx.isArray(entities);
+      entities = singular ? [entities] : entities.slice();
+      var removed = this._removeEntitys(entities, options);
+      if (!options.silent && removed.length) {
+        options.changes = {added: [], merged: [], removed: removed};
+        this.trigger('update', this, options);
+      }
+      return singular ? removed[0] : removed;
+    },
+
+    // Update a collection by `set`-ing a new list of entities, adding new ones,
+    // removing entities that are no longer present, and merging entities that
+    // already exist in the collection, as necessary. Similar to **Entity#set**,
+    // the core operation for updating the data contained by the collection.
+    set: function(entities, options) {
+      if (entities == null) return;
+
+      options = langx.mixin({}, setOptions, options);
+      if (options.parse && !this._isEntity(entities)) {
+        entities = this.parse(entities, options) || [];
+      }
+
+      var singular = !langx.isArray(entities);
+      entities = singular ? [entities] : entities.slice();
+
+      var at = options.at;
+      if (at != null) at = +at;
+      if (at > this.length) at = this.length;
+      if (at < 0) at += this.length + 1;
+
+      var set = [];
+      var toAdd = [];
+      var toMerge = [];
+      var toRemove = [];
+      var modelMap = {};
+
+      var add = options.add;
+      var merge = options.merge;
+      var remove = options.remove;
+
+      var sort = false;
+      var sortable = this.comparator && at == null && options.sort !== false;
+      var sortAttr = langx.isString(this.comparator) ? this.comparator : null;
+
+      // Turn bare objects into entity references, and prevent invalid entities
+      // from being added.
+      var entity, i;
+      for (i = 0; i < entities.length; i++) {
+        entity = entities[i];
+
+        // If a duplicate is found, prevent it from being added and
+        // optionally merge it into the existing entity.
+        var existing = this.get(entity);
+        if (existing) {
+          if (merge && entity !== existing) {
+            var attrs = this._isEntity(entity) ? entity.attributes : entity;
+            if (options.parse) attrs = existing.parse(attrs, options);
+            existing.set(attrs, options);
+            toMerge.push(existing);
+            if (sortable && !sort) sort = existing.hasChanged(sortAttr);
+          }
+          if (!modelMap[existing.cid]) {
+            modelMap[existing.cid] = true;
+            set.push(existing);
+          }
+          entities[i] = existing;
+
+        // If this is a new, valid entity, push it to the `toAdd` list.
+        } else if (add) {
+          entity = entities[i] = this._prepareEntity(entity, options);
+          if (entity) {
+            toAdd.push(entity);
+            this._addReference(entity, options);
+            modelMap[entity.cid] = true;
+            set.push(entity);
+          }
+        }
+      }
+
+      // Remove stale entities.
+      if (remove) {
+        for (i = 0; i < this.length; i++) {
+          entity = this.entities[i];
+          if (!modelMap[entity.cid]) toRemove.push(entity);
+        }
+        if (toRemove.length) this._removeEntitys(toRemove, options);
+      }
+
+      // See if sorting is needed, update `length` and splice in new entities.
+      var orderChanged = false;
+      var replace = !sortable && add && remove;
+      if (set.length && replace) {
+        orderChanged = this.length !== set.length || this.entities.some(function(m, index) {
+          return m !== set[index];
+        });
+        this.entities.length = 0;
+        splice(this.entities, set, 0);
+        this.length = this.entities.length;
+      } else if (toAdd.length) {
+        if (sortable) sort = true;
+        splice(this.entities, toAdd, at == null ? this.length : at);
+        this.length = this.entities.length;
+      }
+
+      // Silently sort the collection if appropriate.
+      if (sort) this.sort({silent: true});
+
+      // Unless silenced, it's time to fire all appropriate add/sort/update events.
+      if (!options.silent) {
+        for (i = 0; i < toAdd.length; i++) {
+          if (at != null) options.index = at + i;
+          entity = toAdd[i];
+          entity.trigger('add', entity, this, options);
+        }
+        if (sort || orderChanged) this.trigger('sort', this, options);
+        if (toAdd.length || toRemove.length || toMerge.length) {
+          options.changes = {
+            added: toAdd,
+            removed: toRemove,
+            merged: toMerge
+          };
+          this.trigger('update', this, options);
+        }
+      }
+
+      // Return the added (or merged) entity (or entities).
+      return singular ? entities[0] : entities;
+    },
+
+    // When you have more items than you want to add or remove individually,
+    // you can reset the entire set with a new list of entities, without firing
+    // any granular `add` or `remove` events. Fires `reset` when finished.
+    // Useful for bulk operations and optimizations.
+    reset: function(entities, options) {
+      options = options ? langx.clone(options) : {};
+      for (var i = 0; i < this.entities.length; i++) {
+        this._removeReference(this.entities[i], options);
+      }
+      options.previousEntitys = this.entities;
+      this._reset();
+      entities = this.add(entities, langx.mixin({silent: true}, options));
+      if (!options.silent) this.trigger('reset', this, options);
+      return entities;
+    },
+
+    // Add a entity to the end of the collection.
+    push: function(entity, options) {
+      return this.add(entity, langx.mixin({at: this.length}, options));
+    },
+
+    // Remove a entity from the end of the collection.
+    pop: function(options) {
+      var entity = this.at(this.length - 1);
+      return this.remove(entity, options);
+    },
+
+    // Add a entity to the beginning of the collection.
+    unshift: function(entity, options) {
+      return this.add(entity, langx.mixin({at: 0}, options));
+    },
+
+    // Remove a entity from the beginning of the collection.
+    shift: function(options) {
+      var entity = this.at(0);
+      return this.remove(entity, options);
+    },
+
+    // Slice out a sub-array of entities from the collection.
+    slice: function() {
+      return slice.apply(this.entities, arguments);
+    },
+
+    // Get a entity from the set by id, cid, entity object with id or cid
+    // properties, or an attributes object that is transformed through entityId.
+    get: function(obj) {
+      if (obj == null) return void 0;
+      return this._byId[obj] ||
+        this._byId[this.entityId(obj.attributes || obj)] ||
+        obj.cid && this._byId[obj.cid];
+    },
+
+    // Returns `true` if the entity is in the collection.
+    has: function(obj) {
+      return this.get(obj) != null;
+    },
+
+    // Get the entity at the given index.
+    at: function(index) {
+      if (index < 0) index += this.length;
+      return this.entities[index];
+    },
+
+    // Return entities with matching attributes. Useful for simple cases of
+    // `filter`.
+    where: function(attrs, first) {
+      return this[first ? 'find' : 'filter'](attrs);
+    },
+
+    // Return the first entity with matching attributes. Useful for simple cases
+    // of `find`.
+    findWhere: function(attrs) {
+      return this.where(attrs, true);
+    },
+
+    // Force the collection to re-sort itself. You don't need to call this under
+    // normal circumstances, as the set will maintain sort order as each item
+    // is added.
+    sort: function(options) {
+      var comparator = this.comparator;
+      if (!comparator) throw new Error('Cannot sort a set without a comparator');
+      options || (options = {});
+
+      var length = comparator.length;
+      if (langx.isFunction(comparator)) comparator = langx.proxy(comparator, this);
+
+      // Run sort based on type of `comparator`.
+      if (length === 1 || langx.isString(comparator)) {
+        this.entities = this.sortBy(comparator);
+      } else {
+        this.entities.sort(comparator);
+      }
+      if (!options.silent) this.trigger('sort', this, options);
+      return this;
+    },
+
+    // Pluck an attribute from each entity in the collection.
+    pluck: function(attr) {
+      return this.map(attr + '');
+    },
+
+    // Fetch the default set of entities for this collection, resetting the
+    // collection when they arrive. If `reset: true` is passed, the response
+    // data will be passed through the `reset` method instead of `set`.
+    fetch: function(options) {
+      options = langx.mixin({parse: true}, options);
+      var success = options.success;
+      var collection = this;
+      options.success = function(resp) {
+        var method = options.reset ? 'reset' : 'set';
+        collection[method](resp, options);
+        if (success) success.call(options.context, collection, resp, options);
+        collection.trigger('sync', collection, resp, options);
+      };
+      wrapError(this, options);
+      return this.sync('read', this, options);
+    },
+
+    // Create a new instance of a entity in this collection. Add the entity to the
+    // collection immediately, unless `wait: true` is passed, in which case we
+    // wait for the server to agree.
+    create: function(entity, options) {
+      options = options ? langx.clone(options) : {};
+      var wait = options.wait;
+      entity = this._prepareEntity(entity, options);
+      if (!entity) return false;
+      if (!wait) this.add(entity, options);
+      var collection = this;
+      var success = options.success;
+      options.success = function(m, resp, callbackOpts) {
+        if (wait) collection.add(m, callbackOpts);
+        if (success) success.call(callbackOpts.context, m, resp, callbackOpts);
+      };
+      entity.save(null, options);
+      return entity;
+    },
+
+    // **parse** converts a response into a list of entities to be added to the
+    // collection. The default implementation is just to pass it through.
+    parse: function(resp, options) {
+      return resp;
+    },
+
+    // Create a new collection with an identical list of entities as this one.
+    clone: function() {
+      return new this.constructor(this.entities, {
+        entity: this.entity,
+        comparator: this.comparator
+      });
+    },
+
+    // Define how to uniquely identify entities in the collection.
+    entityId: function(attrs) {
+      return attrs[this.entity.prototype.idAttribute || 'id'];
+    },
+
+    // Private method to reset all internal state. Called when the collection
+    // is first initialized or reset.
+    _reset: function() {
+      this.length = 0;
+      this.entities = [];
+      this._byId  = {};
+    },
+
+    // Prepare a hash of attributes (or other entity) to be added to this
+    // collection.
+    _prepareEntity: function(attrs, options) {
+      if (this._isEntity(attrs)) {
+        if (!attrs.collection) attrs.collection = this;
+        return attrs;
+      }
+      options = options ? langx.clone(options) : {};
+      options.collection = this;
+      var entity = new this.entity(attrs, options);
+      if (!entity.validationError) return entity;
+      this.trigger('invalid', this, entity.validationError, options);
+      return false;
+    },
+
+    // Internal method called by both remove and set.
+    _removeEntitys: function(entities, options) {
+      var removed = [];
+      for (var i = 0; i < entities.length; i++) {
+        var entity = this.get(entities[i]);
+        if (!entity) continue;
+
+        var index = this.indexOf(entity);
+        this.entities.splice(index, 1);
+        this.length--;
+
+        // Remove references before triggering 'remove' event to prevent an
+        // infinite loop. #3693
+        delete this._byId[entity.cid];
+        var id = this.entityId(entity.attributes);
+        if (id != null) delete this._byId[id];
+
+        if (!options.silent) {
+          options.index = index;
+          entity.trigger('remove', entity, this, options);
+        }
+
+        removed.push(entity);
+        this._removeReference(entity, options);
+      }
+      return removed;
+    },
+
+    // Method for checking whether an object should be considered a entity for
+    // the purposes of adding to the collection.
+    _isEntity: function(entity) {
+      return entity instanceof Entity;
+    },
+
+    // Internal method to create a entity's ties to a collection.
+    _addReference: function(entity, options) {
+      this._byId[entity.cid] = entity;
+      var id = this.entityId(entity.attributes);
+      if (id != null) this._byId[id] = entity;
+      entity.on('all', this._onEntityEvent, this);
+    },
+
+    // Internal method to sever a entity's ties to a collection.
+    _removeReference: function(entity, options) {
+      delete this._byId[entity.cid];
+      var id = this.entityId(entity.attributes);
+      if (id != null) delete this._byId[id];
+      if (this === entity.collection) delete entity.collection;
+      entity.off('all', this._onEntityEvent, this);
+    },
+
+    // Internal method called every time a entity in the set fires an event.
+    // Sets need to update their indexes when entities change ids. All other
+    // events simply proxy through. "add" and "remove" events that originate
+    // in other collections are ignored.
+    _onEntityEvent: function(event, entity, collection, options) {
+      if (entity) {
+        if ((event === 'add' || event === 'remove') && collection !== this) return;
+        if (event === 'destroy') this.remove(entity, options);
+        if (event === 'change') {
+          var prevId = this.entityId(entity.previousAttributes());
+          var id = this.entityId(entity.attributes);
+          if (prevId !== id) {
+            if (prevId != null) delete this._byId[prevId];
+            if (id != null) this._byId[id] = entity;
+          }
+        }
+      }
+      this.trigger.apply(this, arguments);
+    }
+
+  });
+
+    function models() {
+        return models;
+    }
+
+    langx.mixin(models, {
+        // set a `X-Http-Method-Override` header.
+        emulateHTTP : false,
+
+        // Turn on `emulateJSON` to support legacy servers that can't deal with direct
+        // `application/json` requests ... this will encode the body as
+        // `application/x-www-form-urlencoded` instead and will send the model in a
+        // form param named `model`.
+        emulateJSON : false,
+
+        sync : sync,
+
+        Entity: Entity,
+        Collection : Collection
+    });
+
+
+    return skylark.models = models;
 });
 
 define('skylark-utils/mover',[
@@ -5352,6 +7365,7 @@ define('skylark-utils/mover',[
 
         params = params || {};
         var handleEl = params.handle || elm,
+            auto = params.auto === false ? false : true,
             constraints = params.constraints,
             overlayDiv,
             doc = params.document || document,
@@ -5415,26 +7429,29 @@ define('skylark-utils/mover',[
                 e.deltaX = e.screenX - startX;
                 e.deltaY = e.screenY - startY;
 
-                var l = originalPos.left + e.deltaX,
-                    t = originalPos.top + e.deltaY;
-                if (constraints) {
+                if (auto) {
+                    var l = originalPos.left + e.deltaX,
+                        t = originalPos.top + e.deltaY;
+                    if (constraints) {
 
-                    if (l < constraints.minX) {
-                        l = constraints.minX;
-                    }
+                        if (l < constraints.minX) {
+                            l = constraints.minX;
+                        }
 
-                    if (l > constraints.maxX) {
-                        l = constraints.maxX;
-                    }
+                        if (l > constraints.maxX) {
+                            l = constraints.maxX;
+                        }
 
-                    if (t < constraints.minY) {
-                        t = constraints.minY;
-                    }
+                        if (t < constraints.minY) {
+                            t = constraints.minY;
+                        }
 
-                    if (t > constraints.maxY) {
-                        t = constraints.maxY;
+                        if (t > constraints.maxY) {
+                            t = constraints.maxY;
+                        }
                     }
                 }
+
                 geom.relativePosition(elm, {
                     left: l,
                     top: t
@@ -5484,819 +7501,127 @@ define('skylark-utils/mover',[
     return skylark.mover = mover;
 });
 
-define('skylark-utils/query',[
+define('skylark-utils/resizer',[
     "./skylark",
     "./langx",
     "./noder",
     "./datax",
-    "./eventer",
     "./finder",
     "./geom",
+    "./eventer",
+    "./mover",
     "./styler",
-    "./fx"
-], function(skylark, langx, noder, datax, eventer, finder, geom, styler, fx) {
-    var some = Array.prototype.some,
-        push = Array.prototype.push,
-        every = Array.prototype.every,
-        concat = Array.prototype.concat,
-        slice = Array.prototype.slice,
-        map = Array.prototype.map,
-        filter = Array.prototype.filter,
-        forEach = Array.prototype.forEach,
-        isQ;
-
-    var rquickExpr = /^(?:[^#<]*(<[\w\W]+>)[^>]*$|#([\w\-]*)$)/;
-
-    var funcArg = langx.funcArg,
-        isArrayLike = langx.isArrayLike,
-        isString = langx.isString,
-        uniq = langx.uniq,
-        isFunction = langx.isFunction;
-
-    var type = langx.type,
-        isArray = langx.isArray,
-
-        isWindow = langx.isWindow,
-
-        isDocument = langx.isDocument,
-
-        isObject = langx.isObject,
-
-        isPlainObject = langx.isPlainObject,
-
-        compact = langx.compact,
-
-        flatten = langx.flatten,
-
-        camelCase = langx.camelCase,
-
-        dasherize = langx.dasherize,
-        children = finder.children;
-
-    function wrapper_map(func, context) {
-        return function() {
-            var self = this,
-                params = slice.call(arguments);
-            var result = $.map(self, function(elem, idx) {
-                return func.apply(context, [elem].concat(params));
-            });
-            return $(uniq(result));
-        }
-    }
-
-    function wrapper_selector(func, context, last) {
-        return function(selector) {
-            var self = this,
-                params = slice.call(arguments);
-            var result = this.map(function(idx, elem) {
-                // if (elem.nodeType == 1) {
-                if (elem.querySelector) {
-                    return func.apply(context, last ? [elem] : [elem, selector]);
-                }
-            });
-            if (last && selector) {
-                return result.filter(selector);
-            } else {
-                return result;
-            }
-        }
-    }
-
-    function wrapper_selector_until(func, context, last) {
-        return function(util, selector) {
-            var self = this,
-                params = slice.call(arguments);
-            if (selector === undefined) {
-                selector = util;
-                util = undefined;
-            }
-            var result = this.map(function(idx, elem) {
-                // if (elem.nodeType == 1) {
-                if (elem.querySelector) {
-                    return func.apply(context, last ? [elem, util] : [elem, selector, util]);
-                }
-            });
-            if (last && selector) {
-                return result.filter(selector);
-            } else {
-                return result;
-            }
-        }
-    }
+    "./query"
+],function(skylark, langx,noder,datax,finder,geom,eventer,mover,styler,$){
+    var on = eventer.on,
+        off = eventer.off,
+        attr = datax.attr,
+        removeAttr = datax.removeAttr,
+        offset = geom.pagePosition,
+        addClass = styler.addClass,
+        height = geom.height,
+        some = Array.prototype.some,
+        map = Array.prototype.map;
 
 
-    function wrapper_every_act(func, context) {
-        return function() {
-            var self = this,
-                params = slice.call(arguments);
-            this.each(function(idx) {
-                func.apply(context, [this].concat(params));
-            });
-            return self;
-        }
-    }
 
-    function wrapper_every_act_firstArgFunc(func, context, oldValueFunc) {
-        return function(arg1) {
-            var self = this,
-                params = slice.call(arguments);
-            forEach.call(self, function(elem, idx) {
-                var newArg1 = funcArg(elem, arg1, idx, oldValueFunc(elem));
-                func.apply(context, [elem, arg1].concat(params.slice(1)));
-            });
-            return self;
-        }
-    }
+    function resizable(elm, params) {
 
-    function wrapper_some_chk(func, context) {
-        return function() {
-            var self = this,
-                params = slice.call(arguments);
-            return some.call(self, function(elem) {
-                return func.apply(context, [elem].concat(params));
-            });
-        }
-    }
+        var defaultOptions = {
+            // prevents browser level actions like forward back gestures
+            touchActionNone: true,
 
-    function wrapper_name_value(func, context, oldValueFunc) {
-        return function(name, value) {
-            var self = this,
-                params = slice.call(arguments);
-
-            if (langx.isPlainObject(name) || langx.isDefined(value)) {
-                forEach.call(self, function(elem, idx) {
-                    var newValue;
-                    if (oldValueFunc) {
-                        newValue = funcArg(elem, value, idx, oldValueFunc(elem, name));
-                    } else {
-                        newValue = value
-                    }
-                    func.apply(context, [elem].concat(params));
-                });
-                return self;
-            } else {
-                if (self[0]) {
-                    return func.apply(context, [self[0], name]);
-                }
-            }
-
-        }
-    }
-
-    function wrapper_value(func, context, oldValueFunc) {
-        return function(value) {
-            var self = this;
-
-            if (langx.isDefined(value)) {
-                forEach.call(self, function(elem, idx) {
-                    var newValue;
-                    if (oldValueFunc) {
-                        newValue = funcArg(elem, value, idx, oldValueFunc(elem));
-                    } else {
-                        newValue = value
-                    }
-                    func.apply(context, [elem, newValue]);
-                });
-                return self;
-            } else {
-                if (self[0]) {
-                    return func.apply(context, [self[0]]);
-                }
-            }
-
-        }
-    }
-
-    var NodeList = langx.klass({
-        klassName: "SkNodeList",
-        init: function(selector, context) {
-            var self = this,
-                match, nodes, node, props;
-
-            if (selector) {
-                self.context = context = context || noder.doc();
-
-                if (isString(selector)) {
-                    // a html string or a css selector is expected
-                    self.selector = selector;
-
-                    if (selector.charAt(0) === "<" && selector.charAt(selector.length - 1) === ">" && selector.length >= 3) {
-                        match = [null, selector, null];
-                    } else {
-                        match = rquickExpr.exec(selector);
-                    }
-
-                    if (match) {
-                        if (match[1]) {
-                            // if selector is html
-                            nodes = noder.createFragment(selector);
-
-                            if (langx.isPlainObject(context)) {
-                                props = context;
-                            }
-
-                        } else {
-                            node = finder.byId(match[2], noder.ownerDoc(context));
-
-                            if (node) {
-                                // if selector is id
-                                nodes = [node];
-                            }
-
-                        }
-                    } else {
-                        // if selector is css selector
-                        nodes = finder.descendants(context, selector);
-                    }
-                } else {
-                    if (isArray(selector)) {
-                        // a dom node array is expected
-                        nodes = selector;
-                    } else {
-                        // a dom node is expected
-                        nodes = [selector];
-                    }
-                    //self.add(selector, false);
-                }
-            }
-
-
-            if (nodes) {
-
-                push.apply(self, nodes);
-
-                if (props) {
-                    for ( var name  in props ) {
-                        // Properties of context are called as methods if possible
-                        if ( langx.isFunction( this[ name ] ) ) {
-                            this[ name ]( props[ name ] );
-                        } else {
-                            this.attr( name, props[ name ] );
-                        }
-                    }
-                }
-            }
-
-            return self;
-        }
-    }, Array);
-
-    var query = (function() {
-        isQ = function(object) {
-            return object instanceof NodeList;
-        }
-        init = function(selector, context) {
-            return new NodeList(selector, context);
-        }
-
-        var $ = function(selector, context) {
-            if (isFunction(selector)) {
-                eventer.ready(function() {
-                    selector($);
-                });
-            } else if (isQ(selector)) {
-                return selector;
-            } else {
-                if (context && isQ(context) && isString(selector)) {
-                    return context.find(selector);
-                }
-                return init(selector, context);
+            direction : {
+                top: false, 
+                left: false, 
+                right: true, 
+                bottom: true
+            },
+            // selector for handle that starts dragging
+            handle : {
+                border : true,
+                grabber: "",
+                selector: true
             }
         };
 
-        $.fn = NodeList.prototype;
-        langx.mixin($.fn, {
-            // `map` and `slice` in the jQuery API work differently
-            // from their array counterparts
-
-            map: function(fn) {
-                return $(uniq(langx.map(this, function(el, i) {
-                    return fn.call(el, i, el)
-                })));
-            },
-
-            slice: function() {
-                return $(slice.apply(this, arguments))
-            },
-
-            get: function(idx) {
-                return idx === undefined ? slice.call(this) : this[idx >= 0 ? idx : idx + this.length]
-            },
-
-            toArray: function() {
-                return slice.call(this);
-            },
-
-            size: function() {
-                return this.length
-            },
-
-            remove: wrapper_every_act(noder.remove, noder),
-
-            each: function(callback) {
-                langx.each(this, callback);
-                return this;
-            },
-
-            filter: function(selector) {
-                if (isFunction(selector)) return this.not(this.not(selector))
-                return $(filter.call(this, function(element) {
-                    return finder.matches(element, selector)
-                }))
-            },
-
-            add: function(selector, context) {
-                return $(uniq(this.toArray().concat($(selector, context).toArray())));
-            },
-
-            is: function(selector) {
-                return this.length > 0 && finder.matches(this[0], selector)
-            },
-
-            not: function(selector) {
-                var nodes = []
-                if (isFunction(selector) && selector.call !== undefined)
-                    this.each(function(idx) {
-                        if (!selector.call(this, idx)) nodes.push(this)
-                    })
-                else {
-                    var excludes = typeof selector == 'string' ? this.filter(selector) :
-                        (isArrayLike(selector) && isFunction(selector.item)) ? slice.call(selector) : $(selector)
-                    this.forEach(function(el) {
-                        if (excludes.indexOf(el) < 0) nodes.push(el)
-                    })
-                }
-                return $(nodes)
-            },
-
-            has: function(selector) {
-                return this.filter(function() {
-                    return isObject(selector) ?
-                        noder.contains(this, selector) :
-                        $(this).find(selector).size()
-                })
-            },
-
-            eq: function(idx) {
-                return idx === -1 ? this.slice(idx) : this.slice(idx, +idx + 1);
-            },
-
-            first: function() {
-                return this.eq(0);
-            },
-
-            last: function() {
-                return this.eq(-1);
-            },
-
-            find: wrapper_selector(finder.descendants, finder),
-
-            closest: wrapper_selector(finder.closest, finder),
-            /*
-                        closest: function(selector, context) {
-                            var node = this[0],
-                                collection = false
-                            if (typeof selector == 'object') collection = $(selector)
-                            while (node && !(collection ? collection.indexOf(node) >= 0 : finder.matches(node, selector)))
-                                node = node !== context && !isDocument(node) && node.parentNode
-                            return $(node)
-                        },
-            */
-
-
-            parents: wrapper_selector(finder.ancestors, finder),
-
-            parentsUntil: wrapper_selector_until(finder.ancestors, finder),
-
-
-            parent: wrapper_selector(finder.parent, finder),
-
-            children: wrapper_selector(finder.children, finder),
-
-            contents: wrapper_map(noder.contents, noder),
-
-            empty: wrapper_every_act(noder.empty, noder),
-
-            // `pluck` is borrowed from Prototype.js
-            pluck: function(property) {
-                return langx.map(this, function(el) {
-                    return el[property]
-                })
-            },
-
-            show: wrapper_every_act(fx.show, fx),
-
-            replaceWith: function(newContent) {
-                return this.before(newContent).remove();
-            },
-
-            wrap: function(structure) {
-                var func = isFunction(structure)
-                if (this[0] && !func)
-                    var dom = $(structure).get(0),
-                        clone = dom.parentNode || this.length > 1
-
-                return this.each(function(index) {
-                    $(this).wrapAll(
-                        func ? structure.call(this, index) :
-                        clone ? dom.cloneNode(true) : dom
-                    )
-                })
-            },
-
-            wrapAll: function(wrappingElement) {
-                if (this[0]) {
-                    $(this[0]).before(wrappingElement = $(wrappingElement));
-                    var children;
-                    // drill down to the inmost element
-                    while ((children = wrappingElement.children()).length) {
-                        wrappingElement = children.first();
-                    }
-                    $(wrappingElement).append(this);
-                }
-                return this
-            },
-
-            wrapInner: function(wrappingElement) {
-                var func = isFunction(wrappingElement)
-                return this.each(function(index) {
-                    var self = $(this),
-                        contents = self.contents(),
-                        dom = func ? wrappingElement.call(this, index) : wrappingElement
-                    contents.length ? contents.wrapAll(dom) : self.append(dom)
-                })
-            },
-
-            unwrap: function(selector) {
-                if (this.parent().children().length === 0) {
-                    // remove dom without text
-                    this.parent(selector).not("body").each(function() {
-                        $(this).replaceWith(document.createTextNode(this.childNodes[0].textContent));
-                    });
-                } else {
-                    this.parent().each(function() {
-                        $(this).replaceWith($(this).children())
-                    });
-                }
-                return this
-            },
-
-            clone: function() {
-                return this.map(function() {
-                    return this.cloneNode(true)
-                })
-            },
-
-            hide: wrapper_every_act(fx.hide, fx),
-
-            toggle: function(setting) {
-                return this.each(function() {
-                    var el = $(this);
-                    (setting === undefined ? el.css("display") == "none" : setting) ? el.show(): el.hide()
-                })
-            },
-
-            prev: function(selector) {
-                return $(this.pluck('previousElementSibling')).filter(selector || '*')
-            },
-
-            prevAll: wrapper_selector(finder.previousSibling, finder),
-
-            next: function(selector) {
-                return $(this.pluck('nextElementSibling')).filter(selector || '*')
-            },
-
-            nextAll: wrapper_selector(finder.nextSiblings, finder),
-
-            siblings: wrapper_selector(finder.siblings, finder),
-
-            html: wrapper_value(noder.html, noder, noder.html),
-
-            text: wrapper_value(datax.text, datax, datax.text),
-
-            attr: wrapper_name_value(datax.attr, datax, datax.attr),
-
-            removeAttr: wrapper_every_act(datax.removeAttr, datax),
-
-            prop: wrapper_name_value(datax.prop, datax, datax.prop),
-
-            removeProp: wrapper_every_act(datax.removeProp, datax),
-
-            data: wrapper_name_value(datax.data, datax, datax.data),
-
-            removeData: wrapper_every_act(datax.removeData, datax),
-
-            val: wrapper_value(datax.val, datax, datax.val),
-
-            offset: wrapper_value(geom.pageRect, geom, geom.pageRect),
-
-            style: wrapper_name_value(styler.css, styler),
-
-            css: wrapper_name_value(styler.css, styler),
-
-            index: function(elem) {
-                if (elem) {
-                    return this.indexOf($(elem)[0]);
-                } else {
-                    return this.parent().children().indexOf(this[0]);
-                }
-            },
-
-            //hasClass(name)
-            hasClass: wrapper_some_chk(styler.hasClass, styler),
-
-            //addClass(name)
-            addClass: wrapper_every_act_firstArgFunc(styler.addClass, styler, styler.className),
-
-            //removeClass(name)
-            removeClass: wrapper_every_act_firstArgFunc(styler.removeClass, styler, styler.className),
-
-            //toogleClass(name,when)
-            toggleClass: wrapper_every_act_firstArgFunc(styler.toggleClass, styler, styler.className),
-
-            scrollTop: wrapper_value(geom.scrollTop, geom),
-
-            scrollLeft: wrapper_value(geom.scrollLeft, geom),
-
-            position: function() {
-                if (!this.length) return
-
-                var elem = this[0];
-
-                return geom.relativePosition(elem);
-            },
-
-            offsetParent: wrapper_map(geom.offsetParent, geom),
-        });
-
-        // for now
-        $.fn.detach = $.fn.remove;
-
-
-        $.fn.size = wrapper_value(geom.size, geom);
-
-        $.fn.width = wrapper_value(geom.width, geom, geom.width);
-
-        $.fn.height = wrapper_value(geom.height, geom, geom.height);
-
-        ['width', 'height'].forEach(function(dimension) {
-            var offset, Dimension = dimension.replace(/./, function(m) {
-                return m[0].toUpperCase()
-            });
-
-            $.fn['outer' + Dimension] = function(margin, value) {
-                if (arguments.length) {
-                    if (typeof margin !== 'boolean') {
-                        value = margin;
-                        margin = false;
-                    }
-                } else {
-                    margin = false;
-                    value = undefined;
-                }
-
-                if (value === undefined) {
-                    var el = this[0];
-                    if (!el) {
-                        return undefined;
-                    }
-                    var cb = geom.size(el);
-                    if (margin) {
-                        var me = geom.marginExtents(el);
-                        cb.width = cb.width + me.left + me.right;
-                        cb.height = cb.height + me.top + me.bottom;
-                    }
-                    return dimension === "width" ? cb.width : cb.height;
-                } else {
-                    return this.each(function(idx, el) {
-                        var mb = {};
-                        var me = geom.marginExtents(el);
-                        if (dimension === "width") {
-                            mb.width = value;
-                            if (margin) {
-                                mb.width = mb.width - me.left - me.right
-                            }
-                        } else {
-                            mb.height = value;
-                            if (margin) {
-                                mb.height = mb.height - me.top - me.bottom;
-                            }
-                        }
-                        geom.size(el, mb);
-                    })
-
-                }
-            };
-        })
-
-        $.fn.innerWidth = wrapper_value(geom.width, geom, geom.width);
-
-        $.fn.innerHeight = wrapper_value(geom.height, geom, geom.height);
-
-
-        var traverseNode = noder.traverse;
-
-        function wrapper_node_operation(func, context, oldValueFunc) {
-            return function(html) {
-                var argType, nodes = langx.map(arguments, function(arg) {
-                    argType = type(arg)
-                    return argType == "object" || argType == "array" || arg == null ?
-                        arg : noder.createFragment(arg)
-                });
-                if (nodes.length < 1) {
-                    return this
-                }
-                this.each(function(idx) {
-                    func.apply(context, [this, nodes, idx > 0]);
-                });
-                return this;
-            }
+        params = params || {};
+        var handle = params.handle || {},
+            handleEl,
+            direction = params.direction || defaultOptions.direction,
+            startSize,
+            currentSize,
+            startedCallback = params.started,
+            movingCallback = params.moving,
+            stoppedCallback = params.stopped;
+
+        if (langx.isString(handle)) {
+            handleEl = finder.find(elm,handle);
+        } else if (langx.isHtmlNode(handle)) {
+            handleEl = handle;
         }
+        mover.movable(handleEl,{
+            auto : false,
+            started : function(e) {
+                startSize = geom.size(elm);
+                if (startedCallback) {
+                    startedCallback(e);
+                }
+            },
+            moving : function(e) {
+                currentSize = {
+                };
+                if (direction.left || direction.right) {
+                    currentSize.width = startSize.width + e.deltaX;
+                } else {
+                    currentSize.width = startSize.width;
+                }
 
+                if (direction.top || direction.bottom) {
+                    currentSize.height = startSize.height + e.deltaY;
+                } else {
+                    currentSize.height = startSize.height;
+                }
 
-        $.fn.after = wrapper_node_operation(noder.after, noder);
+                geom.size(elm,currentSize);
 
-        $.fn.prepend = wrapper_node_operation(noder.prepend, noder);
-
-        $.fn.before = wrapper_node_operation(noder.before, noder);
-
-        $.fn.append = wrapper_node_operation(noder.append, noder);
-
-        $.fn.insertAfter = function(html) {
-            $(html).after(this);
-            return this;
-        };
-
-        $.fn.insertBefore = function(html) {
-            $(html).before(this);
-            return this;
-        };
-
-        $.fn.appendTo = function(html) {
-            $(html).append(this);
-            return this;
-        };
-
-        $.fn.prependTo = function(html) {
-            $(html).prepend(this);
-            return this;
-        };
-
-        return $
-    })();
-
-    (function($) {
-        $.fn.on = wrapper_every_act(eventer.on, eventer);
-
-        $.fn.off = wrapper_every_act(eventer.off, eventer);
-
-        $.fn.trigger = wrapper_every_act(eventer.trigger, eventer);
-
-
-        ('focusin focusout focus blur load resize scroll unload click dblclick ' +
-            'mousedown mouseup mousemove mouseover mouseout mouseenter mouseleave ' +
-            'change select keydown keypress keyup error').split(' ').forEach(function(event) {
-            $.fn[event] = function(data, callback) {
-                return (0 in arguments) ?
-                    this.on(event, data, callback) :
-                    this.trigger(event)
+                if (movingCallback) {
+                    movingCallback(e);
+                }
+            },
+            stopped: function(e) {
+                if (stoppedCallback) {
+                    stoppedCallback(e);
+                }                
             }
         });
-
-
-        $.fn.one = function(event, selector, data, callback) {
-            if (!langx.isString(selector) && !langx.isFunction(callback)) {
-                callback = data;
-                data = selector;
-                selector = null;
-            }
-
-            if (langx.isFunction(data)) {
-                callback = data;
-                data = null;
-            }
-
-            return this.on(event, selector, data, callback, 1)
-        };
-
-        $.fn.animate = wrapper_every_act(fx.animate, fx);
-
-        $.fn.show = wrapper_every_act(fx.show, fx);
-        $.fn.hide = wrapper_every_act(fx.hide, fx);
-        $.fn.toogle = wrapper_every_act(fx.toogle, fx);
-        $.fn.fadeTo = wrapper_every_act(fx.fadeTo, fx);
-        $.fn.fadeIn = wrapper_every_act(fx.fadeIn, fx);
-        $.fn.fadeOut = wrapper_every_act(fx.fadeOut, fx);
-        $.fn.fadeToggle = wrapper_every_act(fx.fadeToggle, fx);
-
-        $.fn.slideDown = wrapper_every_act(fx.slideDown, fx);
-        $.fn.slideToggle = wrapper_every_act(fx.slideToggle, fx);
-        $.fn.slideUp = wrapper_every_act(fx.slideUp, fx);
-    })(query);
-
-
-    (function($) {
-        $.fn.end = function() {
-            return this.prevObject || $()
-        }
-
-        $.fn.andSelf = function() {
-            return this.add(this.prevObject || $())
-        }
-
-        $.fn.addBack = function(selector) {
-            if (this.prevObject) {
-                if (selector) {
-                    return this.add(this.prevObject.filter(selector));
-                } else {
-                    return this.add(this.prevObject);
-                }
-            } else {
-                return this;
+        
+        return {
+            // destroys the dragger.
+            remove: function() {
+                eventer.off(handleEl);
             }
         }
 
-        'filter,add,not,eq,first,last,find,closest,parents,parent,children,siblings'.split(',').forEach(function(property) {
-            var fn = $.fn[property]
-            $.fn[property] = function() {
-                var ret = fn.apply(this, arguments)
-                ret.prevObject = this
-                return ret
-            }
-        })
-    })(query);
+    }
 
+    $.fn.resizable = function(params) {
+        this.each(function(el){
+            resizable(this,params);
+        });
+    };
 
-    (function($) {
-        $.fn.query = $.fn.find;
+    function resizer(){
+      return resizer;
+    }
 
-        $.fn.place = function(refNode, position) {
-            // summary:
-            //      places elements of this node list relative to the first element matched
-            //      by queryOrNode. Returns the original NodeList. See: `dojo/dom-construct.place`
-            // queryOrNode:
-            //      may be a string representing any valid CSS3 selector or a DOM node.
-            //      In the selector case, only the first matching element will be used
-            //      for relative positioning.
-            // position:
-            //      can be one of:
-            //
-            //      -   "last" (default)
-            //      -   "first"
-            //      -   "before"
-            //      -   "after"
-            //      -   "only"
-            //      -   "replace"
-            //
-            //      or an offset in the childNodes
-            if (langx.isString(refNode)) {
-                refNode = finder.descendant(refNode);
-            } else if (isQ(refNode)) {
-                refNode = refNode[0];
-            }
-            return this.each(function(i, node) {
-                switch (position) {
-                    case "before":
-                        noder.before(refNode, node);
-                        break;
-                    case "after":
-                        noder.after(refNode, node);
-                        break;
-                    case "replace":
-                        noder.replace(refNode, node);
-                        break;
-                    case "only":
-                        noder.empty(refNode);
-                        noder.append(refNode, node);
-                        break;
-                    case "first":
-                        noder.prepend(refNode, node);
-                        break;
-                        // else fallthrough...
-                    default: // aka: last
-                        noder.append(refNode, node);
-                }
-            });
-        };
+    langx.mixin(resizer, {
+        resizable: resizable
+    });
 
-        $.fn.addContent = function(content, position) {
-            if (content.template) {
-                content = langx.substitute(content.template, content);
-            }
-            return this.append(content);
-        };
-
-        $.fn.replaceClass = function(newClass, oldClass) {
-            this.removeClass(oldClass);
-            this.addClass(newClass);
-            return this;
-        };
-
-    })(query);
-
-
-    return skylark.query = query;
+    return skylark.resizer = resizer;
 });
+
 define('skylark-utils/scripter',[
     "./skylark",
     "./langx",
@@ -6384,6 +7709,233 @@ define('skylark-utils/scripter',[
     });
 
     return skylark.scripter = scripter;
+});
+
+define('skylark-utils/selector',[
+    "./skylark",
+    "./langx",
+    "./noder",
+    "./datax",
+    "./geom",
+    "./eventer",
+    "./mover",
+    "./styler",
+    "./query"
+],function(skylark, langx,noder,datax,geom,eventer,mover,styler,$){
+    var on = eventer.on,
+        off = eventer.off,
+        attr = datax.attr,
+        removeAttr = datax.removeAttr,
+        offset = geom.pagePosition,
+        addClass = styler.addClass,
+        height = geom.height,
+        some = Array.prototype.some,
+        map = Array.prototype.map;
+
+
+
+    var options = {
+        // Function which returns custom X and Y coordinates of the mouse
+            mousePosFetcher: null,
+            // Indicates custom target updating strategy
+            updateTarget: null,
+            // Function which gets HTMLElement as an arg and returns it relative position
+            ratioDefault: 0,
+            posFetcher: null,
+
+            started: null,
+            moving: null,
+            ended: null,
+
+            // Resize unit step
+            step: 1,
+
+            // Minimum dimension
+            minDim: 32,
+
+            // Maximum dimension
+            maxDim: '',
+
+            // Unit used for height resizing
+            unitHeight: 'px',
+
+            // Unit used for width resizing
+            unitWidth: 'px',
+
+            // The key used for height resizing
+            keyHeight: 'height',
+
+            // The key used for width resizing
+            keyWidth: 'width',
+
+            // If true, will override unitHeight and unitWidth, on start, with units
+            // from the current focused element (currently used only in SelectComponent)
+            currentUnit: 1,
+
+            // Handlers
+            direction : {
+                tl: 1, // Top left
+                tc: 1, // Top center
+                tr: 1, // Top right
+                cl: 1, // Center left
+                cr: 1, // Center right
+                bl: 1, // Bottom left
+                bc: 1, // Bottom center
+                br: 1 // Bottom right,
+            },
+            handler : {
+                border : true,
+                grabber: "",
+                selector: true
+            }
+        } ,
+
+
+        currentPos,
+        startRect,
+        currentRect,
+        delta;
+
+    var classPrefix = "",
+        container,
+        handlers,
+        target,
+        direction ={
+            left : true,
+            right : true,
+            top : true,
+            bottom : true
+        },
+        startSize,
+        currentSize,
+
+        startedCallback,
+        resizingCallback,
+        stoppedCallback;
+
+
+
+    function init (options) {
+        options = options || {};
+        classPrefix = options.classPrefix || "";
+
+        var appendTo = options.appendTo || document.body;
+        container = noder.createElement('div',{
+            "class" : classPrefix + 'resizer-c'
+        });
+        noder.append(appendTo,container);
+
+
+        // Create handlers
+        handlers = {};
+        ['tl', 'tc', 'tr', 'cl', 'cr', 'bl', 'bc', 'br'].forEach(function(n) {
+            return handlers[n] = noder.createElement("i",{
+                    "class" : classPrefix + 'resizer-h ' + classPrefix + 'resizer-h-' + n,
+                    "data-resize-handler" : n
+                });
+        });
+
+        for (var n in handlers) {
+            var handler = handlers[n];
+            noder.append(container,handler);
+            mover.movable(handler,{
+                auto : false,
+                started : started,
+                moving : resizing,
+                stopped : stopped
+            })
+        }
+    }
+
+    function started(e) {
+        var handler = e.target;
+        startSize = geom.size(target);
+        if (startedCallback) {
+            startedCallback(e);
+        }
+    }
+
+    function resizing(e) {
+        currentSize = {};
+
+        if (direction.left || direction.right) {
+            currentSize.width = startSize.width + e.deltaX;
+        } else {
+            currentSize.width = startSize.width;
+        }
+
+        if (direction.top || direction.bottom) {
+            currentSize.height = startSize.height + e.deltaY;
+        } else {
+            currentSize.height = startSize.height;
+        }
+
+        geom.size(target,currentSize);
+        geom.pageRect(container,geom.pageRect(target));
+
+        if (resizingCallback) {
+            resizingCallback(e);
+        }
+
+    }
+
+    function stopped(e) {
+        if (stoppedCallback) {
+            stoppedCallback(e);
+        }
+
+    }
+
+    function select(el,options) {
+        // Avoid focusing on already focused element
+        if (el && el === target) {
+          return;
+        } 
+
+        target = el; 
+        startDim = rectDim = startPos = null;
+
+        geom.pageRect(container,geom.pageRect(target));
+        styler.show(container);
+
+    }
+
+
+    function unselect(e) {
+        if (container) {
+            styler.hide(container);
+        }
+        target = null;
+    }
+
+    function isHandler(el) {
+        if (handlers) {
+            for (var n in handlers) {
+              if (handlers[n] === el) return true;
+            }                
+        }
+        return false;
+    }
+
+
+    function docs(el) {
+        return [noder.ownerDoc(el), noder.doc()];
+    }
+
+    function selector(){
+      return selector;
+    }
+
+    langx.mixin(selector, {
+        init : init,
+
+        select : select,
+
+        unselect : unselect
+
+    });
+
+    return skylark.selector = selector;
 });
 
 define('skylark-utils/_storages/cookies',[
@@ -7550,7 +9102,9 @@ define('skylark-utils/widget',[
                 options = el;
                 el = null;
             }
-            this.el = el;
+            if (el) {
+            	this.el = el;
+        	}
             if (options) {
                 langx.mixin(this,options);
             }
@@ -7702,6 +9256,7 @@ define('skylark-utils/widget',[
 
 define('skylark-utils/main',[
     "./skylark",
+    "./ajax",
     "./browser",
     "./css",
     "./datax",
@@ -7712,12 +9267,14 @@ define('skylark-utils/main',[
     "./finder",
     "./fx",
     "./geom",
-    "./http",
     "./images",
+    "./models",
     "./mover",
     "./noder",
     "./query",
+    "./resizer",
     "./scripter",
+    "./selector",
     "./storages",
     "./styler",
     "./touchx",

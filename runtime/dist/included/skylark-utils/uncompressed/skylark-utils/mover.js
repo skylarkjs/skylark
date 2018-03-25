@@ -332,6 +332,7 @@ define([
 
         params = params || {};
         var handleEl = params.handle || elm,
+            auto = params.auto === false ? false : true,
             constraints = params.constraints,
             overlayDiv,
             doc = params.document || document,
@@ -395,26 +396,29 @@ define([
                 e.deltaX = e.screenX - startX;
                 e.deltaY = e.screenY - startY;
 
-                var l = originalPos.left + e.deltaX,
-                    t = originalPos.top + e.deltaY;
-                if (constraints) {
+                if (auto) {
+                    var l = originalPos.left + e.deltaX,
+                        t = originalPos.top + e.deltaY;
+                    if (constraints) {
 
-                    if (l < constraints.minX) {
-                        l = constraints.minX;
-                    }
+                        if (l < constraints.minX) {
+                            l = constraints.minX;
+                        }
 
-                    if (l > constraints.maxX) {
-                        l = constraints.maxX;
-                    }
+                        if (l > constraints.maxX) {
+                            l = constraints.maxX;
+                        }
 
-                    if (t < constraints.minY) {
-                        t = constraints.minY;
-                    }
+                        if (t < constraints.minY) {
+                            t = constraints.minY;
+                        }
 
-                    if (t > constraints.maxY) {
-                        t = constraints.maxY;
+                        if (t > constraints.maxY) {
+                            t = constraints.maxY;
+                        }
                     }
                 }
+
                 geom.relativePosition(elm, {
                     left: l,
                     top: t

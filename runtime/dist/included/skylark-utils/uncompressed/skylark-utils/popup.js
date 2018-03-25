@@ -64,7 +64,7 @@ define([
 
     function open(elm,args) {
 
-        while(stack.length && (!args.parent || !dom.isDescendant(args.parent.domNode, stack[stack.length - 1].widget.domNode))){
+        while(stack.length && (!args.parent || !noder.contains(args.parent.domNode, stack[stack.length - 1].widget.domNode))){
             this.close(stack[stack.length - 1].widget);
         }
 

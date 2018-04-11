@@ -41,7 +41,7 @@
             };
             require(id);
         } else {
-            resolved[id] = factory;
+            map[id] = factory;
         }
     };
     require = globals.require = function(deps,cb) {
@@ -4011,17 +4011,21 @@ define('skylark-utils/finder',[
 
     var simpleClassSelectorRE = /^\.([\w-]*)$/,
         simpleIdSelectorRE = /^#([\w-]*)$/,
+        rinputs = /^(?:input|select|textarea|button)$/i,
+        rheader = /^h\d$/i,
         slice = Array.prototype.slice;
 
 
     local.parseSelector = local.Slick.parse;
 
 
-    local.pseudos = {
+    var pseudos = local.pseudos = {
         // custom pseudos
-        'checkbox': function(elm){
-            return elm.type === "checkbox";
+        "button": function( elem ) {
+            var name = elem.nodeName.toLowerCase();
+            return name === "input" && elem.type === "button" || name === "button";
         },
+
         'checked': function(elm) {
             return !!elm.checked;
         },
@@ -4042,6 +4046,10 @@ define('skylark-utils/finder',[
             return (idx == value);
         },
 
+        'even' : function(elm, idx, nodes, value) {
+            return (idx % 2) === 1;
+        },
+
         'focus': function(elm) {
             return document.activeElement === elm && (elm.href || elm.type || elm.tabindex);
         },
@@ -4058,9 +4066,17 @@ define('skylark-utils/finder',[
             return find(elm, sel);
         },
 
+        // Element/input types
+        "header": function( elem ) {
+            return rheader.test( elem.nodeName );
+        },
 
         'hidden': function(elm) {
             return !local.pseudos["visible"](elm);
+        },
+
+        "input": function( elem ) {
+            return rinputs.test( elem.nodeName );
         },
 
         'last': function(elm, idx, nodes) {
@@ -4075,12 +4091,12 @@ define('skylark-utils/finder',[
             return !matches(elm, sel);
         },
 
-        'parent': function(elm) {
-            return !!elm.parentNode;
+        'odd' : function(elm, idx, nodes, value) {
+            return (idx % 2) === 0;
         },
 
-        'radio': function(elm){
-            return elm.type === "radio";
+        'parent': function(elm) {
+            return !!elm.parentNode;
         },
 
         'selected': function(elm) {
@@ -4097,8 +4113,35 @@ define('skylark-utils/finder',[
     };
 
     ["first","eq","last"].forEach(function(item){
-        local.pseudos[item].isArrayFilter = true;
+        pseudos[item].isArrayFilter = true;
     });
+
+
+
+    pseudos["nth"] = pseudos["eq"];
+
+    function createInputPseudo( type ) {
+        return function( elem ) {
+            var name = elem.nodeName.toLowerCase();
+            return name === "input" && elem.type === type;
+        };
+    }
+
+    function createButtonPseudo( type ) {
+        return function( elem ) {
+            var name = elem.nodeName.toLowerCase();
+            return (name === "input" || name === "button") && elem.type === type;
+        };
+    }
+
+    // Add button/input type pseudos
+    for ( i in { radio: true, checkbox: true, file: true, password: true, image: true } ) {
+        pseudos[ i ] = createInputPseudo( i );
+    }
+    for ( i in { submit: true, reset: true } ) {
+        pseudos[ i ] = createButtonPseudo( i );
+    }
+
 
     local.divide = function(cond) {
         var nativeSelector = "",
@@ -5447,7 +5490,7 @@ define('skylark-utils/eventer',[
         // need to check if document.body exists for IE as that browser reports
         // document ready when it hasn't yet created the body elm
         if (readyRE.test(document.readyState) && document.body) {
-            callback()
+            langx.defer(callback);
         } else {
             document.addEventListener('DOMContentLoaded', callback, false);
         }

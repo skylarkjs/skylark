@@ -509,7 +509,7 @@ define([
         // need to check if document.body exists for IE as that browser reports
         // document ready when it hasn't yet created the body elm
         if (readyRE.test(document.readyState) && document.body) {
-            callback()
+            langx.defer(callback);
         } else {
             document.addEventListener('DOMContentLoaded', callback, false);
         }

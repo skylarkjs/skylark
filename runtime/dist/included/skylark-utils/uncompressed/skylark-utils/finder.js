@@ -240,17 +240,21 @@ define([
 
     var simpleClassSelectorRE = /^\.([\w-]*)$/,
         simpleIdSelectorRE = /^#([\w-]*)$/,
+        rinputs = /^(?:input|select|textarea|button)$/i,
+        rheader = /^h\d$/i,
         slice = Array.prototype.slice;
 
 
     local.parseSelector = local.Slick.parse;
 
 
-    local.pseudos = {
+    var pseudos = local.pseudos = {
         // custom pseudos
-        'checkbox': function(elm){
-            return elm.type === "checkbox";
+        "button": function( elem ) {
+            var name = elem.nodeName.toLowerCase();
+            return name === "input" && elem.type === "button" || name === "button";
         },
+
         'checked': function(elm) {
             return !!elm.checked;
         },
@@ -271,6 +275,10 @@ define([
             return (idx == value);
         },
 
+        'even' : function(elm, idx, nodes, value) {
+            return (idx % 2) === 1;
+        },
+
         'focus': function(elm) {
             return document.activeElement === elm && (elm.href || elm.type || elm.tabindex);
         },
@@ -287,9 +295,17 @@ define([
             return find(elm, sel);
         },
 
+        // Element/input types
+        "header": function( elem ) {
+            return rheader.test( elem.nodeName );
+        },
 
         'hidden': function(elm) {
             return !local.pseudos["visible"](elm);
+        },
+
+        "input": function( elem ) {
+            return rinputs.test( elem.nodeName );
         },
 
         'last': function(elm, idx, nodes) {
@@ -304,12 +320,12 @@ define([
             return !matches(elm, sel);
         },
 
-        'parent': function(elm) {
-            return !!elm.parentNode;
+        'odd' : function(elm, idx, nodes, value) {
+            return (idx % 2) === 0;
         },
 
-        'radio': function(elm){
-            return elm.type === "radio";
+        'parent': function(elm) {
+            return !!elm.parentNode;
         },
 
         'selected': function(elm) {
@@ -326,8 +342,35 @@ define([
     };
 
     ["first","eq","last"].forEach(function(item){
-        local.pseudos[item].isArrayFilter = true;
+        pseudos[item].isArrayFilter = true;
     });
+
+
+
+    pseudos["nth"] = pseudos["eq"];
+
+    function createInputPseudo( type ) {
+        return function( elem ) {
+            var name = elem.nodeName.toLowerCase();
+            return name === "input" && elem.type === type;
+        };
+    }
+
+    function createButtonPseudo( type ) {
+        return function( elem ) {
+            var name = elem.nodeName.toLowerCase();
+            return (name === "input" || name === "button") && elem.type === type;
+        };
+    }
+
+    // Add button/input type pseudos
+    for ( i in { radio: true, checkbox: true, file: true, password: true, image: true } ) {
+        pseudos[ i ] = createInputPseudo( i );
+    }
+    for ( i in { submit: true, reset: true } ) {
+        pseudos[ i ] = createButtonPseudo( i );
+    }
+
 
     local.divide = function(cond) {
         var nativeSelector = "",

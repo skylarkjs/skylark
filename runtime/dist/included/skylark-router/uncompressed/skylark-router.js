@@ -41,7 +41,7 @@
             };
             require(id);
         } else {
-            resolved[id] = factory;
+            map[id] = factory;
         }
     };
     require = globals.require = function(id) {

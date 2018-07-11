@@ -1,6 +1,5 @@
 define([
     "./core",
-    "./ajax",
     "./browser",
     "./css",
     "./datax",

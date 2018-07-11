@@ -92,6 +92,7 @@ define('skylark-utils/skylark',["skylark-langx/skylark"], function(skylark) {
 });
 
 define('skylark-langx/langx',["./skylark"], function(skylark) {
+    "use strict";
     var toString = {}.toString,
         concat = Array.prototype.concat,
         indexOf = Array.prototype.indexOf,
@@ -342,8 +343,7 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
         };
     }
 
-
-    var createClass = (function() {
+    var f1 = function() {
         function extendClass(ctor, props, options) {
             // Copy the properties to the prototype of the class.
             var proto = ctor.prototype,
@@ -356,31 +356,117 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
                 }
 
                 // Check if we're overwriting an existing function
-              proto[name] = typeof props[name] == "function" && !props[name]._constructor && !noOverrided && typeof _super[name] == "function" ?
-                      (function(name, fn, superFn) {
-                        return function() {
-                            var tmp = this.overrided;
+                var prop = props[name];
+                if (typeof props[name] == "function") {
+                    proto[name] =  !prop._constructor && !noOverrided && typeof _super[name] == "function" ?
+                          (function(name, fn, superFn) {
+                            return function() {
+                                var tmp = this.overrided;
 
-                            // Add a new ._super() method that is the same method
-                            // but on the super-class
-                            this.overrided = superFn;
+                                // Add a new ._super() method that is the same method
+                                // but on the super-class
+                                this.overrided = superFn;
 
-                            // The method only need to be bound temporarily, so we
-                            // remove it when we're done executing
-                            var ret = fn.apply(this, arguments);
+                                // The method only need to be bound temporarily, so we
+                                // remove it when we're done executing
+                                var ret = fn.apply(this, arguments);
 
-                            this.overrided = tmp;
+                                this.overrided = tmp;
 
-                            return ret;
-                        };
-                    })(name, props[name], _super[name]) :
-                    props[name];
+                                return ret;
+                            };
+                        })(name, prop, _super[name]) :
+                        prop;
+                } else if (typeof prop == "object" && prop!==null && (prop.get || prop.value !== undefined)) {
+                    Object.defineProperty(proto,name,prop);
+                } else {
+                    proto[name] = prop;
+                }
             }
-
             return ctor;
         }
 
-        return function createClass(props, parent, options) {
+        function serialMixins(ctor,mixins) {
+            var result = [];
+
+            mixins.forEach(function(mixin){
+                if (has(mixin,"__mixins__")) {
+                     throw new Error("nested mixins");
+                }
+                var clss = [];
+                while (mixin) {
+                    clss.unshift(mixin);
+                    mixin = mixin.superclass;
+                }
+                result = result.concat(clss);
+            });
+
+            result = uniq(result);
+
+            result = result.filter(function(mixin){
+                var cls = ctor;
+                while (cls) {
+                    if (mixin === cls) {
+                        return false;
+                    }
+                    if (has(cls,"__mixins__")) {
+                        var clsMixines = cls["__mixins__"];
+                        for (var i=0; i<clsMixines.length;i++) {
+                            if (clsMixines[i]===mixin) {
+                                return false;
+                            }
+                        }
+                    }
+                    cls = cls.superclass;
+                }
+                return true;
+            });
+
+            if (result.length>0) {
+                return result;
+            } else {
+                return false;
+            }
+        }
+
+        function mergeMixins(ctor,mixins) {
+            var newCtor =ctor;
+            for (var i=0;i<mixins.length;i++) {
+                var xtor = new Function();
+                xtor.prototype = Object.create(newCtor.prototype);
+                xtor.__proto__ = newCtor;
+                xtor.superclass = null;
+                mixin(xtor.prototype,mixins[i].prototype);
+                xtor.prototype.__mixin__ = mixins[i];
+                newCtor = xtor;
+            }
+
+            return newCtor;
+        }
+
+        return function createClass(props, parent, mixins,options) {
+            if (isArray(parent)) {
+                options = mixins;
+                mixins = parent;
+                parent = null;
+            }
+            parent = parent || Object;
+
+            if (isDefined(mixins) && !isArray(mixins)) {
+                options = mixins;
+                mixins = false;
+            }
+
+            var innerParent = parent;
+
+            if (mixins) {
+                mixins = serialMixins(innerParent,mixins);
+            }
+
+            if (mixins) {
+                innerParent = mergeMixins(innerParent,mixins);
+            }
+
 
             var _constructor = props.constructor;
             if (_constructor === Object) {
@@ -402,17 +488,22 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
                     "return ctor._constructor.apply(inst, arguments) || inst;" + 
                     "}"
                 )();
+
+
             ctor._constructor = _constructor;
-            parent = parent || Object;
             // Populate our constructed prototype object
-            ctor.prototype = Object.create(parent.prototype);
+            ctor.prototype = Object.create(innerParent.prototype);
 
             // Enforce the constructor to be what we expect
             ctor.prototype.constructor = ctor;
             ctor.superclass = parent;
 
             // And make this class extendable
-            ctor.__proto__ = parent;
+            ctor.__proto__ = innerParent;
+
+            if (mixins) {
+                ctor.__mixins__ = mixins;
+            }
 
             if (!ctor.partial) {
                 ctor.partial = function(props, options) {
@@ -420,16 +511,18 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
                 };
             }
             if (!ctor.inherit) {
-                ctor.inherit = function(props, options) {
-                    return createClass(props, this, options);
+                ctor.inherit = function(props, mixins,options) {
+                    return createClass(props, this, mixins,options);
                 };
             }
 
             ctor.partial(props, options);
 
             return ctor;
-        }
-    })();
+        };
+    }
+
+    var createClass = f1();
 
 
     // Retrieve all the property names of an object.
@@ -442,6 +535,7 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
 
     function createEvent(type, props) {
         var e = new CustomEvent(type, props);
+
         return safeMixin(e, props);
     }
     
@@ -722,6 +816,25 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
         return obj && (obj instanceof Node);
     }
 
+    function isInstanceOf( /*Object*/ value, /*Type*/ type) {
+        //Tests whether the value is an instance of a type.
+        if (value === undefined) {
+            return false;
+        } else if (value === null || type == Object) {
+            return true;
+        } else if (typeof value === "number") {
+            return type === Number;
+        } else if (typeof value === "string") {
+            return type === String;
+        } else if (typeof value === "boolean") {
+            return type === Boolean;
+        } else if (typeof value === "string") {
+            return type === String;
+        } else {
+            return (value instanceof type) || (value && value.isInstanceOf ? value.isInstanceOf(type) : false);
+        }
+    }
+
     function isNumber(obj) {
         return typeof obj == 'number';
     }
@@ -800,6 +913,9 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
             setTimeoutout(fn);
         }
         return this;
+    }
+
+    function noop() {
     }
 
     function proxy(fn, context) {
@@ -888,8 +1004,8 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
     }
 
     function _parseMixinArgs(args) {
-        var params = slice.call(arguments, 0);
-        target = params.shift(),
+        var params = slice.call(arguments, 0),
+            target = params.shift(),
             deep = false;
         if (isBoolean(params[params.length - 1])) {
             deep = params.pop();
@@ -1012,45 +1128,83 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
         return prefix ? prefix + id : id;
     }
 
-
-
     var Deferred = function() {
         var self = this,
             p = this.promise = new Promise(function(resolve, reject) {
                 self._resolve = resolve;
                 self._reject = reject;
-            });
-
-        mixin(p,{
-            then : function(onResolved,onRejected,onProgress) {
-                if (onProgress) {
-                    this.progress(onProgress);
+            }),
+           added = {
+                state : function() {
+                    if (self.isResolved()) {
+                        return 'resolved';
+                    }
+                    if (self.isRejected()) {
+                        return 'rejected';
+                    }
+                    return 'pending';
+                },
+                then : function(onResolved,onRejected,onProgress) {
+                    if (onProgress) {
+                        this.progress(onProgress);
+                    }
+                    return mixin(Promise.prototype.then.call(this,
+                            onResolved && function(args) {
+                                if (args && args.__ctx__ !== undefined) {
+                                    return onResolved.apply(args.__ctx__,args);
+                                } else {
+                                    return onResolved(args);
+                                }
+                            },
+                            onRejected && function(args){
+                                if (args && args.__ctx__ !== undefined) {
+                                    return onRejected.apply(args.__ctx__,args);
+                                } else {
+                                    return onRejected(args);
+                                }
+                            }),added);
+                },
+                always: function(handler) {
+                    //this.done(handler);
+                    //this.fail(handler);
+                    this.then(handler,handler);
+                    return this;
+                },
+                done : function(handler) {
+                    return this.then(handler);
+                },
+                fail : function(handler) { 
+                    //return mixin(Promise.prototype.catch.call(this,handler),added);
+                    return this.then(null,handler);
+                }, 
+                progress : function(handler) {
+                    self[PGLISTENERS].push(handler);
+                    return this;
                 }
-                return Promise.prototype.then.call(this,onResolved,onRejected);
-            },
-            done : function(handler) {
-                return Promise.prototype.then.call(this,handler);
-            },
-            fail : function(handler) { 
-                return Promise.prototype.catch.call(this,handler);
-            }, 
-            progress : function(handler) {
-                self[PGLISTENERS].push(handler);
-                return this;
-            }
 
-        });
+            };
+
+        added.pipe = added.then;
+        mixin(p,added);
 
         this[PGLISTENERS] = [];
 
-        this.resolve = Deferred.prototype.resolve.bind(this);
-        this.reject = Deferred.prototype.reject.bind(this);
-        this.progress = Deferred.prototype.progress.bind(this);
+        //this.resolve = Deferred.prototype.resolve.bind(this);
+        //this.reject = Deferred.prototype.reject.bind(this);
+        //this.progress = Deferred.prototype.progress.bind(this);
 
     };
 
     Deferred.prototype.resolve = function(value) {
-        this._resolve.call(this.promise, value);
+        var args = slice.call(arguments);
+        return this.resolveWith(null,args);
+    };
+
+    Deferred.prototype.resolveWith = function(context,args) {
+        args = args ? makeArray(args) : []; 
+        args.__ctx__ = context;
+        this._resolve(args);
+        this._resolved = true;
         return this;
     };
 
@@ -1066,14 +1220,32 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
     };
 
     Deferred.prototype.reject = function(reason) {
-        this._reject.call(this.promise, reason);
+        var args = slice.call(arguments);
+        return this.rejectWith(null,args);
+    };
+
+    Deferred.prototype.rejectWith = function(context,args) {
+        args = args ? makeArray(args) : []; 
+        args.__ctx__ = context;
+        this._reject(args);
+        this._rejected = true;
         return this;
     };
 
+    Deferred.prototype.isResolved = function() {
+        return !!this._resolved;
+    };
+
+    Deferred.prototype.isRejected = function() {
+        return !!this._rejected;
+    };
 
     Deferred.prototype.then = function(callback, errback, progback) {
-        return this.promise.then(callback, errback, progback);
+        var p = result(this,"promise");
+        return p.then(callback, errback, progback);
     };
+
+    Deferred.prototype.done  = Deferred.prototype.then;
 
     Deferred.all = function(array) {
         return Promise.all(array);
@@ -1082,6 +1254,7 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
     Deferred.first = function(array) {
         return Promise.race(array);
     };
+
 
     Deferred.when = function(valueOrPromise, callback, errback, progback) {
         var receivedPromise = valueOrPromise && typeof valueOrPromise.then === "function";
@@ -1177,7 +1350,9 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
                 e = new CustomEvent(e);
             }
 
-            e.target = this;
+            Object.defineProperty(e,"target",{
+                value : this
+            });
 
             var args = slice.call(arguments, 1);
             if (isDefined(args)) {
@@ -1344,8 +1519,6 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
             return this;
         }
     });
-
-
 
     var Stateful = Evented.inherit({
         init : function(attributes, options) {
@@ -1545,6 +1718,786 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
         }
     });
 
+    var SimpleQueryEngine = function(query, options){
+        // summary:
+        //      Simple query engine that matches using filter functions, named filter
+        //      functions or objects by name-value on a query object hash
+        //
+        // description:
+        //      The SimpleQueryEngine provides a way of getting a QueryResults through
+        //      the use of a simple object hash as a filter.  The hash will be used to
+        //      match properties on data objects with the corresponding value given. In
+        //      other words, only exact matches will be returned.
+        //
+        //      This function can be used as a template for more complex query engines;
+        //      for example, an engine can be created that accepts an object hash that
+        //      contains filtering functions, or a string that gets evaluated, etc.
+        //
+        //      When creating a new dojo.store, simply set the store's queryEngine
+        //      field as a reference to this function.
+        //
+        // query: Object
+        //      An object hash with fields that may match fields of items in the store.
+        //      Values in the hash will be compared by normal == operator, but regular expressions
+        //      or any object that provides a test() method are also supported and can be
+        //      used to match strings by more complex expressions
+        //      (and then the regex's or object's test() method will be used to match values).
+        //
+        // options: dojo/store/api/Store.QueryOptions?
+        //      An object that contains optional information such as sort, start, and count.
+        //
+        // returns: Function
+        //      A function that caches the passed query under the field "matches".  See any
+        //      of the "query" methods on dojo.stores.
+        //
+        // example:
+        //      Define a store with a reference to this engine, and set up a query method.
+        //
+        //  |   var myStore = function(options){
+        //  |       //  ...more properties here
+        //  |       this.queryEngine = SimpleQueryEngine;
+        //  |       //  define our query method
+        //  |       this.query = function(query, options){
+        //  |           return QueryResults(this.queryEngine(query, options)(this.data));
+        //  |       };
+        //  |   };
+
+        // create our matching query function
+        switch(typeof query){
+            default:
+                throw new Error("Can not query with a " + typeof query);
+            case "object": case "undefined":
+                var queryObject = query;
+                query = function(object){
+                    for(var key in queryObject){
+                        var required = queryObject[key];
+                        if(required && required.test){
+                            // an object can provide a test method, which makes it work with regex
+                            if(!required.test(object[key], object)){
+                                return false;
+                            }
+                        }else if(required != object[key]){
+                            return false;
+                        }
+                    }
+                    return true;
+                };
+                break;
+            case "string":
+                // named query
+                if(!this[query]){
+                    throw new Error("No filter function " + query + " was found in store");
+                }
+                query = this[query];
+                // fall through
+            case "function":
+                // fall through
+        }
+        
+        function filter(arr, callback, thisObject){
+            // summary:
+            //      Returns a new Array with those items from arr that match the
+            //      condition implemented by callback.
+            // arr: Array
+            //      the array to iterate over.
+            // callback: Function|String
+            //      a function that is invoked with three arguments (item,
+            //      index, array). The return of this function is expected to
+            //      be a boolean which determines whether the passed-in item
+            //      will be included in the returned array.
+            // thisObject: Object?
+            //      may be used to scope the call to callback
+            // returns: Array
+            // description:
+            //      This function corresponds to the JavaScript 1.6 Array.filter() method, with one difference: when
+            //      run over sparse arrays, this implementation passes the "holes" in the sparse array to
+            //      the callback function with a value of undefined. JavaScript 1.6's filter skips the holes in the sparse array.
+            //      For more details, see:
+            //      https://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Objects/Array/filter
+            // example:
+            //  | // returns [2, 3, 4]
+            //  | array.filter([1, 2, 3, 4], function(item){ return item>1; });
+
+            // TODO: do we need "Ctr" here like in map()?
+            var i = 0, l = arr && arr.length || 0, out = [], value;
+            if(l && typeof arr == "string") arr = arr.split("");
+            if(typeof callback == "string") callback = cache[callback] || buildFn(callback);
+            if(thisObject){
+                for(; i < l; ++i){
+                    value = arr[i];
+                    if(callback.call(thisObject, value, i, arr)){
+                        out.push(value);
+                    }
+                }
+            }else{
+                for(; i < l; ++i){
+                    value = arr[i];
+                    if(callback(value, i, arr)){
+                        out.push(value);
+                    }
+                }
+            }
+            return out; // Array
+        }
+
+        function execute(array){
+            // execute the whole query, first we filter
+            var results = filter(array, query);
+            // next we sort
+            var sortSet = options && options.sort;
+            if(sortSet){
+                results.sort(typeof sortSet == "function" ? sortSet : function(a, b){
+                    for(var sort, i=0; sort = sortSet[i]; i++){
+                        var aValue = a[sort.attribute];
+                        var bValue = b[sort.attribute];
+                        // valueOf enables proper comparison of dates
+                        aValue = aValue != null ? aValue.valueOf() : aValue;
+                        bValue = bValue != null ? bValue.valueOf() : bValue;
+                        if (aValue != bValue){
+                            // modified by lwf 2016/07/09
+                            //return !!sort.descending == (aValue == null || aValue > bValue) ? -1 : 1;
+                            return !!sort.descending == (aValue == null || aValue > bValue) ? -1 : 1;
+                        }
+                    }
+                    return 0;
+                });
+            }
+            // now we paginate
+            if(options && (options.start || options.count)){
+                var total = results.length;
+                results = results.slice(options.start || 0, (options.start || 0) + (options.count || Infinity));
+                results.total = total;
+            }
+            return results;
+        }
+        execute.matches = query;
+        return execute;
+    };
+
+    var QueryResults = function(results){
+        // summary:
+        //      A function that wraps the results of a store query with additional
+        //      methods.
+        // description:
+        //      QueryResults is a basic wrapper that allows for array-like iteration
+        //      over any kind of returned data from a query.  While the simplest store
+        //      will return a plain array of data, other stores may return deferreds or
+        //      promises; this wrapper makes sure that *all* results can be treated
+        //      the same.
+        //
+        //      Additional methods include `forEach`, `filter` and `map`.
+        // results: Array|dojo/promise/Promise
+        //      The result set as an array, or a promise for an array.
+        // returns:
+        //      An array-like object that can be used for iterating over.
+        // example:
+        //      Query a store and iterate over the results.
+        //
+        //  |   store.query({ prime: true }).forEach(function(item){
+        //  |       //  do something
+        //  |   });
+
+        if(!results){
+            return results;
+        }
+
+        var isPromise = !!results.then;
+        // if it is a promise it may be frozen
+        if(isPromise){
+            results = Object.delegate(results);
+        }
+        function addIterativeMethod(method){
+            // Always add the iterative methods so a QueryResults is
+            // returned whether the environment is ES3 or ES5
+            results[method] = function(){
+                var args = arguments;
+                var result = Deferred.when(results, function(results){
+                    //Array.prototype.unshift.call(args, results);
+                    return QueryResults(Array.prototype[method].apply(results, args));
+                });
+                // forEach should only return the result of when()
+                // when we're wrapping a promise
+                if(method !== "forEach" || isPromise){
+                    return result;
+                }
+            };
+        }
+
+        addIterativeMethod("forEach");
+        addIterativeMethod("filter");
+        addIterativeMethod("map");
+        if(results.total == null){
+            results.total = Deferred.when(results, function(results){
+                return results.length;
+            });
+        }
+        return results; // Object
+    };
+
+    var ArrayStore = createClass({
+        "klassName-": "ArrayStore",
+
+        "queryEngine": SimpleQueryEngine,
+        
+        "idProperty": "id",
+
+
+        get: function(id){
+            // summary:
+            //      Retrieves an object by its identity
+            // id: Number
+            //      The identity to use to lookup the object
+            // returns: Object
+            //      The object in the store that matches the given id.
+            return this.data[this.index[id]];
+        },
+
+        getIdentity: function(object){
+            return object[this.idProperty];
+        },
+
+        put: function(object, options){
+            var data = this.data,
+                index = this.index,
+                idProperty = this.idProperty;
+            var id = object[idProperty] = (options && "id" in options) ? options.id : idProperty in object ? object[idProperty] : Math.random();
+            if(id in index){
+                // object exists
+                if(options && options.overwrite === false){
+                    throw new Error("Object already exists");
+                }
+                // replace the entry in data
+                data[index[id]] = object;
+            }else{
+                // add the new object
+                index[id] = data.push(object) - 1;
+            }
+            return id;
+        },
+
+        add: function(object, options){
+            (options = options || {}).overwrite = false;
+            // call put with overwrite being false
+            return this.put(object, options);
+        },
+
+        remove: function(id){
+            // summary:
+            //      Deletes an object by its identity
+            // id: Number
+            //      The identity to use to delete the object
+            // returns: Boolean
+            //      Returns true if an object was removed, falsy (undefined) if no object matched the id
+            var index = this.index;
+            var data = this.data;
+            if(id in index){
+                data.splice(index[id], 1);
+                // now we have to reindex
+                this.setData(data);
+                return true;
+            }
+        },
+        query: function(query, options){
+            // summary:
+            //      Queries the store for objects.
+            // query: Object
+            //      The query to use for retrieving objects from the store.
+            // options: dojo/store/api/Store.QueryOptions?
+            //      The optional arguments to apply to the resultset.
+            // returns: dojo/store/api/Store.QueryResults
+            //      The results of the query, extended with iterative methods.
+            //
+            // example:
+            //      Given the following store:
+            //
+            //  |   var store = new Memory({
+            //  |       data: [
+            //  |           {id: 1, name: "one", prime: false },
+            //  |           {id: 2, name: "two", even: true, prime: true},
+            //  |           {id: 3, name: "three", prime: true},
+            //  |           {id: 4, name: "four", even: true, prime: false},
+            //  |           {id: 5, name: "five", prime: true}
+            //  |       ]
+            //  |   });
+            //
+            //  ...find all items where "prime" is true:
+            //
+            //  |   var results = store.query({ prime: true });
+            //
+            //  ...or find all items where "even" is true:
+            //
+            //  |   var results = store.query({ even: true });
+            return QueryResults(this.queryEngine(query, options)(this.data));
+        },
+
+        setData: function(data){
+            // summary:
+            //      Sets the given data as the source for this store, and indexes it
+            // data: Object[]
+            //      An array of objects to use as the source of data.
+            if(data.items){
+                // just for convenience with the data format IFRS expects
+                this.idProperty = data.identifier || this.idProperty;
+                data = this.data = data.items;
+            }else{
+                this.data = data;
+            }
+            this.index = {};
+            for(var i = 0, l = data.length; i < l; i++){
+                this.index[data[i][this.idProperty]] = i;
+            }
+        },
+
+        init: function(options) {
+            for(var i in options){
+                this[i] = options[i];
+            }
+            this.setData(this.data || []);
+        }
+
+    });
+
+    var Xhr = (function(){
+        var jsonpID = 0,
+            document = window.document,
+            key,
+            name,
+            rscript = /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+            scriptTypeRE = /^(?:text|application)\/javascript/i,
+            xmlTypeRE = /^(?:text|application)\/xml/i,
+            jsonType = 'application/json',
+            htmlType = 'text/html',
+            blankRE = /^\s*$/;
+
+        var XhrDefaultOptions = {
+            async: true,
+
+            // Default type of request
+            type: 'GET',
+            // Callback that is executed before request
+            beforeSend: noop,
+            // Callback that is executed if the request succeeds
+            success: noop,
+            // Callback that is executed the the server drops error
+            error: noop,
+            // Callback that is executed on request complete (both: error and success)
+            complete: noop,
+            // The context for the callbacks
+            context: null,
+            // Whether to trigger "global" Ajax events
+            global: true,
+
+            // MIME types mapping
+            // IIS returns Javascript as "application/x-javascript"
+            accepts: {
+                script: 'text/javascript, application/javascript, application/x-javascript',
+                json: 'application/json',
+                xml: 'application/xml, text/xml',
+                html: 'text/html',
+                text: 'text/plain'
+            },
+            // Whether the request is to another domain
+            crossDomain: false,
+            // Default timeout
+            timeout: 0,
+            // Whether data should be serialized to string
+            processData: true,
+            // Whether the browser should be allowed to cache GET responses
+            cache: true,
+
+            xhrFields : {
+                withCredentials : true
+            }
+        };
+
+        function mimeToDataType(mime) {
+            if (mime) {
+                mime = mime.split(';', 2)[0];
+            }
+            if (mime) {
+                if (mime == htmlType) {
+                    return "html";
+                } else if (mime == jsonType) {
+                    return "json";
+                } else if (scriptTypeRE.test(mime)) {
+                    return "script";
+                } else if (xmlTypeRE.test(mime)) {
+                    return "xml";
+                }
+            }
+            return "text";
+        }
+
+        function appendQuery(url, query) {
+            if (query == '') return url
+            return (url + '&' + query).replace(/[&?]{1,2}/, '?')
+        }
+
+        // serialize payload and append it to the URL for GET requests
+        function serializeData(options) {
+            options.data = options.data || options.query;
+            if (options.processData && options.data && type(options.data) != "string") {
+                options.data = param(options.data, options.traditional);
+            }
+            if (options.data && (!options.type || options.type.toUpperCase() == 'GET')) {
+                options.url = appendQuery(options.url, options.data);
+                options.data = undefined;
+            }
+        }
+
+        function serialize(params, obj, traditional, scope) {
+            var t, array = isArray(obj),
+                hash = isPlainObject(obj)
+            each(obj, function(key, value) {
+                t =type(value);
+                if (scope) key = traditional ? scope :
+                    scope + '[' + (hash || t == 'object' || t == 'array' ? key : '') + ']'
+                // handle data in serializeArray() format
+                if (!scope && array) params.add(value.name, value.value)
+                // recurse into nested objects
+                else if (t == "array" || (!traditional && t == "object"))
+                    serialize(params, value, traditional, key)
+                else params.add(key, value)
+            })
+        }
+
+        var param = function(obj, traditional) {
+            var params = []
+            params.add = function(key, value) {
+                if (isFunction(value)) value = value()
+                if (value == null) value = ""
+                this.push(escape(key) + '=' + escape(value))
+            }
+            serialize(params, obj, traditional)
+            return params.join('&').replace(/%20/g, '+')
+        };
+
+        var Xhr = Evented.inherit({
+            klassName : "Xhr",
+
+            _request  : function(args) {
+                var _ = this._,
+                    self = this,
+                    options = mixin({},XhrDefaultOptions,_.options,args),
+                    xhr = _.xhr = new XMLHttpRequest();
+
+                serializeData(options)
+
+                var dataType = options.dataType || options.handleAs,
+                    mime = options.mimeType || options.accepts[dataType],
+                    headers = options.headers,
+                    xhrFields = options.xhrFields,
+                    isFormData = options.data && options.data instanceof FormData,
+                    basicAuthorizationToken = options.basicAuthorizationToken,
+                    type = options.type,
+                    url = options.url,
+                    async = options.async,
+                    user = options.user , 
+                    password = options.password,
+                    deferred = new Deferred(),
+                    contentType = isFormData ? false : 'application/x-www-form-urlencoded';
+
+                if (xhrFields) {
+                    for (name in xhrFields) {
+                        xhr[name] = xhrFields[name];
+                    }
+                }
+
+                if (mime && mime.indexOf(',') > -1) {
+                    mime = mime.split(',', 2)[0];
+                }
+                if (mime && xhr.overrideMimeType) {
+                    xhr.overrideMimeType(mime);
+                }
+
+                //if (dataType) {
+                //    xhr.responseType = dataType;
+                //}
+
+                var finish = function() {
+                    xhr.onloadend = noop;
+                    xhr.onabort = noop;
+                    xhr.onprogress = noop;
+                    xhr.ontimeout = noop;
+                    xhr = null;
+                }
+                var onloadend = function() {
+                    var result, error = false
+                    if ((xhr.status >= 200 && xhr.status < 300) || xhr.status == 304 || (xhr.status == 0 && url.startsWith('file:'))) {
+                        dataType = dataType || mimeToDataType(options.mimeType || xhr.getResponseHeader('content-type'));
+
+                        result = xhr.responseText;
+                        try {
+                            if (dataType == 'script') {
+                                eval(result);
+                            } else if (dataType == 'xml') {
+                                result = xhr.responseXML;
+                            } else if (dataType == 'json') {
+                                result = blankRE.test(result) ? null : JSON.parse(result);
+                            } else if (dataType == "blob") {
+                                result = Blob([xhrObj.response]);
+                            } else if (dataType == "arraybuffer") {
+                                result = xhr.reponse;
+                            }
+                        } catch (e) { 
+                            error = e;
+                        }
+
+                        if (error) {
+                            deferred.reject(error,xhr.status,xhr);
+                        } else {
+                            deferred.resolve(result,xhr.status,xhr);
+                        }
+                    } else {
+                        deferred.reject(new Error(xhr.statusText),xhr.status,xhr);
+                    }
+                    finish();
+                };
+
+                var onabort = function() {
+                    if (deferred) {
+                        deferred.reject(new Error("abort"),xhr.status,xhr);
+                    }
+                    finish();                 
+                }
+ 
+                var ontimeout = function() {
+                    if (deferred) {
+                        deferred.reject(new Error("timeout"),xhr.status,xhr);
+                    }
+                    finish();                 
+                }
+
+                var onprogress = function(evt) {
+                    if (deferred) {
+                        deferred.progress(evt,xhr.status,xhr);
+                    }
+                }
+
+                xhr.onloadend = onloadend;
+                xhr.onabort = onabort;
+                xhr.ontimeout = ontimeout;
+                xhr.onprogress = onprogress;
+
+                xhr.open(type, url, async, user, password);
+               
+                if (headers) {
+                    for ( var key in headers) {
+                        var value = headers[key];
+ 
+                        if(key.toLowerCase() === 'content-type'){
+                            contentType = headers[hdr];
+                        } else {
+                           xhr.setRequestHeader(key, value);
+                        }
+                    }
+                }   
+
+                if  (contentType && contentType !== false){
+                    xhr.setRequestHeader('Content-Type', contentType);
+                }
+
+                if(!headers || !('X-Requested-With' in headers)){
+                    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                }
+
+
+                //If basicAuthorizationToken is defined set its value into "Authorization" header
+                if (basicAuthorizationToken) {
+                    xhr.setRequestHeader("Authorization", basicAuthorizationToken);
+                }
+
+                xhr.send(options.data ? options.data : null);
+
+                return deferred.promise;
+
+            },
+
+            "abort": function() {
+                var _ = this._,
+                    xhr = _.xhr;
+
+                if (xhr) {
+                    xhr.abort();
+                }    
+            },
+
+
+            "request": function(args) {
+                return this._request(args);
+            },
+
+            get : function(args) {
+                args = args || {};
+                args.type = "GET";
+                return this._request(args);
+            },
+
+            post : function(args) {
+                args = args || {};
+                args.type = "POST";
+                return this._request(args);
+            },
+
+            patch : function(args) {
+                args = args || {};
+                args.type = "PATCH";
+                return this._request(args);
+            },
+
+            put : function(args) {
+                args = args || {};
+                args.type = "PUT";
+                return this._request(args);
+            },
+
+            del : function(args) {
+                args = args || {};
+                args.type = "DELETE";
+                return this._request(args);
+            },
+
+            "init": function(options) {
+                this._ = {
+                    options : options || {}
+                };
+            }
+        });
+
+        ["request","get","post","put","del","patch"].forEach(function(name){
+            Xhr[name] = function(url,args) {
+                var xhr = new Xhr({"url" : url});
+                return xhr[name](args);
+            };
+        });
+
+        Xhr.defaultOptions = XhrDefaultOptions;
+        Xhr.param = param;
+
+        return Xhr;
+    })();
+
+    var Restful = Evented.inherit({
+        "klassName" : "Restful",
+
+        "idAttribute": "id",
+        
+        getBaseUrl : function(args) {
+            //$$baseEndpoint : "/files/${fileId}/comments",
+            var baseEndpoint = String.substitute(this.baseEndpoint,args),
+                baseUrl = this.server + this.basePath + baseEndpoint;
+            if (args[this.idAttribute]!==undefined) {
+                baseUrl = baseUrl + "/" + args[this.idAttribute]; 
+            }
+            return baseUrl;
+        },
+        _head : function(args) {
+            //get resource metadata .
+            //args : id and other info for the resource ,ex
+            //{
+            //  "id" : 234,  // the own id, required
+            //  "fileId"   : 2 // the parent resource id, option by resource
+            //}
+        },
+        _get : function(args) {
+            //get resource ,one or list .
+            //args : id and other info for the resource ,ex
+            //{
+            //  "id" : 234,  // the own id, null if list
+            //  "fileId"   : 2 // the parent resource id, option by resource
+            //}
+            return Xhr.get(this.getBaseUrl(args),args);
+        },
+        _post  : function(args,verb) {
+            //create or move resource .
+            //args : id and other info for the resource ,ex
+            //{
+            //  "id" : 234,  // the own id, required
+            //  "data" : body // the own data,required
+            //  "fileId"   : 2 // the parent resource id, option by resource
+            //}
+            //verb : the verb ,ex: copy,touch,trash,untrash,watch
+            var url = this.getBaseUrl(args);
+            if (verb) {
+                url = url + "/" + verb;
+            }
+            return Xhr.post(url, args);
+        },
+
+        _put  : function(args,verb) {
+            //update resource .
+            //args : id and other info for the resource ,ex
+            //{
+            //  "id" : 234,  // the own id, required
+            //  "data" : body // the own data,required
+            //  "fileId"   : 2 // the parent resource id, option by resource
+            //}
+            //verb : the verb ,ex: copy,touch,trash,untrash,watch
+            var url = this.getBaseUrl(args);
+            if (verb) {
+                url = url + "/" + verb;
+            }
+            return Xhr.put(url, args);
+        },
+
+        _delete : function(args) {
+            //delete resource . 
+            //args : id and other info for the resource ,ex
+            //{
+            //  "id" : 234,  // the own id, required
+            //  "fileId"   : 2 // the parent resource id, option by resource
+            //}         
+
+            // HTTP request : DELETE http://center.utilhub.com/registry/v1/apps/{appid}
+            var url = this.getBaseUrl(args);
+            return Xhr.del(url);
+        },
+
+        _patch : function(args){
+            //update resource metadata. 
+            //args : id and other info for the resource ,ex
+            //{
+            //  "id" : 234,  // the own id, required
+            //  "data" : body // the own data,required
+            //  "fileId"   : 2 // the parent resource id, option by resource
+            //}
+            var url = this.getBaseUrl(args);
+            return Xhr.patch(url, args);
+        },
+        query: function(params) {
+            
+            return this._post(params);
+        },
+
+        retrieve: function(params) {
+            return this._get(params);
+        },
+
+        create: function(params) {
+            return this._post(params);
+        },
+
+        update: function(params) {
+            return this._put(params);
+        },
+
+        delete: function(params) {
+            // HTTP request : DELETE http://center.utilhub.com/registry/v1/apps/{appid}
+            return this._delete(params);
+        },
+
+        patch: function(params) {
+           // HTTP request : PATCH http://center.utilhub.com/registry/v1/apps/{appid}
+            return this._patch(params);
+        },
+        init: function(params) {
+            mixin(this,params);
+ //           this._xhr = XHRx();
+       }
+
+
+    });
+
     function langx() {
         return langx;
     }
@@ -1555,6 +2508,8 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
         allKeys: allKeys,
 
         around: aspect("around"),
+
+        ArrayStore : ArrayStore,
 
         before: aspect("before"),
 
@@ -1587,6 +2542,14 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
         deserializeValue: deserializeValue,
 
         each: each,
+
+        first : function(items,n) {
+            if (n) {
+                return items.slice(0,n);
+            } else {
+                return items[0];
+            }
+        },
 
         flatten: flatten,
 
@@ -1634,8 +2597,8 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
 
         keys: keys,
 
-        klass: function(props, parent, options) {
-            return createClass(props, parent, options);
+        klass: function(props, parent,mixins, options) {
+            return createClass(props, parent, mixins,options);
         },
 
         lowerFirst: function(str) {
@@ -1648,10 +2611,13 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
 
         mixin: mixin,
 
+        noop : noop,
 
         proxy: proxy,
 
         removeItem: removeItem,
+
+        Restful: Restful,
 
         result : result,
         
@@ -1691,7 +2657,9 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
 
         URL: typeof window !== "undefined" ? window.URL || window.webkitURL : null,
 
-        values: values
+        values: values,
+
+        Xhr: Xhr
 
     });
 
@@ -1701,6 +2669,95 @@ define('skylark-utils/langx',[
     "skylark-langx/langx"
 ], function(langx) {
     return langx;
+});
+
+define('skylark-utils/browser',[
+    "./skylark",
+    "./langx"
+], function(skylark,langx) {
+    var checkedCssProperties = {
+        "transitionproperty": "TransitionProperty",
+    };
+
+    var css3PropPrefix = "",
+        css3StylePrefix = "",
+        css3EventPrefix = "",
+
+        cssStyles = {},
+        cssProps = {},
+
+        vendorPrefix,
+        vendorPrefixRE,
+        vendorPrefixesRE = /^(Webkit|webkit|O|Moz|moz|ms)(.*)$/,
+
+        document = window.document,
+        testEl = document.createElement("div"),
+
+        matchesSelector = testEl.webkitMatchesSelector ||
+        testEl.mozMatchesSelector ||
+        testEl.oMatchesSelector ||
+        testEl.matchesSelector,
+
+        testStyle = testEl.style;
+
+    for (var name in testStyle) {
+        var matched = name.match(vendorPrefixRE || vendorPrefixesRE);
+        if (matched) {
+            if (!vendorPrefixRE) {
+                vendorPrefix = matched[1];
+                vendorPrefixRE = new RegExp("^(" + vendorPrefix + ")(.*)$");
+
+                css3StylePrefix = vendorPrefix;
+                css3PropPrefix = '-' + vendorPrefix.toLowerCase() + '-';
+                css3EventPrefix = vendorPrefix.toLowerCase();
+            }
+
+            cssStyles[langx.lowerFirst(matched[2])] = name;
+            var cssPropName = langx.dasherize(matched[2]);
+            cssProps[cssPropName] = css3PropPrefix + cssPropName;
+
+        }
+    }
+
+
+    function normalizeCssEvent(name) {
+        return css3EventPrefix ? css3EventPrefix + name : name.toLowerCase();
+    }
+
+    function normalizeCssProperty(name) {
+        return cssProps[name] || name;
+    }
+
+    function normalizeStyleProperty(name) {
+        return cssStyles[name] || name;
+    }
+
+    function browser() {
+        return browser;
+    }
+
+    langx.mixin(browser, {
+        css3PropPrefix: css3PropPrefix,
+
+        normalizeStyleProperty: normalizeStyleProperty,
+
+        normalizeCssProperty: normalizeCssProperty,
+
+        normalizeCssEvent: normalizeCssEvent,
+
+        matchesSelector: matchesSelector,
+
+        location: function() {
+            return window.location;
+        },
+
+        support : {}
+
+    });
+
+    testEl = null;
+
+    return skylark.browser = browser;
 });
 
 define('skylark-utils/styler',[
@@ -2333,546 +3390,188 @@ define('skylark-utils/noder',[
     return skylark.noder = noder;
 });
 
-define('skylark-utils/geom',[
+define('skylark-utils/css',[
     "./skylark",
     "./langx",
-    "./styler"
-], function(skylark, langx, styler) {
-    var rootNodeRE = /^(?:body|html)$/i,
-        px = langx.toPixel;
+    "./noder"
+], function(skylark, langx, construct) {
 
-    function offsetParent(elm) {
-        var parent = elm.offsetParent || document.body;
-        while (parent && !rootNodeRE.test(parent.nodeName) && styler.css(parent, "position") == "static") {
-            parent = parent.offsetParent;
-        }
-        return parent;
-    }
+    var head = document.getElementsByTagName("head")[0],
+        count = 0,
+        sheetsByUrl = {},
+        sheetElementsById = {},
+        defaultSheetId = _createStyleSheet(),
+        defaultSheet = sheetElementsById[defaultSheetId],
+        rulesPropName = ("cssRules" in defaultSheet) ? "cssRules" : "rules",
+        insertRuleFunc,
+        deleteRuleFunc = defaultSheet.deleteRule || defaultSheet.removeRule;
 
-
-    function borderExtents(elm) {
-        var s = getComputedStyle(elm);
-        return {
-            left: px(s.borderLeftWidth , elm),
-            top: px(s.borderTopWidth, elm),
-            right: px(s.borderRightWidth, elm),
-            bottom: px(s.borderBottomWidth, elm)
-        }
-    }
-
-    //viewport coordinate
-    function boundingPosition(elm, coords) {
-        if (coords === undefined) {
-            return rootNodeRE.test(elm.nodeName) ? { top: 0, left: 0 } : elm.getBoundingClientRect();
-        } else {
-            var // Get *real* offsetParent
-                parent = offsetParent(elm),
-                // Get correct offsets
-                parentOffset = boundingPosition(parent),
-                mex = marginExtents(elm),
-                pbex = borderExtents(parent);
-
-            relativePosition(elm, {
-                top: coords.top - parentOffset.top - mex.top - pbex.top,
-                left: coords.left - parentOffset.left - mex.left - pbex.left
-            });
-            return this;
-        }
-    }
-
-    function boundingRect(elm, coords) {
-        if (coords === undefined) {
-            return elm.getBoundingClientRect()
-        } else {
-            boundingPosition(elm, coords);
-            size(elm, coords);
-            return this;
-        }
-    }
-
-    function clientHeight(elm, value) {
-        if (value == undefined) {
-            return clientSize(elm).height;
-        } else {
-            return clientSize(elm, {
-                height: value
-            });
-        }
-    }
-
-    function clientSize(elm, dimension) {
-        if (dimension == undefined) {
-            return {
-                width: elm.clientWidth,
-                height: elm.clientHeight
-            }
-        } else {
-            var isBorderBox = (styler.css(elm, "box-sizing") === "border-box"),
-                props = {
-                    width: dimension.width,
-                    height: dimension.height
-                };
-            if (!isBorderBox) {
-                var pex = paddingExtents(elm);
-
-                if (props.width !== undefined) {
-                    props.width = props.width - pex.left - pex.right;
-                }
-
-                if (props.height !== undefined) {
-                    props.height = props.height - pex.top - pex.bottom;
-                }
-            } else {
-                var bex = borderExtents(elm);
-
-                if (props.width !== undefined) {
-                    props.width = props.width + bex.left + bex.right;
-                }
-
-                if (props.height !== undefined) {
-                    props.height = props.height + bex.top + bex.bottom;
-                }
-
-            }
-            styler.css(elm, props);
-            return this;
-        }
-        return {
-            width: elm.clientWidth,
-            height: elm.clientHeight
+    if (defaultSheet.insertRule) {
+        var _insertRule = defaultSheet.insertRule;
+        insertRuleFunc = function(selector, css, index) {
+            _insertRule.call(this, selector + "{" + css + "}", index);
         };
+    } else {
+        insertRuleFunc = defaultSheet.addRule;
     }
 
-    function clientWidth(elm, value) {
-        if (value == undefined) {
-            return clientSize(elm).width;
-        } else {
-            clientSize(elm, {
-                width: value
-            });
-            return this;
+    function normalizeSelector(selectorText) {
+        var selector = [],
+            last, len;
+        last = defaultSheet[rulesPropName].length;
+        insertRuleFunc.call(defaultSheet, selectorText, ';');
+        len = defaultSheet[rulesPropName].length;
+        for (var i = len - 1; i >= last; i--) {
+            selector.push(_sheet[_rules][i].selectorText);
+            deleteRuleFunc.call(defaultSheet, i);
         }
+        return selector.reverse().join(', ');
     }
 
-    function contentRect(elm) {
-        var cs = clientSize(elm),
-            pex = paddingExtents(elm);
+    function _createStyleSheet() {
+        var link = document.createElement("link"),
+            id = (count++);
 
+        link.rel = "stylesheet";
+        link.type = "text/css";
+        link.async = false;
+        link.defer = false;
 
-        //// On Opera, offsetLeft includes the parent's border
-        //if(has("opera")){
-        //    pe.l += be.l;
-        //    pe.t += be.t;
-        //}
-        return {
-            left: pex.left,
-            top: pex.top,
-            width: cs.width - pex.left - pex.right,
-            height: cs.height - pex.top - pex.bottom
-        };
+        head.appendChild(link);
+        sheetElementsById[id] = link;
+
+        return id;
     }
 
-    function getDocumentSize(doc) {
-        var documentElement = doc.documentElement,
-            body = doc.body,
-            max = Math.max,
-            scrollWidth = max(documentElement.scrollWidth, body.scrollWidth),
-            clientWidth = max(documentElement.clientWidth, body.clientWidth),
-            offsetWidth = max(documentElement.offsetWidth, body.offsetWidth),
-            scrollHeight = max(documentElement.scrollHeight, body.scrollHeight),
-            clientHeight = max(documentElement.clientHeight, body.clientHeight),
-            offsetHeight = max(documentElement.offsetHeight, body.offsetHeight);
-
-        return {
-            width: scrollWidth < offsetWidth ? clientWidth : scrollWidth,
-            height: scrollHeight < offsetHeight ? clientHeight : scrollHeight
-        };
+    function css() {
+        return css;
     }
 
-    function height(elm, value) {
-        if (value == undefined) {
-            return size(elm).height;
-        } else {
-            size(elm, {
-                height: value
-            });
-            return this;
-        }
-    }
-
-    function marginExtents(elm) {
-        var s = getComputedStyle(elm);
-        return {
-            left: px(s.marginLeft),
-            top: px(s.marginTop),
-            right: px(s.marginRight),
-            bottom: px(s.marginBottom),
-        }
-    }
-
-
-    function paddingExtents(elm) {
-        var s = getComputedStyle(elm);
-        return {
-            left: px(s.paddingLeft),
-            top: px(s.paddingTop),
-            right: px(s.paddingRight),
-            bottom: px(s.paddingBottom),
-        }
-    }
-
-    //coordinate to the document
-    function pagePosition(elm, coords) {
-        if (coords === undefined) {
-            var obj = elm.getBoundingClientRect()
-            return {
-                left: obj.left + window.pageXOffset,
-                top: obj.top + window.pageYOffset
-            }
-        } else {
-            var // Get *real* offsetParent
-                parent = offsetParent(elm),
-                // Get correct offsets
-                parentOffset = pagePosition(parent),
-                mex = marginExtents(elm),
-                pbex = borderExtents(parent);
-
-            relativePosition(elm, {
-                top: coords.top - parentOffset.top - mex.top - pbex.top,
-                left: coords.left - parentOffset.left - mex.left - pbex.left
-            });
-            return this;
-        }
-    }
-
-    function pageRect(elm, coords) {
-        if (coords === undefined) {
-            var obj = elm.getBoundingClientRect()
-            return {
-                left: obj.left + window.pageXOffset,
-                top: obj.top + window.pageYOffset,
-                width: Math.round(obj.width),
-                height: Math.round(obj.height)
-            }
-        } else {
-            pagePosition(elm, coords);
-            size(elm, coords);
-            return this;
-        }
-    }
-
-    // coordinate relative to it's parent
-    function relativePosition(elm, coords) {
-        if (coords == undefined) {
-            var // Get *real* offsetParent
-                parent = offsetParent(elm),
-                // Get correct offsets
-                offset = boundingPosition(elm),
-                parentOffset = boundingPosition(parent),
-                mex = marginExtents(elm),
-                pbex = borderExtents(parent);
-
-            // Subtract parent offsets and element margins
-            return {
-                top: offset.top - parentOffset.top - pbex.top - mex.top,
-                left: offset.left - parentOffset.left - pbex.left - mex.left
-            }
-        } else {
-            var props = {
-                top: coords.top,
-                left: coords.left
-            }
-
-            if (styler.css(elm, "position") == "static") {
-                props['position'] = "relative";
-            }
-            styler.css(elm, props);
-            return this;
-        }
-    }
-
-    function relativeRect(elm, coords) {
-        if (coords === undefined) {
-            var // Get *real* offsetParent
-                parent = offsetParent(elm),
-                // Get correct offsets
-                offset = boundingRect(elm),
-                parentOffset = boundingPosition(parent),
-                mex = marginExtents(elm),
-                pbex = borderExtents(parent);
-
-            // Subtract parent offsets and element margins
-            return {
-                top: offset.top - parentOffset.top - pbex.top - mex.top,
-                left: offset.left - parentOffset.left - pbex.left - mex.left,
-                width: offset.width,
-                height: offset.height
-            }
-        } else {
-            relativePosition(elm, coords);
-            size(elm, coords);
-            return this;
-        }
-    }
-
-    function scrollIntoView(elm, align) {
-        function getOffset(elm, rootElm) {
-            var x, y, parent = elm;
-
-            x = y = 0;
-            while (parent && parent != rootElm && parent.nodeType) {
-                x += parent.offsetLeft || 0;
-                y += parent.offsetTop || 0;
-                parent = parent.offsetParent;
-            }
-
-            return { x: x, y: y };
-        }
-
-        var parentElm = elm.parentNode;
-        var x, y, width, height, parentWidth, parentHeight;
-        var pos = getOffset(elm, parentElm);
-
-        x = pos.x;
-        y = pos.y;
-        width = elm.offsetWidth;
-        height = elm.offsetHeight;
-        parentWidth = parentElm.clientWidth;
-        parentHeight = parentElm.clientHeight;
-
-        if (align == "end") {
-            x -= parentWidth - width;
-            y -= parentHeight - height;
-        } else if (align == "center") {
-            x -= (parentWidth / 2) - (width / 2);
-            y -= (parentHeight / 2) - (height / 2);
-        }
-
-        parentElm.scrollLeft = x;
-        parentElm.scrollTop = y;
-
-        return this;
-    }
-
-    function scrollLeft(elm, value) {
-        var hasScrollLeft = "scrollLeft" in elm;
-        if (value === undefined) {
-            return hasScrollLeft ? elm.scrollLeft : elm.pageXOffset
-        } else {
-            if (hasScrollLeft) {
-                elm.scrollLeft = value;
-            } else {
-                elm.scrollTo(value, elm.scrollY);
-            }
-            return this;
-        }
-    }
-
-    function scrollTop(elm, value) {
-        var hasScrollTop = "scrollTop" in elm;
-
-        if (value === undefined) {
-            return hasScrollTop ? elm.scrollTop : elm.pageYOffset
-        } else {
-            if (hasScrollTop) {
-                elm.scrollTop = value;
-            } else {
-                elm.scrollTo(elm.scrollX, value);
-            }
-            return this;
-        }
-    }
-
-    function size(elm, dimension) {
-        if (dimension == undefined) {
-            if (langx.isWindow(elm)) {
-                return {
-                    width: elm.innerWidth,
-                    height: elm.innerHeight
-                }
-
-            } else if (langx.isDocument(elm)) {
-                return getDocumentSize(document);
-            } else {
-                return {
-                    width: elm.offsetWidth,
-                    height: elm.offsetHeight
-                }
-            }
-        } else {
-            var isBorderBox = (styler.css(elm, "box-sizing") === "border-box"),
-                props = {
-                    width: dimension.width,
-                    height: dimension.height
-                };
-            if (!isBorderBox) {
-                var pex = paddingExtents(elm),
-                    bex = borderExtents(elm);
-
-                if (props.width !== undefined && props.width !== "" && props.width !== null) {
-                    props.width = props.width - pex.left - pex.right - bex.left - bex.right;
-                }
-
-                if (props.height !== undefined && props.height !== "" && props.height !== null) {
-                    props.height = props.height - pex.top - pex.bottom - bex.top - bex.bottom;
-                }
-            }
-            styler.css(elm, props);
-            return this;
-        }
-    }
-
-    function width(elm, value) {
-        if (value == undefined) {
-            return size(elm).width;
-        } else {
-            size(elm, {
-                width: value
-            });
-            return this;
-        }
-    }
-
-    function geom() {
-        return geom;
-    }
-
-    langx.mixin(geom, {
-        borderExtents: borderExtents,
-        //viewport coordinate
-        boundingPosition: boundingPosition,
-
-        boundingRect: boundingRect,
-
-        clientHeight: clientHeight,
-
-        clientSize: clientSize,
-
-        clientWidth: clientWidth,
-
-        contentRect: contentRect,
-
-        getDocumentSize: getDocumentSize,
-
-        height: height,
-
-        marginExtents: marginExtents,
-
-        offsetParent: offsetParent,
-
-        paddingExtents: paddingExtents,
-
-        //coordinate to the document
-        pagePosition: pagePosition,
-
-        pageRect: pageRect,
-
-        // coordinate relative to it's parent
-        relativePosition: relativePosition,
-
-        relativeRect: relativeRect,
-
-        scrollIntoView: scrollIntoView,
-
-        scrollLeft: scrollLeft,
-
-        scrollTop: scrollTop,
-
-        size: size,
-
-        width: width
-    });
-
-    return skylark.geom = geom;
-});
-
-define('skylark-utils/browser',[
-    "./skylark",
-    "./langx"
-], function(skylark,langx) {
-    var checkedCssProperties = {
-        "transitionproperty": "TransitionProperty",
-    };
-
-    var css3PropPrefix = "",
-        css3StylePrefix = "",
-        css3EventPrefix = "",
-
-        cssStyles = {},
-        cssProps = {},
-
-        vendorPrefix,
-        vendorPrefixRE,
-        vendorPrefixesRE = /^(Webkit|webkit|O|Moz|moz|ms)(.*)$/,
-
-        document = window.document,
-        testEl = document.createElement("div"),
-
-        matchesSelector = testEl.webkitMatchesSelector ||
-        testEl.mozMatchesSelector ||
-        testEl.oMatchesSelector ||
-        testEl.matchesSelector,
-
-        testStyle = testEl.style;
-
-    for (var name in testStyle) {
-        var matched = name.match(vendorPrefixRE || vendorPrefixesRE);
-        if (matched) {
-            if (!vendorPrefixRE) {
-                vendorPrefix = matched[1];
-                vendorPrefixRE = new RegExp("^(" + vendorPrefix + ")(.*)$");
-
-                css3StylePrefix = vendorPrefix;
-                css3PropPrefix = '-' + vendorPrefix.toLowerCase() + '-';
-                css3EventPrefix = vendorPrefix.toLowerCase();
-            }
-
-            cssStyles[langx.lowerFirst(matched[2])] = name;
-            var cssPropName = langx.dasherize(matched[2]);
-            cssProps[cssPropName] = css3PropPrefix + cssPropName;
-
-        }
-    }
-
-
-    function normalizeCssEvent(name) {
-        return css3EventPrefix ? css3EventPrefix + name : name.toLowerCase();
-    }
-
-    function normalizeCssProperty(name) {
-        return cssProps[name] || name;
-    }
-
-    function normalizeStyleProperty(name) {
-        return cssStyles[name] || name;
-    }
-
-    function browser() {
-        return browser;
-    }
-
-    langx.mixin(browser, {
-        css3PropPrefix: css3PropPrefix,
-
-        normalizeStyleProperty: normalizeStyleProperty,
-
-        normalizeCssProperty: normalizeCssProperty,
-
-        normalizeCssEvent: normalizeCssEvent,
-
-        matchesSelector: matchesSelector,
-
-        location: function() {
-            return window.location;
+    langx.mixin(css, {
+        createStyleSheet: function(cssText) {
+            return _createStyleSheet();
         },
 
-        support : {}
+        loadStyleSheet: function(url, loadedCallback, errorCallback) {
+            var sheet = sheetsByUrl[url];
+            if (!sheet) {
+                sheet = sheetsByUrl[url] = {
+                    state: 0, //0:unload,1:loaded,-1:loaderror
+                    loadedCallbacks: [],
+                    errorCallbacks: []
+                };
+            }
 
+            sheet.loadedCallbacks.push(loadedCallback);
+            sheet.errorCallbacks.push(errorCallback);
+
+            if (sheet.state === 1) {
+                sheet.node.onload();
+            } else if (sheet.state === -1) {
+                sheet.node.onerror();
+            } else {
+                sheet.id = _createStyleSheet();
+                var node = sheet.node = sheetElementsById[sheet.id];
+
+                startTime = new Date().getTime();
+
+                node.onload = function() {
+                    sheet.state = 1;
+                    sheet.state = -1;
+                    var callbacks = sheet.loadedCallbacks,
+                        i = callbacks.length;
+
+                    while (i--) {
+                        callbacks[i]();
+                    }
+                    sheet.loadedCallbacks = [];
+                    sheet.errorCallbacks = [];
+                },
+                node.onerror = function() {
+                    sheet.state = -1;
+                    var callbacks = sheet.errorCallbacks,
+                        i = callbacks.length;
+
+                    while (i--) {
+                        callbacks[i]();
+                    }
+                    sheet.loadedCallbacks = [];
+                    sheet.errorCallbacks = [];
+                };
+
+                node.href = sheet.url = url;
+
+                sheetsByUrl[node.url] = sheet;
+
+            }
+            return sheet.id;
+        },
+
+        deleteSheetRule: function(sheetId, rule) {
+            var sheet = sheetElementsById[sheetId];
+            if (langx.isNumber(rule)) {
+                deleteRuleFunc.call(sheet, rule);
+            } else {
+                langx.each(sheet[rulesPropName], function(i, _rule) {
+                    if (rule === _rule) {
+                        deleteRuleFunc.call(sheet, i);
+                        return false;
+                    }
+                });
+            }
+        },
+
+        deleteRule: function(rule) {
+            this.deleteSheetRule(defaultSheetId, rule);
+            return this;
+        },
+
+        removeStyleSheet: function(sheetId) {
+            if (sheetId === defaultSheetId) {
+                throw new Error("The default stylesheet can not be deleted");
+            }
+            var sheet = sheetElementsById[sheetId];
+            delete sheetElementsById[sheetId];
+
+
+            construct.remove(sheet);
+            return this;
+        },
+
+        findRules: function(selector, sheetId) {
+            //return array of CSSStyleRule objects that match the selector text
+            var rules = [],
+                filters = parseSelector(selector);
+            $(document.styleSheets).each(function(i, styleSheet) {
+                if (filterStyleSheet(filters.styleSheet, styleSheet)) {
+                    $.merge(rules, $(styleSheet[_rules]).filter(function() {
+                        return matchSelector(this, filters.selectorText, filters.styleSheet === "*");
+                    }).map(function() {
+                        return normalizeRule($.support.nativeCSSStyleRule ? this : new CSSStyleRule(this), styleSheet);
+                    }));
+                }
+            });
+            return rules.reverse();
+        },
+
+        insertRule: function(selector, css, index) {
+            return this.insertSheetRule(defaultSheetId, selector, css, index);
+        },
+
+        insertSheetRule: function(sheetId, selector, css, index) {
+            if (!selector || !css) {
+                return -1;
+            }
+
+            var sheet = sheetElementsById[sheetId];
+            index = index || sheet[rulesPropName].length;
+
+            return insertRuleFunc.call(sheet, selector, css, index);
+
+        }
     });
 
-    testEl = null;
-
-    return skylark.browser = browser;
+    return skylark.css = css;
 });
 
 define('skylark-utils/finder',[
@@ -3989,6 +4688,12 @@ define('skylark-utils/datax',[
         }
     }
 
+    function cleanData(elm) {
+        if (elm["_$_store"]) {
+            delete elm["_$_store"];
+        }
+    }
+
     function removeData(elm, names) {
         if (langx.isString(names)) {
             names = names.split(/\s+/);
@@ -4065,6 +4770,8 @@ define('skylark-utils/datax',[
         
         attr: attr,
 
+        cleanData : cleanData,
+        
         data: data,
 
         pluck: pluck,
@@ -4083,6 +4790,473 @@ define('skylark-utils/datax',[
     });
 
     return skylark.datax = datax;
+});
+
+define('skylark-utils/geom',[
+    "./skylark",
+    "./langx",
+    "./styler"
+], function(skylark, langx, styler) {
+    var rootNodeRE = /^(?:body|html)$/i,
+        px = langx.toPixel;
+
+    function offsetParent(elm) {
+        var parent = elm.offsetParent || document.body;
+        while (parent && !rootNodeRE.test(parent.nodeName) && styler.css(parent, "position") == "static") {
+            parent = parent.offsetParent;
+        }
+        return parent;
+    }
+
+
+    function borderExtents(elm) {
+        var s = getComputedStyle(elm);
+        return {
+            left: px(s.borderLeftWidth , elm),
+            top: px(s.borderTopWidth, elm),
+            right: px(s.borderRightWidth, elm),
+            bottom: px(s.borderBottomWidth, elm)
+        }
+    }
+
+    //viewport coordinate
+    function boundingPosition(elm, coords) {
+        if (coords === undefined) {
+            return rootNodeRE.test(elm.nodeName) ? { top: 0, left: 0 } : elm.getBoundingClientRect();
+        } else {
+            var // Get *real* offsetParent
+                parent = offsetParent(elm),
+                // Get correct offsets
+                parentOffset = boundingPosition(parent),
+                mex = marginExtents(elm),
+                pbex = borderExtents(parent);
+
+            relativePosition(elm, {
+                top: coords.top - parentOffset.top - mex.top - pbex.top,
+                left: coords.left - parentOffset.left - mex.left - pbex.left
+            });
+            return this;
+        }
+    }
+
+    function boundingRect(elm, coords) {
+        if (coords === undefined) {
+            return elm.getBoundingClientRect()
+        } else {
+            boundingPosition(elm, coords);
+            size(elm, coords);
+            return this;
+        }
+    }
+
+    function clientHeight(elm, value) {
+        if (value == undefined) {
+            return clientSize(elm).height;
+        } else {
+            return clientSize(elm, {
+                height: value
+            });
+        }
+    }
+
+    function clientSize(elm, dimension) {
+        if (dimension == undefined) {
+            return {
+                width: elm.clientWidth,
+                height: elm.clientHeight
+            }
+        } else {
+            var isBorderBox = (styler.css(elm, "box-sizing") === "border-box"),
+                props = {
+                    width: dimension.width,
+                    height: dimension.height
+                };
+            if (!isBorderBox) {
+                var pex = paddingExtents(elm);
+
+                if (props.width !== undefined) {
+                    props.width = props.width - pex.left - pex.right;
+                }
+
+                if (props.height !== undefined) {
+                    props.height = props.height - pex.top - pex.bottom;
+                }
+            } else {
+                var bex = borderExtents(elm);
+
+                if (props.width !== undefined) {
+                    props.width = props.width + bex.left + bex.right;
+                }
+
+                if (props.height !== undefined) {
+                    props.height = props.height + bex.top + bex.bottom;
+                }
+
+            }
+            styler.css(elm, props);
+            return this;
+        }
+        return {
+            width: elm.clientWidth,
+            height: elm.clientHeight
+        };
+    }
+
+    function clientWidth(elm, value) {
+        if (value == undefined) {
+            return clientSize(elm).width;
+        } else {
+            clientSize(elm, {
+                width: value
+            });
+            return this;
+        }
+    }
+
+    function contentRect(elm) {
+        var cs = clientSize(elm),
+            pex = paddingExtents(elm);
+
+
+        //// On Opera, offsetLeft includes the parent's border
+        //if(has("opera")){
+        //    pe.l += be.l;
+        //    pe.t += be.t;
+        //}
+        return {
+            left: pex.left,
+            top: pex.top,
+            width: cs.width - pex.left - pex.right,
+            height: cs.height - pex.top - pex.bottom
+        };
+    }
+
+    function getDocumentSize(doc) {
+        var documentElement = doc.documentElement,
+            body = doc.body,
+            max = Math.max,
+            scrollWidth = max(documentElement.scrollWidth, body.scrollWidth),
+            clientWidth = max(documentElement.clientWidth, body.clientWidth),
+            offsetWidth = max(documentElement.offsetWidth, body.offsetWidth),
+            scrollHeight = max(documentElement.scrollHeight, body.scrollHeight),
+            clientHeight = max(documentElement.clientHeight, body.clientHeight),
+            offsetHeight = max(documentElement.offsetHeight, body.offsetHeight);
+
+        return {
+            width: scrollWidth < offsetWidth ? clientWidth : scrollWidth,
+            height: scrollHeight < offsetHeight ? clientHeight : scrollHeight
+        };
+    }
+
+    function height(elm, value) {
+        if (value == undefined) {
+            return size(elm).height;
+        } else {
+            size(elm, {
+                height: value
+            });
+            return this;
+        }
+    }
+
+    function marginExtents(elm) {
+        var s = getComputedStyle(elm);
+        return {
+            left: px(s.marginLeft),
+            top: px(s.marginTop),
+            right: px(s.marginRight),
+            bottom: px(s.marginBottom),
+        }
+    }
+
+    function marginRect(elm) {
+        var obj = this.relativeRect(elm),
+            me = this.marginExtents(elm);
+
+        return {
+                left: obj.left,
+                top: obj.top,
+                width: obj.width + me.left + me.right,
+                height: obj.height + me.top + me.bottom
+            };
+    }
+
+
+    function paddingExtents(elm) {
+        var s = getComputedStyle(elm);
+        return {
+            left: px(s.paddingLeft),
+            top: px(s.paddingTop),
+            right: px(s.paddingRight),
+            bottom: px(s.paddingBottom),
+        }
+    }
+
+    //coordinate to the document
+    function pagePosition(elm, coords) {
+        if (coords === undefined) {
+            var obj = elm.getBoundingClientRect()
+            return {
+                left: obj.left + window.pageXOffset,
+                top: obj.top + window.pageYOffset
+            }
+        } else {
+            var // Get *real* offsetParent
+                parent = offsetParent(elm),
+                // Get correct offsets
+                parentOffset = pagePosition(parent),
+                mex = marginExtents(elm),
+                pbex = borderExtents(parent);
+
+            relativePosition(elm, {
+                top: coords.top - parentOffset.top - mex.top - pbex.top,
+                left: coords.left - parentOffset.left - mex.left - pbex.left
+            });
+            return this;
+        }
+    }
+
+    function pageRect(elm, coords) {
+        if (coords === undefined) {
+            var obj = elm.getBoundingClientRect()
+            return {
+                left: obj.left + window.pageXOffset,
+                top: obj.top + window.pageYOffset,
+                width: Math.round(obj.width),
+                height: Math.round(obj.height)
+            }
+        } else {
+            pagePosition(elm, coords);
+            size(elm, coords);
+            return this;
+        }
+    }
+
+    // coordinate relative to it's parent
+    function relativePosition(elm, coords) {
+        if (coords == undefined) {
+            var // Get *real* offsetParent
+                parent = offsetParent(elm),
+                // Get correct offsets
+                offset = boundingPosition(elm),
+                parentOffset = boundingPosition(parent),
+                mex = marginExtents(elm),
+                pbex = borderExtents(parent);
+
+            // Subtract parent offsets and element margins
+            return {
+                top: offset.top - parentOffset.top - pbex.top,// - mex.top,
+                left: offset.left - parentOffset.left - pbex.left,// - mex.left
+            }
+        } else {
+            var props = {
+                top: coords.top,
+                left: coords.left
+            }
+
+            if (styler.css(elm, "position") == "static") {
+                props['position'] = "relative";
+            }
+            styler.css(elm, props);
+            return this;
+        }
+    }
+
+    function relativeRect(elm, coords) {
+        if (coords === undefined) {
+            var // Get *real* offsetParent
+                parent = offsetParent(elm),
+                // Get correct offsets
+                offset = boundingRect(elm),
+                parentOffset = boundingPosition(parent),
+                mex = marginExtents(elm),
+                pbex = borderExtents(parent);
+
+            // Subtract parent offsets and element margins
+            return {
+                top: offset.top - parentOffset.top - pbex.top, // - mex.top,
+                left: offset.left - parentOffset.left - pbex.left, // - mex.left,
+                width: offset.width,
+                height: offset.height
+            }
+        } else {
+            relativePosition(elm, coords);
+            size(elm, coords);
+            return this;
+        }
+    }
+
+    function scrollIntoView(elm, align) {
+        function getOffset(elm, rootElm) {
+            var x, y, parent = elm;
+
+            x = y = 0;
+            while (parent && parent != rootElm && parent.nodeType) {
+                x += parent.offsetLeft || 0;
+                y += parent.offsetTop || 0;
+                parent = parent.offsetParent;
+            }
+
+            return { x: x, y: y };
+        }
+
+        var parentElm = elm.parentNode;
+        var x, y, width, height, parentWidth, parentHeight;
+        var pos = getOffset(elm, parentElm);
+
+        x = pos.x;
+        y = pos.y;
+        width = elm.offsetWidth;
+        height = elm.offsetHeight;
+        parentWidth = parentElm.clientWidth;
+        parentHeight = parentElm.clientHeight;
+
+        if (align == "end") {
+            x -= parentWidth - width;
+            y -= parentHeight - height;
+        } else if (align == "center") {
+            x -= (parentWidth / 2) - (width / 2);
+            y -= (parentHeight / 2) - (height / 2);
+        }
+
+        parentElm.scrollLeft = x;
+        parentElm.scrollTop = y;
+
+        return this;
+    }
+
+    function scrollLeft(elm, value) {
+        var hasScrollLeft = "scrollLeft" in elm;
+        if (value === undefined) {
+            return hasScrollLeft ? elm.scrollLeft : elm.pageXOffset
+        } else {
+            if (hasScrollLeft) {
+                elm.scrollLeft = value;
+            } else {
+                elm.scrollTo(value, elm.scrollY);
+            }
+            return this;
+        }
+    }
+
+    function scrollTop(elm, value) {
+        var hasScrollTop = "scrollTop" in elm;
+
+        if (value === undefined) {
+            return hasScrollTop ? elm.scrollTop : elm.pageYOffset
+        } else {
+            if (hasScrollTop) {
+                elm.scrollTop = value;
+            } else {
+                elm.scrollTo(elm.scrollX, value);
+            }
+            return this;
+        }
+    }
+
+    function size(elm, dimension) {
+        if (dimension == undefined) {
+            if (langx.isWindow(elm)) {
+                return {
+                    width: elm.innerWidth,
+                    height: elm.innerHeight
+                }
+
+            } else if (langx.isDocument(elm)) {
+                return getDocumentSize(document);
+            } else {
+                return {
+                    width: elm.offsetWidth,
+                    height: elm.offsetHeight
+                }
+            }
+        } else {
+            var isBorderBox = (styler.css(elm, "box-sizing") === "border-box"),
+                props = {
+                    width: dimension.width,
+                    height: dimension.height
+                };
+            if (!isBorderBox) {
+                var pex = paddingExtents(elm),
+                    bex = borderExtents(elm);
+
+                if (props.width !== undefined && props.width !== "" && props.width !== null) {
+                    props.width = props.width - pex.left - pex.right - bex.left - bex.right;
+                }
+
+                if (props.height !== undefined && props.height !== "" && props.height !== null) {
+                    props.height = props.height - pex.top - pex.bottom - bex.top - bex.bottom;
+                }
+            }
+            styler.css(elm, props);
+            return this;
+        }
+    }
+
+    function width(elm, value) {
+        if (value == undefined) {
+            return size(elm).width;
+        } else {
+            size(elm, {
+                width: value
+            });
+            return this;
+        }
+    }
+
+    function geom() {
+        return geom;
+    }
+
+    langx.mixin(geom, {
+        borderExtents: borderExtents,
+        //viewport coordinate
+        boundingPosition: boundingPosition,
+
+        boundingRect: boundingRect,
+
+        clientHeight: clientHeight,
+
+        clientSize: clientSize,
+
+        clientWidth: clientWidth,
+
+        contentRect: contentRect,
+
+        getDocumentSize: getDocumentSize,
+
+        height: height,
+
+        marginExtents: marginExtents,
+
+        marginRect : marginRect,
+
+        offsetParent: offsetParent,
+
+        paddingExtents: paddingExtents,
+
+        //coordinate to the document
+        pagePosition: pagePosition,
+
+        pageRect: pageRect,
+
+        // coordinate relative to it's parent
+        relativePosition: relativePosition,
+
+        relativeRect: relativeRect,
+
+        scrollIntoView: scrollIntoView,
+
+        scrollLeft: scrollLeft,
+
+        scrollTop: scrollTop,
+
+        size: size,
+
+        width: width
+    });
+
+    return skylark.geom = geom;
 });
 
 define('skylark-utils/eventer',[
@@ -4256,17 +5430,20 @@ define('skylark-utils/eventer',[
         };
     })();
 
-    function createProxy(event) {
+    function createProxy(src,props) {
         var key,
             proxy = {
-                originalEvent: event
+                originalEvent: src
             };
-        for (key in event) {
-            if (key !== "keyIdentifier" && !ignoreProperties.test(key) && event[key] !== undefined) {
-                proxy[key] = event[key];
+        for (key in src) {
+            if (key !== "keyIdentifier" && !ignoreProperties.test(key) && src[key] !== undefined) {
+                proxy[key] = src[key];
             }
         }
-        return compatible(proxy, event);
+        if (props) {
+            langx.mixin(proxy,props);
+        }
+        return compatible(proxy, src);
     }
 
     var
@@ -4701,6 +5878,813 @@ define('skylark-utils/eventer',[
     });
 
     return skylark.eventer = eventer;
+});
+
+define('skylark-utils/dnd',[
+    "./skylark",
+    "./langx",
+    "./noder",
+    "./datax",
+    "./finder",
+    "./geom",
+    "./eventer",
+    "./styler"
+],function(skylark, langx,noder,datax,finder,geom,eventer,styler){
+    var on = eventer.on,
+        off = eventer.off,
+        attr = datax.attr,
+        removeAttr = datax.removeAttr,
+        offset = geom.pagePosition,
+        addClass = styler.addClass,
+        height = geom.height;
+
+
+    var DndManager = langx.Evented.inherit({
+      klassName : "DndManager",
+
+      init : function() {
+
+      },
+
+      prepare : function(draggable) {
+          var e = eventer.create("preparing",{
+             dragSource : draggable.elm,
+             handleElm : draggable.handleElm
+          });
+          draggable.trigger(e);
+          draggable.dragSource = e.dragSource;
+      },
+
+      start : function(draggable,event) {
+
+        var p = geom.pagePosition(draggable.elm);
+        this.draggingOffsetX = parseInt(event.pageX - p.left);
+        this.draggingOffsetY = parseInt(event.pageY - p.top)
+
+        var e = eventer.create("started",{
+          elm : draggable.elm,
+          dragSource : draggable.dragSource,
+          handleElm : draggable.handleElm,
+          ghost : null,
+
+          transfer : {
+          }
+        });
+
+        draggable.trigger(e);
+
+
+        this.dragging = draggable;
+
+        if (draggable.draggingClass) {
+          styler.addClass(draggable.dragSource,draggable.draggingClass);
+        }
+
+        this.draggingGhost = e.ghost;
+        if (!this.draggingGhost) {
+          this.draggingGhost = draggable.elm;
+        }
+
+        this.draggingTransfer = e.transfer;
+        if (this.draggingTransfer) {
+
+            langx.each(this.draggingTransfer,function(key,value){
+                event.dataTransfer.setData(key, value);
+            });
+        }
+
+        event.dataTransfer.setDragImage(this.draggingGhost, this.draggingOffsetX, this.draggingOffsetY);
+
+        event.dataTransfer.effectAllowed = "copyMove";
+
+        this.trigger(e);
+      },
+
+      over : function() {
+
+      },
+
+      end : function(dropped) {
+        var dragging = this.dragging;
+        if (dragging) {
+          if (dragging.draggingClass) {
+            styler.removeClass(dragging.dragSource,dragging.draggingClass);
+          }
+        }
+
+        var e = eventer.create("ended",{
+        });        
+        this.trigger(e);
+
+
+        this.dragging = null;
+        this.draggingTransfer = null;
+        this.draggingGhost = null;
+        this.draggingOffsetX = null;
+        this.draggingOffsetY = null;
+      }
+    });
+
+    var manager = new DndManager(),
+        draggingHeight,
+        placeholders = [];
+
+
+
+    var Draggable = langx.Evented.inherit({
+      klassName : "Draggable",
+
+      init : function (elm,params) {
+        var self = this;
+
+        self.elm = elm;
+        self.draggingClass = params.draggingClass || "dragging",
+        self._params = params;
+
+        ["preparing","started", "ended", "moving"].forEach(function(eventName) {
+            if (langx.isFunction(params[eventName])) {
+                self.on(eventName, params[eventName]);
+            }
+        });
+
+
+        eventer.on(elm,{
+          "mousedown" : function(e) {
+            if (params.handle) {
+              self.handleElm = finder.closest(e.target,params.handle);
+              if (!self.handleElm) {
+                return;
+              }
+            }
+            manager.prepare(self);
+            if (self.dragSource) {
+              datax.prop(self.dragSource, "draggable", true);
+            }
+          },
+
+          "mouseup" :   function(e) {
+            if (self.dragSource) {
+              datax.prop(self.dragSource, "draggable", false);
+              self.dragSource = null;
+              self.handleElm = null;
+            }
+          },
+
+          "dragstart":  function(e) {
+            datax.prop(self.dragSource, "draggable", false);
+            manager.start(self, e);
+          },
+
+          "dragend":   function(e){
+            eventer.stop(e);
+
+            if (!manager.dragging) {
+              return;
+            }
+
+            manager.end(false);
+          }
+        });
+
+      }
+
+    });
+
+
+    var Droppable = langx.Evented.inherit({
+      klassName : "Droppable",
+
+      init : function(elm,params) {
+        var self = this,
+            draggingClass = params.draggingClass || "dragging",
+            hoverClass,
+            activeClass,
+            acceptable = true;
+
+        self.elm = elm;
+        self._params = params;
+
+        ["started","entered", "leaved", "dropped","overing"].forEach(function(eventName) {
+            if (langx.isFunction(params[eventName])) {
+                self.on(eventName, params[eventName]);
+            }
+        });
+
+        eventer.on(elm,{
+          "dragover" : function(e) {
+            e.stopPropagation()
+
+            if (!acceptable) {
+              return
+            }
+
+            var e2 = eventer.create("overing",{
+                overElm : e.target,
+                transfer : manager.draggingTransfer,
+                acceptable : true
+            });
+            self.trigger(e2);
+
+            if (e2.acceptable) {
+              e.preventDefault() // allow drop
+
+              e.dataTransfer.dropEffect = "copyMove";
+            }
+
+          },
+
+          "dragenter" :   function(e) {
+            var params = self._params,
+                elm = self.elm;
+
+            var e2 = eventer.create("entered",{
+                transfer : manager.draggingTransfer
+            });
+
+            self.trigger(e2);
+
+            e.stopPropagation()
+
+            if (hoverClass && acceptable) {
+              styler.addClass(elm,hoverClass)
+            }
+          },
+
+          "dragleave":  function(e) {
+            var params = self._params,
+                elm = self.elm;
+            if (!acceptable) return false
+            
+            var e2 = eventer.create("leaved",{
+                transfer : manager.draggingTransfer
+            });
+            
+            self.trigger(e2);
+
+            e.stopPropagation()
+
+            if (hoverClass && acceptable) {
+              styler.removeClass(elm,hoverClass);
+            }
+          },
+
+          "drop":   function(e){
+            var params = self._params,
+                elm = self.elm;
+
+            eventer.stop(e); // stops the browser from redirecting.
+
+            if (!manager.dragging) return
+
+           // manager.dragging.elm.removeClass('dragging');
+
+            if (hoverClass && acceptable) {
+              styler.addClass(elm,hoverClass)
+            }
+
+            var e2 = eventer.create("dropped",{
+                transfer : manager.draggingTransfer
+            });
+
+            self.trigger(e2);
+
+            manager.end(true)
+          }
+        });
+
+        manager.on("started",function(e){
+            var e2 = eventer.create("started",{
+                transfer : manager.draggingTransfer,
+                acceptable : false
+            });
+
+            self.trigger(e2);
+
+            acceptable = e2.acceptable;
+            hoverClass = e2.hoverClass;
+            activeClass = e2.activeClass;
+
+            if (activeClass && acceptable) {
+              styler.addClass(elm,activeClass);
+            }
+
+         }).on("ended" , function(e){
+            var e2 = eventer.create("ended",{
+                transfer : manager.draggingTransfer,
+                acceptable : false
+            });
+
+            self.trigger(e2);
+
+            if (hoverClass && acceptable) {
+              styler.removeClass(elm,hoverClass);
+            }
+            if (activeClass && acceptable) {
+              styler.removeClass(elm,activeClass);
+            }
+
+            acceptable = false;
+            activeClass = null;
+            hoverClass = null;
+        });
+
+      }
+    });
+
+
+    function draggable(elm, params) {
+      return new Draggable(elm,params);
+    }
+
+    function droppable(elm, params) {
+      return new Droppable(elm,params);
+    }
+
+    function dnd(){
+      return dnd;
+    }
+
+    langx.mixin(dnd, {
+       //params ： {
+        //  target : Element or string or function
+        //  handle : Element
+        //  copy : boolean
+        //  placeHolder : "div"
+        //  hoverClass : "hover"
+        //  start : function
+        //  enter : function
+        //  over : function
+        //  leave : function
+        //  drop : function
+        //  end : function
+        //
+        //
+        //}
+        draggable   : draggable,
+
+        //params ： {
+        //  accept : string or function
+        //  placeHolder
+        //
+        //
+        //
+        //}
+        droppable : droppable,
+
+        manager : manager
+
+
+    });
+
+    return skylark.dnd = dnd;
+});
+
+define('skylark-utils/_devices/usermedia',[
+    "../langx"
+], function(langx) {
+    navigator.getUserMedia = navigator.getUserMedia
+                        || navigator.webkitGetUserMedia
+                        || navigator.mozGetUserMedia
+                        || navigator.msGetUserMedia;
+   
+    var Deferred = langx.Deferred,
+        localStream  = null;
+
+    function usermedia() {
+        return usermedia;
+    }
+
+    langx.mixin(usermedia, {
+        isSupported : function() {
+            return !!navigator.getUserMedia;
+        },
+
+        start : function(video,audio) {
+
+            var d = new Deferred();
+            navigator.getUserMedia (
+                {video: true,audio: true},
+                // successCallback
+                function(stream) {
+                    localStream = stream;
+                    video.src = window.URL.createObjectURL(localMediaStream);
+                    video.onloadedmetadata = function(e) {
+                         // Do something with the video here.
+                    };
+                    d.resolve();
+                },
+
+                // errorCallback
+                function(err) {
+                  d.reject(err);
+                }
+            );
+
+            return d.promise;
+        },
+
+        stop : function() {
+            if (localStream) {
+                localStream.stop();
+                localStream = null; 
+            }
+        }
+    });
+
+
+    return  usermedia;
+});
+
+define('skylark-utils/_devices/vibrate',[
+    "../langx"
+], function(langx) {
+    navigator.vibrate = navigator.vibrate
+                        || navigator.webkitVibrate
+                        || navigator.mozVibrate
+                        || navigator.msVibrate;
+    
+
+    function vibrate() {
+        return vibrate;
+    }
+
+    langx.mixin(vibrate, {
+        isSupported : function() {
+            return !!navigator.vibrate;
+        },
+
+        start : function(duration) {
+            navigator.vibrate(duration);
+        },
+
+        stop : function() {
+            navigator.vibrate(0);
+        }
+    });
+
+
+    return  vibrate;
+});
+
+define('skylark-utils/devices',[
+    "./skylark",
+    "./langx",
+    "./_devices/usermedia",
+    "./_devices/vibrate"
+], function(skylark,langx,usermedia,vibrate) {
+
+    function devices() {
+        return devices;
+    }
+
+    langx.mixin(devices, {
+        usermedia: usermedia,
+        vibrate : vibrate
+    });
+
+
+    return skylark.devices = devices;
+});
+
+define('skylark-utils/filer',[
+    "./skylark",
+    "./langx",
+    "./eventer",
+    "./styler"
+], function(skylark, langx, eventer,styler) {
+    var on = eventer.on,
+        attr = eventer.attr,
+        Deferred = langx.Deferred,
+
+        fileInput,
+        fileInputForm,
+        fileSelected,
+        maxFileSize = 1 / 0;
+
+    function dataURLtoBlob(dataurl) {
+        var arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+            bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+        while(n--){
+            u8arr[n] = bstr.charCodeAt(n);
+        }
+        return new Blob([u8arr], {type:mime});
+    }
+
+    function selectFile(callback) {
+        fileSelected = callback;
+        if (!fileInput) {
+            var input = fileInput = document.createElement("input");
+
+            function selectFiles(pickedFiles) {
+                for (var i = pickedFiles.length; i--;) {
+                    if (pickedFiles[i].size > maxFileSize) {
+                        pickedFiles.splice(i, 1);
+                    }
+                }
+                fileSelected(pickedFiles);
+            }
+
+            input.type = "file";
+            input.style.position = "fixed",
+                input.style.left = 0,
+                input.style.top = 0,
+                input.style.opacity = .001,
+                document.body.appendChild(input);
+
+            input.onchange = function(e) {
+                selectFiles(Array.prototype.slice.call(e.target.files));
+                // reset to "", so selecting the same file next time still trigger the change handler
+                input.value = "";
+            };
+        }
+        fileInput.click();
+    }
+
+    function upload(files, url, params) {
+        params = params || {};
+        var chunkSize = params.chunkSize || 0,
+            maxSize = params.maxSize || 0,
+            progressCallback = params.progress,
+            errorCallback = params.error,
+            completedCallback = params.completed,
+            uploadedCallback = params.uploaded;
+
+        function createFormData(e) {
+            var t = new FormData();
+            t.append("file", e);
+            return t;
+        }
+
+
+        function uploadOneFile(fileItem,oneFileloadedSize, fileItems) {
+            function handleProcess(nowLoadedSize) {
+                var t;
+                speed = Math.ceil(oneFileloadedSize + nowLoadedSize / ((now() - uploadStartedTime) / 1e3)), 
+                percent = Math.round((oneFileloadedSize + nowLoadedSize) / file.size * 100); 
+                if (progressCallback) {
+                    progressCallback({
+                        name: file.name,
+                        loaded: oneFileloadedSize + nowLoadedSize,
+                        total: file.size,
+                        percent: percent,
+                        bytesPerSecond: speed,
+                        global: {
+                            loaded: allLoadedSize + oneFileloadedSize + nowLoadedSize,
+                            total: totalSize
+                        }
+                    });
+                }
+            }
+            var file = fileItem.file,
+                uploadChunkSize = chunkSize || file.size,
+                chunk = file.slice(oneFileloadedSize, oneFileloadedSize + uploadChunkSize);
+
+            xhr = createXmlHttpRequest();
+            //xhr.open("POST", url + 
+            //                "?action=upload&path=" + 
+            //                encodeURIComponent(path) + 
+            //                "&name=" + encodeURIComponent(file.name) + 
+            //                "&loaded=" + oneFileloadedSize + 
+            //                "&total=" + file.size + 
+            //                "&id=" + id + 
+            //                "&csrf=" + encodeURIComponent(token) + 
+            //                "&resolution=" + 
+            //                encodeURIComponent(fileItem.type));
+            xhr.upload.onprogress = function(event) {
+                handleProcess(event.loaded - (event.total - chunk.size))
+            };
+            xhr.onload = function() {
+                var response, i;
+                xhr.upload.onprogress({
+                    loaded: chunk.size,
+                    total: chunk.size
+                });
+                try {
+                    response = JSON.parse(xhr.responseText);
+                } catch (e) {
+                    i = {
+                        code: -1,
+                        message: "Error response is not proper JSON\n\nResponse:\n" + xhr.responseText,
+                        data: {
+                            fileName: file.name,
+                            fileSize: file.size,
+                            maxSize: uploadMaxSize,
+                            extensions: extensions.join(", ")
+                        },
+                        extra: extra
+                    };
+                    errorFileInfos.push(i);
+                    if (errorCallback) {
+                        errorCallback(i);
+                    }
+                    return uploadFiles(fileItems)
+                }
+                if (response.error) {
+
+                    i = {
+                        code: response.error.code,
+                        message: response.error.message,
+                        data: {
+                            fileName: file.name,
+                            fileSize: file.size,
+                            maxSize: uploadMaxSize,
+                            extensions: extensions.join(", ")
+                        },
+                        extra: extra
+                    }; 
+                    errorFileInfos.push(i); 
+                    if (errorCallback) {
+                        errorCallback(i);
+                    }
+                    uploadFiles(fileItems);
+                } else {
+                    if (!response.error && oneFileloadedSize + uploadChunkSize < file.size) {
+                        uploadOneFile(fileItem, oneFileloadedSize + uploadChunkSize, fileItems);
+                    } else {
+                        if (response.result) {
+                            utils.each(response.result, function(e) {
+                                e = File.fromJSON(e);
+                                uploadFileItems.push(e);
+
+                                if (uploadedCallback) {
+                                    uploadedCallback({
+                                        file: e
+                                    });
+                                }
+                            }); 
+
+                        } 
+                        allLoadedSize += file.size;
+                        response.result && k.push(response.result);
+                        uploadFiles(fileItems);
+                    }                            
+                }     
+
+            };
+            handleProcess(0);
+            xhr.send(createFormData(chunk));
+        }
+
+        function uploadFiles(fileItems) {
+            var fileItem = fileItems.shift();
+            processedFilesCount++; 
+            if (fileItem && fileItem.file.error) {
+                uploadFiles(fileItem);
+            } else {
+                if (uploadingFile) {
+                    uploadOneFile(fileItem, null, 0, fileItems);
+                } else {
+
+                    if (completedCallback) {
+                        completedCallback({
+                            files: new FileCollection(uploadFileItems),
+                            bytesPerSecond: I,
+                            errors: E(D),
+                            extra: extra
+                        });
+                    }
+                }  
+            }
+        }
+
+        var self = this,
+            fileItems = [],
+            processedFilesCount = -1,
+            xhr, 
+            totalSize = 0,
+            allLoadedSize = 0,
+            k = [],
+            errorFileInfos = [],
+            startedTime = now(),
+            I = 0,
+            uploadFileItems = [];
+
+        for ( var  i = 0; i < files.length; i++) {
+            totalSize += files[i].size;
+            fileItems.push({
+                file : files[i]
+            });
+        }        
+
+        uploadFiles(fileItems);
+    }
+
+    var filer = function() {
+        return filer;
+    };
+
+    langx.mixin(filer , {
+        dropzone: function(elm, params) {
+            params = params || {};
+            var hoverClass = params.hoverClass || "dropzone",
+                droppedCallback = params.dropped;
+
+            var enterdCount = 0;
+            on(elm, "dragenter", function(e) {
+                if (e.dataTransfer && e.dataTransfer.types.indexOf("Files")>-1) {
+                    eventer.stop(e);
+                    enterdCount ++;
+                    styler.addClass(elm,hoverClass)
+                }
+            });
+
+            on(elm, "dragover", function(e) {
+                if (e.dataTransfer && e.dataTransfer.types.indexOf("Files")>-1) {
+                    eventer.stop(e);
+                }
+            });
+
+
+            on(elm, "dragleave", function(e) {
+                if (e.dataTransfer && e.dataTransfer.types.indexOf("Files")>-1) {
+                    enterdCount--
+                    if (enterdCount==0) {
+                        styler.removeClass(elm,hoverClass);
+                    }
+                }
+            });
+
+            on(elm, "drop", function(e) {
+                if (e.dataTransfer && e.dataTransfer.types.indexOf("Files")>-1) {
+                    styler.removeClass(elm,hoverClass)
+                    eventer.stop(e);
+                    if (droppedCallback) {
+                        droppedCallback(e.dataTransfer.files);
+                    }
+                }
+            });
+
+
+            return this;
+        },
+
+        picker: function(elm, params) {
+            params = params || {};
+
+            var pickedCallback = params.picked;
+
+            on(elm, "click", function(e) {
+                e.preventDefault();
+                selectFile(pickedCallback);
+            });
+            return this;
+        },
+
+        readFile : function(file,params) {
+            params = params || {};
+            var d = new Deferred,
+                reader = new FileReader();
+            
+            reader.onload = function(evt) {
+                d.resolve(evt.target.result);
+            };
+            reader.onerror = function(e) {
+                var code = e.target.error.code;
+                if (code === 2) {
+                    alert('please don\'t open this page using protocol fill:///');
+                } else {
+                    alert('error code: ' + code);
+                }
+            };
+            
+            if (params.asArrayBuffer){
+                reader.readAsArrayBuffer(file);
+            } else if (params.asDataUrl) {
+                reader.readAsDataURL(file);                
+            } else if (params.asText) {
+                reader.readAsText(file);
+            } else {
+                reader.readAsArrayBuffer(file);
+            }
+
+            return d.promise;
+        },
+
+        uploader : function(elm,options) {
+
+        },
+         
+        writeFile : function(data,name) {
+            if (window.navigator.msSaveBlob) { 
+               if (langx.isString(data)) {
+                   data = dataURItoBlob(data);
+               }
+               window.navigator.msSaveBlob(data, name);
+            } else {
+                var a = document.createElement('a');
+                if (data instanceof Blob) {
+                    data = langx.URL.createObjectURL(data);
+                }
+                a.href = data;
+                a.setAttribute('download', name || 'noname');
+                a.dispatchEvent(new CustomEvent('click'));
+            }              
+        }
+
+
+    });
+
+    return skylark.filer = filer;
 });
 
 define('skylark-utils/fx',[
@@ -5535,6 +7519,11 @@ define('skylark-utils/query',[
                 })
             },
 
+            pushStack : function(elms) {
+                var ret = $(elms);
+                ret.prevObject = this;
+                return ret;
+            },
             show: wrapper_every_act(fx.show, fx),
 
             replaceWith: function(newContent) {
@@ -5776,6 +7765,35 @@ define('skylark-utils/query',[
 
         $.fn.append = wrapper_node_operation(noder.append, noder);
 
+
+        langx.each( {
+            appendTo: "append",
+            prependTo: "prepend",
+            insertBefore: "before",
+            insertAfter: "after",
+            replaceAll: "replaceWith"
+        }, function( name, original ) {
+            $.fn[ name ] = function( selector ) {
+                var elems,
+                    ret = [],
+                    insert = $( selector ),
+                    last = insert.length - 1,
+                    i = 0;
+
+                for ( ; i <= last; i++ ) {
+                    elems = i === last ? this : this.clone( true );
+                    $( insert[ i ] )[ original ]( elems );
+
+                    // Support: Android <=4.0 only, PhantomJS 1 only
+                    // .get() because push.apply(_, arraylike) throws on ancient WebKit
+                    push.apply( ret, elems.get() );
+                }
+
+                return this.pushStack( ret );
+            };
+        } );
+
+/*
         $.fn.insertAfter = function(html) {
             $(html).after(this);
             return this;
@@ -5796,7 +7814,12 @@ define('skylark-utils/query',[
             return this;
         };
 
-        return $
+        $.fn.replaceAll = function(selector) {
+            $(selector).replaceWith(this);
+            return this;
+        };
+*/
+        return $;
     })();
 
     (function($) {
@@ -5951,1746 +7974,6 @@ define('skylark-utils/query',[
 
     return skylark.query = query;
 });
-define('skylark-utils/ajax',[
-    "./skylark",
-    "./langx",
-    "./noder",
-    "./styler",
-    "./geom",
-    "./eventer",
-    "./query"
-], function(skylark,langx,noder,styler,geom,eventer,query) {
-
-    //     This module is borrow from zepto.callback.js
-    //     (c) 2010-2014 Thomas Fuchs
-    //     Zepto.js may be freely distributed under the MIT license.
-
-    // Create a collection of callbacks to be fired in a sequence, with configurable behaviour
-    // Option flags:
-    //   - once: Callbacks fired at most one time.
-    //   - memory: Remember the most recent context and arguments
-    //   - stopOnFalse: Cease iterating over callback list
-    //   - unique: Permit adding at most one instance of the same callback
-    var Callbacks = function(options) {
-        options = langx.mixin({}, options)
-
-        var memory, // Last fire value (for non-forgettable lists)
-            fired, // Flag to know if list was already fired
-            firing, // Flag to know if list is currently firing
-            firingStart, // First callback to fire (used internally by add and fireWith)
-            firingLength, // End of the loop when firing
-            firingIndex, // Index of currently firing callback (modified by remove if needed)
-            list = [], // Actual callback list
-            stack = !options.once && [], // Stack of fire calls for repeatable lists
-            fire = function(data) {
-                memory = options.memory && data
-                fired = true
-                firingIndex = firingStart || 0
-                firingStart = 0
-                firingLength = list.length
-                firing = true
-                for (; list && firingIndex < firingLength; ++firingIndex) {
-                    if (list[firingIndex].apply(data[0], data[1]) === false && options.stopOnFalse) {
-                        memory = false
-                        break
-                    }
-                }
-                firing = false
-                if (list) {
-                    if (stack) stack.length && fire(stack.shift())
-                    else if (memory) list.length = 0
-                    else Callbacks.disable()
-                }
-            },
-
-            Callbacks = {
-                add: function() {
-                    if (list) {
-                        var start = list.length,
-                            add = function(args) {
-                                langx.each(args, function(_, arg) {
-                                    if (typeof arg === "function") {
-                                        if (!options.unique || !Callbacks.has(arg)) list.push(arg)
-                                    } else if (arg && arg.length && typeof arg !== 'string') add(arg)
-                                })
-                            }
-                        add(arguments)
-                        if (firing) firingLength = list.length
-                        else if (memory) {
-                            firingStart = start
-                            fire(memory)
-                        }
-                    }
-                    return this
-                },
-                remove: function() {
-                    if (list) {
-                        langx.each(arguments, function(_, arg) {
-                            var index
-                            while ((index = langx.inArray(arg, list, index)) > -1) {
-                                list.splice(index, 1)
-                                // Handle firing indexes
-                                if (firing) {
-                                    if (index <= firingLength) --firingLength
-                                    if (index <= firingIndex) --firingIndex
-                                }
-                            }
-                        })
-                    }
-                    return this
-                },
-                has: function(fn) {
-                    return !!(list && (fn ? langx.inArray(fn, list) > -1 : list.length))
-                },
-                empty: function() {
-                    firingLength = list.length = 0
-                    return this
-                },
-                disable: function() {
-                    list = stack = memory = undefined
-                    return this
-                },
-                disabled: function() {
-                    return !list
-                },
-                lock: function() {
-                    stack = undefined;
-                    if (!memory) Callbacks.disable()
-                    return this
-                },
-                locked: function() {
-                    return !stack
-                },
-                fireWith: function(context, args) {
-                    if (list && (!fired || stack)) {
-                        args = args || []
-                        args = [context, args.slice ? args.slice() : args]
-                        if (firing) stack.push(args)
-                        else fire(args)
-                    }
-                    return this
-                },
-                fire: function() {
-                    return Callbacks.fireWith(this, arguments)
-                },
-                fired: function() {
-                    return !!fired
-                }
-            }
-
-        return Callbacks
-    };
-
-    //     This module is borrow from zepto.deferred.js
-    //     (c) 2010-2014 Thomas Fuchs
-    //     Zepto.js may be freely distributed under the MIT license.
-    //
-    //     Some code (c) 2005, 2013 jQuery Foundation, Inc. and other contributors
-
-    var slice = Array.prototype.slice
-
-    function Deferred(func) {
-        var tuples = [
-                // action, add listener, listener list, final state
-                ["resolve", "done", Callbacks({ once: 1, memory: 1 }), "resolved"],
-                ["reject", "fail", Callbacks({ once: 1, memory: 1 }), "rejected"],
-                ["notify", "progress", Callbacks({ memory: 1 })]
-            ],
-            state = "pending",
-            promise = {
-                state: function() {
-                    return state
-                },
-                always: function() {
-                    deferred.done(arguments).fail(arguments)
-                    return this
-                },
-                then: function( /* fnDone [, fnFailed [, fnProgress]] */ ) {
-                    var fns = arguments
-                    return Deferred(function(defer) {
-                        langx.each(tuples, function(i, tuple) {
-                            var fn = $.isFunction(fns[i]) && fns[i]
-                            deferred[tuple[1]](function() {
-                                var returned = fn && fn.apply(this, arguments)
-                                if (returned && langx.isFunction(returned.promise)) {
-                                    returned.promise()
-                                        .done(defer.resolve)
-                                        .fail(defer.reject)
-                                        .progress(defer.notify)
-                                } else {
-                                    var context = this === promise ? defer.promise() : this,
-                                        values = fn ? [returned] : arguments
-                                    defer[tuple[0] + "With"](context, values)
-                                }
-                            })
-                        })
-                        fns = null
-                    }).promise()
-                },
-
-                promise: function(obj) {
-                    return obj != null ? langx.mixin(obj, promise) : promise
-                }
-            },
-            deferred = {}
-
-        langx.each(tuples, function(i, tuple) {
-            var list = tuple[2],
-                stateString = tuple[3]
-
-            promise[tuple[1]] = list.add
-
-            if (stateString) {
-                list.add(function() {
-                    state = stateString
-                }, tuples[i ^ 1][2].disable, tuples[2][2].lock)
-            }
-
-            deferred[tuple[0]] = function() {
-                deferred[tuple[0] + "With"](this === deferred ? promise : this, arguments)
-                return this
-            }
-            deferred[tuple[0] + "With"] = list.fireWith
-        })
-
-        promise.promise(deferred)
-        if (func) func.call(deferred, deferred)
-        return deferred
-    }
-
-    var when = function(sub) {
-        var resolveValues = slice.call(arguments),
-            len = resolveValues.length,
-            i = 0,
-            remain = len !== 1 || (sub && langx.isFunction(sub.promise)) ? len : 0,
-            deferred = remain === 1 ? sub : Deferred(),
-            progressValues, progressContexts, resolveContexts,
-            updateFn = function(i, ctx, val) {
-                return function(value) {
-                    ctx[i] = this
-                    val[i] = arguments.length > 1 ? slice.call(arguments) : value
-                    if (val === progressValues) {
-                        deferred.notifyWith(ctx, val)
-                    } else if (!(--remain)) {
-                        deferred.resolveWith(ctx, val)
-                    }
-                }
-            }
-
-        if (len > 1) {
-            progressValues = new Array(len)
-            progressContexts = new Array(len)
-            resolveContexts = new Array(len)
-            for (; i < len; ++i) {
-                if (resolveValues[i] && langx.isFunction(resolveValues[i].promise)) {
-                    resolveValues[i].promise()
-                        .done(updateFn(i, resolveContexts, resolveValues))
-                        .fail(deferred.reject)
-                        .progress(updateFn(i, progressContexts, progressValues))
-                } else {
-                    --remain
-                }
-            }
-        }
-        if (!remain) deferred.resolveWith(resolveContexts, resolveValues)
-        return deferred.promise()
-    };
-
-    //     zepto.ajax.js
-    //     (c) 2010-2014 Thomas Fuchs
-    //     Zepto.js may be freely distributed under the MIT license.
-    var jsonpID = 0,
-        document = window.document,
-        key,
-        name,
-        rscript = /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-        scriptTypeRE = /^(?:text|application)\/javascript/i,
-        xmlTypeRE = /^(?:text|application)\/xml/i,
-        jsonType = 'application/json',
-        htmlType = 'text/html',
-        blankRE = /^\s*$/,
-        originAnchor = document.createElement('a');
-
-    originAnchor.href = window.location.href;
-
-    // trigger a custom event and return false if it was cancelled
-    function triggerAndReturn(context, eventName, data) {
-        var event = eventer.create(eventName);
-        $(context).trigger(event, data)
-        return !event.isDefaultPrevented()
-    }
-
-    // trigger an Ajax "global" event
-    function triggerGlobal(settings, context, eventName, data) {
-        if (settings.global) return triggerAndReturn(context || document, eventName, data)
-    }
-
-    // Number of active Ajax requests
-    var active = 0;
-
-    function ajaxStart(settings) {
-        if (settings.global && active++ === 0) triggerGlobal(settings, null, 'ajaxStart')
-    }
-
-    function ajaxStop(settings) {
-        if (settings.global && !(--active)) triggerGlobal(settings, null, 'ajaxStop')
-    }
-
-    // triggers an extra global event "ajaxBeforeSend" that's like "ajaxSend" but cancelable
-    function ajaxBeforeSend(xhr, settings) {
-        var context = settings.context
-        if (settings.beforeSend.call(context, xhr, settings) === false ||
-            triggerGlobal(settings, context, 'ajaxBeforeSend', [xhr, settings]) === false)
-            return false
-
-        triggerGlobal(settings, context, 'ajaxSend', [xhr, settings])
-    }
-
-    function ajaxSuccess(data, xhr, settings, deferred) {
-        var context = settings.context,
-            status = 'success'
-        settings.success.call(context, data, status, xhr)
-        if (deferred) deferred.resolveWith(context, [data, status, xhr])
-        triggerGlobal(settings, context, 'ajaxSuccess', [xhr, settings, data])
-        ajaxComplete(status, xhr, settings)
-    }
-    // type: "timeout", "error", "abort", "parsererror"
-    function ajaxError(error, type, xhr, settings, deferred) {
-        var context = settings.context
-        settings.error.call(context, xhr, type, error)
-        if (deferred) deferred.rejectWith(context, [xhr, type, error])
-        triggerGlobal(settings, context, 'ajaxError', [xhr, settings, error || type])
-        ajaxComplete(type, xhr, settings)
-    }
-    // status: "success", "notmodified", "error", "timeout", "abort", "parsererror"
-    function ajaxComplete(status, xhr, settings) {
-        var context = settings.context
-        settings.complete.call(context, xhr, status)
-        triggerGlobal(settings, context, 'ajaxComplete', [xhr, settings])
-        ajaxStop(settings)
-    }
-
-    // Empty function, used as default callback
-    function empty() {}
-
-    var ajaxJSONP = function(options, deferred) {
-        if (!('type' in options)) return ajax(options)
-
-        var _callbackName = options.jsonpCallback,
-            callbackName = (langx.isFunction(_callbackName) ?
-                _callbackName() : _callbackName) || ('jsonp' + (++jsonpID)),
-            script = document.createElement('script'),
-            originalCallback = window[callbackName],
-            responseData,
-            abort = function(errorType) {
-                $(script).triggerHandler('error', errorType || 'abort')
-            },
-            xhr = { abort: abort },
-            abortTimeout
-
-        if (deferred) deferred.promise(xhr)
-
-        $(script).on('load error', function(e, errorType) {
-            clearTimeout(abortTimeout)
-            $(script).off().remove()
-
-            if (e.type == 'error' || !responseData) {
-                ajaxError(null, errorType || 'error', xhr, options, deferred)
-            } else {
-                ajaxSuccess(responseData[0], xhr, options, deferred)
-            }
-
-            window[callbackName] = originalCallback
-            if (responseData && langx.isFunction(originalCallback))
-                originalCallback(responseData[0])
-
-            originalCallback = responseData = undefined
-        })
-
-        if (ajaxBeforeSend(xhr, options) === false) {
-            abort('abort')
-            return xhr
-        }
-
-        window[callbackName] = function() {
-            responseData = arguments
-        }
-
-        script.src = options.url.replace(/\?(.+)=\?/, '?$1=' + callbackName)
-        document.head.appendChild(script)
-
-        if (options.timeout > 0) abortTimeout = setTimeout(function() {
-            abort('timeout')
-        }, options.timeout)
-
-        return xhr;
-    };
-
-    var ajaxSettings = {
-        // Default type of request
-        type: 'GET',
-        // Callback that is executed before request
-        beforeSend: empty,
-        // Callback that is executed if the request succeeds
-        success: empty,
-        // Callback that is executed the the server drops error
-        error: empty,
-        // Callback that is executed on request complete (both: error and success)
-        complete: empty,
-        // The context for the callbacks
-        context: null,
-        // Whether to trigger "global" Ajax events
-        global: true,
-        // Transport
-        xhr: function() {
-            return new window.XMLHttpRequest()
-        },
-        // MIME types mapping
-        // IIS returns Javascript as "application/x-javascript"
-        accepts: {
-            script: 'text/javascript, application/javascript, application/x-javascript',
-            json: jsonType,
-            xml: 'application/xml, text/xml',
-            html: htmlType,
-            text: 'text/plain'
-        },
-        // Whether the request is to another domain
-        crossDomain: false,
-        // Default timeout
-        timeout: 0,
-        // Whether data should be serialized to string
-        processData: true,
-        // Whether the browser should be allowed to cache GET responses
-        cache: true
-    };
-
-    function mimeToDataType(mime) {
-        if (mime) mime = mime.split(';', 2)[0]
-        return mime && (mime == htmlType ? 'html' :
-            mime == jsonType ? 'json' :
-            scriptTypeRE.test(mime) ? 'script' :
-            xmlTypeRE.test(mime) && 'xml') || 'text'
-    }
-
-    function appendQuery(url, query) {
-        if (query == '') return url
-        return (url + '&' + query).replace(/[&?]{1,2}/, '?')
-    }
-
-    // serialize payload and append it to the URL for GET requests
-    function serializeData(options) {
-        if (options.processData && options.data && langx.type(options.data) != "string")
-            options.data = param(options.data, options.traditional)
-        if (options.data && (!options.type || options.type.toUpperCase() == 'GET'))
-            options.url = appendQuery(options.url, options.data), options.data = undefined
-    }
-
-    function ajax(options) {
-        var settings = langx.mixin({}, options || {}),
-            deferred = Deferred(),
-            urlAnchor
-        for (key in ajaxSettings)
-            if (settings[key] === undefined) settings[key] = ajaxSettings[key]
-
-        ajaxStart(settings)
-
-        if (!settings.crossDomain) {
-            urlAnchor = document.createElement('a')
-            urlAnchor.href = settings.url
-            urlAnchor.href = urlAnchor.href
-            settings.crossDomain = (originAnchor.protocol + '//' + originAnchor.host) !== (urlAnchor.protocol + '//' + urlAnchor.host)
-        }
-
-        if (!settings.url) settings.url = window.location.toString()
-        serializeData(settings)
-
-        var dataType = settings.dataType,
-            hasPlaceholder = /\?.+=\?/.test(settings.url)
-        if (hasPlaceholder) dataType = 'jsonp'
-
-        if (settings.cache === false || (
-                (!options || options.cache !== true) &&
-                ('script' == dataType || 'jsonp' == dataType)
-            ))
-            settings.url = appendQuery(settings.url, '_=' + Date.now())
-
-        if ('jsonp' == dataType) {
-            if (!hasPlaceholder)
-                settings.url = appendQuery(settings.url,
-                    settings.jsonp ? (settings.jsonp + '=?') : settings.jsonp === false ? '' : 'callback=?')
-            return ajaxJSONP(settings, deferred)
-        }
-
-        var mime = settings.accepts[dataType],
-            headers = {},
-            setHeader = function(name, value) { headers[name.toLowerCase()] = [name, value] },
-            protocol = /^([\w-]+:)\/\//.test(settings.url) ? RegExp.$1 : window.location.protocol,
-            xhr = settings.xhr(),
-            nativeSetHeader = xhr.setRequestHeader,
-            abortTimeout
-
-        if (deferred) deferred.promise(xhr)
-
-        if (!settings.crossDomain) setHeader('X-Requested-With', 'XMLHttpRequest')
-        setHeader('Accept', mime || '*/*')
-        if (mime = settings.mimeType || mime) {
-            if (mime.indexOf(',') > -1) mime = mime.split(',', 2)[0]
-            xhr.overrideMimeType && xhr.overrideMimeType(mime)
-        }
-        if (settings.contentType || (settings.contentType !== false && settings.data && settings.type.toUpperCase() != 'GET'))
-            setHeader('Content-Type', settings.contentType || 'application/x-www-form-urlencoded')
-
-        if (settings.headers)
-            for (name in settings.headers) setHeader(name, settings.headers[name])
-        xhr.setRequestHeader = setHeader
-
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState == 4) {
-                xhr.onreadystatechange = empty
-                clearTimeout(abortTimeout)
-                var result, error = false
-                if ((xhr.status >= 200 && xhr.status < 300) || xhr.status == 304 || (xhr.status == 0 && protocol == 'file:')) {
-                    dataType = dataType || mimeToDataType(settings.mimeType || xhr.getResponseHeader('content-type'))
-                    result = xhr.responseText
-
-                    try {
-                        // http://perfectionkills.com/global-eval-what-are-the-options/
-                        if (dataType == 'script')(1, eval)(result)
-                        else if (dataType == 'xml') result = xhr.responseXML
-                        else if (dataType == 'json') result = blankRE.test(result) ? null : JSON.parse(result)
-                    } catch (e) { error = e }
-
-                    if (error) ajaxError(error, 'parsererror', xhr, settings, deferred)
-                    else ajaxSuccess(result, xhr, settings, deferred)
-                } else {
-                    ajaxError(xhr.statusText || null, xhr.status ? 'error' : 'abort', xhr, settings, deferred)
-                }
-            }
-        }
-
-        if (ajaxBeforeSend(xhr, settings) === false) {
-            xhr.abort()
-            ajaxError(null, 'abort', xhr, settings, deferred)
-            return xhr
-        }
-
-        if (settings.xhrFields)
-            for (name in settings.xhrFields) xhr[name] = settings.xhrFields[name]
-
-        var async = 'async' in settings ? settings.async : true
-        xhr.open(settings.type, settings.url, async, settings.username, settings.password)
-
-        for (name in headers) nativeSetHeader.apply(xhr, headers[name])
-
-        if (settings.timeout > 0) abortTimeout = setTimeout(function() {
-            xhr.onreadystatechange = empty
-            xhr.abort()
-            ajaxError(null, 'timeout', xhr, settings, deferred)
-        }, settings.timeout)
-
-        // avoid sending empty string (#319)
-        xhr.send(settings.data ? settings.data : null)
-        return xhr
-    }
-
-    // handle optional data/success arguments
-    function parseArguments(url, data, success, dataType) {
-        if (langx.isFunction(data)) dataType = success, success = data, data = undefined
-        if (!langx.isFunction(success)) dataType = success, success = undefined
-        return {
-            url: url,
-            data: data,
-            success: success,
-            dataType: dataType
-        }
-    }
-
-    var get = function( /* url, data, success, dataType */ ) {
-        return ajax(parseArguments.apply(null, arguments))
-    };
-
-    var post = function( /* url, data, success, dataType */ ) {
-        var options = parseArguments.apply(null, arguments)
-        options.type = 'POST'
-        return ajax(options)
-    };
-
-    var getJSON = function( /* url, data, success */ ) {
-        var options = parseArguments.apply(null, arguments)
-        options.dataType = 'json'
-        return ajax(options)
-    }
-
-    query.fn.load = function(url, data, success) {
-        if (!this.length) return this
-        var self = this,
-            parts = url.split(/\s/),
-            selector,
-            options = parseArguments(url, data, success),
-            callback = options.success
-        if (parts.length > 1) options.url = parts[0], selector = parts[1]
-        options.success = function(response) {
-            self.html(selector ?
-                $('<div>').html(response.replace(rscript, "")).find(selector) : response)
-            callback && callback.apply(self, arguments)
-        }
-        ajax(options)
-        return this
-    }
-
-    var escape = encodeURIComponent
-
-    function serialize(params, obj, traditional, scope) {
-        var type, array = langx.isArray(obj),
-            hash = langx.isPlainObject(obj)
-        langx.each(obj, function(key, value) {
-            type = langx.type(value)
-            if (scope) key = traditional ? scope :
-                scope + '[' + (hash || type == 'object' || type == 'array' ? key : '') + ']'
-            // handle data in serializeArray() format
-            if (!scope && array) params.add(value.name, value.value)
-            // recurse into nested objects
-            else if (type == "array" || (!traditional && type == "object"))
-                serialize(params, value, traditional, key)
-            else params.add(key, value)
-        })
-    }
-
-    var param = function(obj, traditional) {
-        var params = []
-        params.add = function(key, value) {
-            if (langx.isFunction(value)) value = value()
-            if (value == null) value = ""
-            this.push(escape(key) + '=' + escape(value))
-        }
-        serialize(params, obj, traditional)
-        return params.join('&').replace(/%20/g, '+')
-    };
-
-    var
-        /* Prefilters
-         * 1) They are useful to introduce custom dataTypes (see ajax/jsonp.js for an example)
-         * 2) These are called:
-         *    - BEFORE asking for a transport
-         *    - AFTER param serialization (s.data is a string if s.processData is true)
-         * 3) key is the dataType
-         * 4) the catchall symbol "*" can be used
-         * 5) execution will start with transport dataType and THEN continue down to "*" if needed
-         */
-        prefilters = {},
-
-        /* Transports bindings
-         * 1) key is the dataType
-         * 2) the catchall symbol "*" can be used
-         * 3) selection will start with transport dataType and THEN go to "*" if needed
-         */
-        transports = {},
-        rnotwhite = (/\S+/g);
-
-
-    // Base "constructor" for jQuery.ajaxPrefilter and jQuery.ajaxTransport
-    function addToPrefiltersOrTransports(structure) {
-
-        // dataTypeExpression is optional and defaults to "*"
-        return function(dataTypeExpression, func) {
-
-            if (typeof dataTypeExpression !== "string") {
-                func = dataTypeExpression;
-                dataTypeExpression = "*";
-            }
-
-            var dataType,
-                i = 0,
-                dataTypes = dataTypeExpression.toLowerCase().match(rnotwhite) || [];
-
-            if (jQuery.isFunction(func)) {
-
-                // For each dataType in the dataTypeExpression
-                while ((dataType = dataTypes[i++])) {
-
-                    // Prepend if requested
-                    if (dataType[0] === "+") {
-                        dataType = dataType.slice(1) || "*";
-                        (structure[dataType] = structure[dataType] || []).unshift(func);
-
-                        // Otherwise append
-                    } else {
-                        (structure[dataType] = structure[dataType] || []).push(func);
-                    }
-                }
-            }
-        };
-    }
-
-    var ajaxPrefilter = addToPrefiltersOrTransports(prefilters);
-    var ajaxTransport = addToPrefiltersOrTransports(transports);
-
-    // A special extend for ajax options
-    // that takes "flat" options (not to be deep extended)
-    // Fixes #9887
-    function ajaxExtend(target, src) {
-        var key, deep,
-            flatOptions = ajaxSettings.flatOptions || {};
-
-        for (key in src) {
-            if (src[key] !== undefined) {
-                (flatOptions[key] ? target : (deep || (deep = {})))[key] = src[key];
-            }
-        }
-        if (deep) {
-            jQuery.extend(true, target, deep);
-        }
-
-        return target;
-    }
-
-    // Creates a full fledged settings object into target
-    // with both ajaxSettings and settings fields.
-    // If target is omitted, writes into ajaxSettings.
-    var ajaxSetup = function(target, settings) {
-        return settings ?
-
-            // Building a settings object
-            ajaxExtend(ajaxExtend(target, ajaxSettings), settings) :
-
-            // Extending ajaxSettings
-            ajaxExtend(ajaxSettings, target);
-    };
-
-    // Base inspection function for prefilters and transports
-    function inspectPrefiltersOrTransports(structure, options, originalOptions, jqXHR) {
-
-        var inspected = {},
-            seekingTransport = (structure === transports);
-
-        function inspect(dataType) {
-            var selected;
-            inspected[dataType] = true;
-            jQuery.each(structure[dataType] || [], function(_, prefilterOrFactory) {
-                var dataTypeOrTransport = prefilterOrFactory(options, originalOptions, jqXHR);
-                if (typeof dataTypeOrTransport === "string" &&
-                    !seekingTransport && !inspected[dataTypeOrTransport]) {
-
-                    options.dataTypes.unshift(dataTypeOrTransport);
-                    inspect(dataTypeOrTransport);
-                    return false;
-                } else if (seekingTransport) {
-                    return !(selected = dataTypeOrTransport);
-                }
-            });
-            return selected;
-        }
-
-        return inspect(options.dataTypes[0]) || !inspected["*"] && inspect("*");
-    }
-
-
-    langx.mixin(ajax, {
-    	ajaxJSONP : ajaxJSONP,
-    	ajaxPrefilter : ajaxPrefilter,
-    	ajaxTransport: ajaxTransport,
-    	ajaxSettings : ajaxSettings,
-    	ajaxSetup : ajaxSetup,
-
-    	Callbacks:Callbacks,
-
-    	Deferred: Deferred,
-
-    	get : get,
-    	getJSON : getJSON,
-    	param: param,
-    	post: post,
-
-    	when: when
-
-    });
-
-
-    return skylark.ajax = ajax;
-});
-
-define('skylark-utils/css',[
-    "./skylark",
-    "./langx",
-    "./noder"
-], function(skylark, langx, construct) {
-
-    var head = document.getElementsByTagName("head")[0],
-        count = 0,
-        sheetsByUrl = {},
-        sheetElementsById = {},
-        defaultSheetId = _createStyleSheet(),
-        defaultSheet = sheetElementsById[defaultSheetId],
-        rulesPropName = ("cssRules" in defaultSheet) ? "cssRules" : "rules",
-        insertRuleFunc,
-        deleteRuleFunc = defaultSheet.deleteRule || defaultSheet.removeRule;
-
-    if (defaultSheet.insertRule) {
-        var _insertRule = defaultSheet.insertRule;
-        insertRuleFunc = function(selector, css, index) {
-            _insertRule.call(this, selector + "{" + css + "}", index);
-        };
-    } else {
-        insertRuleFunc = defaultSheet.addRule;
-    }
-
-    function normalizeSelector(selectorText) {
-        var selector = [],
-            last, len;
-        last = defaultSheet[rulesPropName].length;
-        insertRuleFunc.call(defaultSheet, selectorText, ';');
-        len = defaultSheet[rulesPropName].length;
-        for (var i = len - 1; i >= last; i--) {
-            selector.push(_sheet[_rules][i].selectorText);
-            deleteRuleFunc.call(defaultSheet, i);
-        }
-        return selector.reverse().join(', ');
-    }
-
-    function _createStyleSheet() {
-        var link = document.createElement("link"),
-            id = (count++);
-
-        link.rel = "stylesheet";
-        link.type = "text/css";
-        link.async = false;
-        link.defer = false;
-
-        head.appendChild(link);
-        sheetElementsById[id] = link;
-
-        return id;
-    }
-
-    function css() {
-        return css;
-    }
-
-    langx.mixin(css, {
-        createStyleSheet: function(cssText) {
-            return _createStyleSheet();
-        },
-
-        loadStyleSheet: function(url, loadedCallback, errorCallback) {
-            var sheet = sheetsByUrl[url];
-            if (!sheet) {
-                sheet = sheetsByUrl[url] = {
-                    state: 0, //0:unload,1:loaded,-1:loaderror
-                    loadedCallbacks: [],
-                    errorCallbacks: []
-                };
-            }
-
-            sheet.loadedCallbacks.push(loadedCallback);
-            sheet.errorCallbacks.push(errorCallback);
-
-            if (sheet.state === 1) {
-                sheet.node.onload();
-            } else if (sheet.state === -1) {
-                sheet.node.onerror();
-            } else {
-                sheet.id = _createStyleSheet();
-                var node = sheet.node = sheetElementsById[sheet.id];
-
-                startTime = new Date().getTime();
-
-                node.onload = function() {
-                    sheet.state = 1;
-                    sheet.state = -1;
-                    var callbacks = sheet.loadedCallbacks,
-                        i = callbacks.length;
-
-                    while (i--) {
-                        callbacks[i]();
-                    }
-                    sheet.loadedCallbacks = [];
-                    sheet.errorCallbacks = [];
-                },
-                node.onerror = function() {
-                    sheet.state = -1;
-                    var callbacks = sheet.errorCallbacks,
-                        i = callbacks.length;
-
-                    while (i--) {
-                        callbacks[i]();
-                    }
-                    sheet.loadedCallbacks = [];
-                    sheet.errorCallbacks = [];
-                };
-
-                node.href = sheet.url = url;
-
-                sheetsByUrl[node.url] = sheet;
-
-            }
-            return sheet.id;
-        },
-
-        deleteSheetRule: function(sheetId, rule) {
-            var sheet = sheetElementsById[sheetId];
-            if (langx.isNumber(rule)) {
-                deleteRuleFunc.call(sheet, rule);
-            } else {
-                langx.each(sheet[rulesPropName], function(i, _rule) {
-                    if (rule === _rule) {
-                        deleteRuleFunc.call(sheet, i);
-                        return false;
-                    }
-                });
-            }
-        },
-
-        deleteRule: function(rule) {
-            this.deleteSheetRule(defaultSheetId, rule);
-            return this;
-        },
-
-        removeStyleSheet: function(sheetId) {
-            if (sheetId === defaultSheetId) {
-                throw new Error("The default stylesheet can not be deleted");
-            }
-            var sheet = sheetElementsById[sheetId];
-            delete sheetElementsById[sheetId];
-
-
-            construct.remove(sheet);
-            return this;
-        },
-
-        findRules: function(selector, sheetId) {
-            //return array of CSSStyleRule objects that match the selector text
-            var rules = [],
-                filters = parseSelector(selector);
-            $(document.styleSheets).each(function(i, styleSheet) {
-                if (filterStyleSheet(filters.styleSheet, styleSheet)) {
-                    $.merge(rules, $(styleSheet[_rules]).filter(function() {
-                        return matchSelector(this, filters.selectorText, filters.styleSheet === "*");
-                    }).map(function() {
-                        return normalizeRule($.support.nativeCSSStyleRule ? this : new CSSStyleRule(this), styleSheet);
-                    }));
-                }
-            });
-            return rules.reverse();
-        },
-
-        insertRule: function(selector, css, index) {
-            return this.insertSheetRule(defaultSheetId, selector, css, index);
-        },
-
-        insertSheetRule: function(sheetId, selector, css, index) {
-            if (!selector || !css) {
-                return -1;
-            }
-
-            var sheet = sheetElementsById[sheetId];
-            index = index || sheet[rulesPropName].length;
-
-            return insertRuleFunc.call(sheet, selector, css, index);
-
-        }
-    });
-
-    return skylark.css = css;
-});
-
-define('skylark-utils/dnd',[
-    "./skylark",
-    "./langx",
-    "./noder",
-    "./datax",
-    "./finder",
-    "./geom",
-    "./eventer",
-    "./styler"
-],function(skylark, langx,noder,datax,finder,geom,eventer,styler){
-    var on = eventer.on,
-        off = eventer.off,
-        attr = datax.attr,
-        removeAttr = datax.removeAttr,
-        offset = geom.pagePosition,
-        addClass = styler.addClass,
-        height = geom.height;
-
-
-    var DndManager = langx.Evented.inherit({
-      klassName : "DndManager",
-
-      init : function() {
-
-      },
-
-      prepare : function(draggable) {
-          var e = eventer.create("preparing",{
-             dragSource : draggable.elm,
-             handleElm : draggable.handleElm
-          });
-          draggable.trigger(e);
-          draggable.dragSource = e.dragSource;
-      },
-
-      start : function(draggable,event) {
-
-        var p = geom.pagePosition(draggable.elm);
-        this.draggingOffsetX = parseInt(event.pageX - p.left);
-        this.draggingOffsetY = parseInt(event.pageY - p.top)
-
-        var e = eventer.create("started",{
-          elm : draggable.elm,
-          dragSource : draggable.dragSource,
-          handleElm : draggable.handleElm,
-          ghost : null,
-
-          transfer : {
-          }
-        });
-
-        draggable.trigger(e);
-
-
-        this.dragging = draggable;
-
-        if (draggable.draggingClass) {
-          styler.addClass(draggable.dragSource,draggable.draggingClass);
-        }
-
-        this.draggingGhost = e.ghost;
-        if (!this.draggingGhost) {
-          this.draggingGhost = draggable.elm;
-        }
-
-        this.draggingTransfer = e.transfer;
-        if (this.draggingTransfer) {
-
-            langx.each(this.draggingTransfer,function(key,value){
-                event.dataTransfer.setData(key, value);
-            });
-        }
-
-        event.dataTransfer.setDragImage(this.draggingGhost, this.draggingOffsetX, this.draggingOffsetY);
-
-        event.dataTransfer.effectAllowed = "copyMove";
-
-        this.trigger(e);
-      },
-
-      over : function() {
-
-      },
-
-      end : function(dropped) {
-        var dragging = this.dragging;
-        if (dragging) {
-          if (dragging.draggingClass) {
-            styler.removeClass(dragging.dragSource,dragging.draggingClass);
-          }
-        }
-
-        var e = eventer.create("ended",{
-        });        
-        this.trigger(e);
-
-
-        this.dragging = null;
-        this.draggingTransfer = null;
-        this.draggingGhost = null;
-        this.draggingOffsetX = null;
-        this.draggingOffsetY = null;
-      }
-    });
-
-    var manager = new DndManager(),
-        draggingHeight,
-        placeholders = [];
-
-
-
-    var Draggable = langx.Evented.inherit({
-      klassName : "Draggable",
-
-      init : function (elm,params) {
-        var self = this;
-
-        self.elm = elm;
-        self.draggingClass = params.draggingClass || "dragging",
-        self._params = params;
-
-        ["preparing","started", "ended", "moving"].forEach(function(eventName) {
-            if (langx.isFunction(params[eventName])) {
-                self.on(eventName, params[eventName]);
-            }
-        });
-
-
-        eventer.on(elm,{
-          "mousedown" : function(e) {
-            if (params.handle) {
-              self.handleElm = finder.closest(e.target,params.handle);
-              if (!self.handleElm) {
-                return;
-              }
-            }
-            manager.prepare(self);
-            if (self.dragSource) {
-              datax.prop(self.dragSource, "draggable", true);
-            }
-          },
-
-          "mouseup" :   function(e) {
-            if (self.dragSource) {
-              datax.prop(self.dragSource, "draggable", false);
-              self.dragSource = null;
-              self.handleElm = null;
-            }
-          },
-
-          "dragstart":  function(e) {
-            datax.prop(self.dragSource, "draggable", false);
-            manager.start(self, e);
-          },
-
-          "dragend":   function(e){
-            eventer.stop(e);
-
-            if (!manager.dragging) {
-              return;
-            }
-
-            manager.end(false);
-          }
-        });
-
-      }
-
-    });
-
-
-    var Droppable = langx.Evented.inherit({
-      klassName : "Droppable",
-
-      init : function(elm,params) {
-        var self = this,
-            draggingClass = params.draggingClass || "dragging",
-            hoverClass,
-            activeClass,
-            acceptable = true;
-
-        self.elm = elm;
-        self._params = params;
-
-        ["started","entered", "leaved", "dropped","overing"].forEach(function(eventName) {
-            if (langx.isFunction(params[eventName])) {
-                self.on(eventName, params[eventName]);
-            }
-        });
-
-        eventer.on(elm,{
-          "dragover" : function(e) {
-            e.stopPropagation()
-
-            if (!acceptable) {
-              return
-            }
-
-            var e2 = eventer.create("overing",{
-                overElm : e.target,
-                transfer : manager.draggingTransfer,
-                acceptable : true
-            });
-            self.trigger(e2);
-
-            if (e2.acceptable) {
-              e.preventDefault() // allow drop
-
-              e.dataTransfer.dropEffect = "copyMove";
-            }
-
-          },
-
-          "dragenter" :   function(e) {
-            var params = self._params,
-                elm = self.elm;
-
-            var e2 = eventer.create("entered",{
-                transfer : manager.draggingTransfer
-            });
-
-            self.trigger(e2);
-
-            e.stopPropagation()
-
-            if (hoverClass && acceptable) {
-              styler.addClass(elm,hoverClass)
-            }
-          },
-
-          "dragleave":  function(e) {
-            var params = self._params,
-                elm = self.elm;
-            if (!acceptable) return false
-            
-            var e2 = eventer.create("leaved",{
-                transfer : manager.draggingTransfer
-            });
-            
-            self.trigger(e2);
-
-            e.stopPropagation()
-
-            if (hoverClass && acceptable) {
-              styler.removeClass(elm,hoverClass);
-            }
-          },
-
-          "drop":   function(e){
-            var params = self._params,
-                elm = self.elm;
-
-            eventer.stop(e); // stops the browser from redirecting.
-
-            if (!manager.dragging) return
-
-           // manager.dragging.elm.removeClass('dragging');
-
-            if (hoverClass && acceptable) {
-              styler.addClass(elm,hoverClass)
-            }
-
-            var e2 = eventer.create("dropped",{
-                transfer : manager.draggingTransfer
-            });
-
-            self.trigger(e2);
-
-            manager.end(true)
-          }
-        });
-
-        manager.on("started",function(e){
-            var e2 = eventer.create("started",{
-                transfer : manager.draggingTransfer,
-                acceptable : false
-            });
-
-            self.trigger(e2);
-
-            acceptable = e2.acceptable;
-            hoverClass = e2.hoverClass;
-            activeClass = e2.activeClass;
-
-            if (activeClass && acceptable) {
-              styler.addClass(elm,activeClass);
-            }
-
-         }).on("ended" , function(e){
-            var e2 = eventer.create("ended",{
-                transfer : manager.draggingTransfer,
-                acceptable : false
-            });
-
-            self.trigger(e2);
-
-            if (hoverClass && acceptable) {
-              styler.removeClass(elm,hoverClass);
-            }
-            if (activeClass && acceptable) {
-              styler.removeClass(elm,activeClass);
-            }
-
-            acceptable = false;
-            activeClass = null;
-            hoverClass = null;
-        });
-
-      }
-    });
-
-
-    function draggable(elm, params) {
-      return new Draggable(elm,params);
-    }
-
-    function droppable(elm, params) {
-      return new Droppable(elm,params);
-    }
-
-    function dnd(){
-      return dnd;
-    }
-
-    langx.mixin(dnd, {
-       //params ： {
-        //  target : Element or string or function
-        //  handle : Element
-        //  copy : boolean
-        //  placeHolder : "div"
-        //  hoverClass : "hover"
-        //  start : function
-        //  enter : function
-        //  over : function
-        //  leave : function
-        //  drop : function
-        //  end : function
-        //
-        //
-        //}
-        draggable   : draggable,
-
-        //params ： {
-        //  accept : string or function
-        //  placeHolder
-        //
-        //
-        //
-        //}
-        droppable : droppable,
-
-        manager : manager
-
-
-    });
-
-    return skylark.dnd = dnd;
-});
-
-define('skylark-utils/_devices/usermedia',[
-    "../langx"
-], function(langx) {
-    navigator.getUserMedia = navigator.getUserMedia
-                        || navigator.webkitGetUserMedia
-                        || navigator.mozGetUserMedia
-                        || navigator.msGetUserMedia;
-   
-    var Deferred = langx.Deferred,
-        localStream  = null;
-
-    function usermedia() {
-        return usermedia;
-    }
-
-    langx.mixin(usermedia, {
-        isSupported : function() {
-            return !!navigator.getUserMedia;
-        },
-
-        start : function(video,audio) {
-
-            var d = new Deferred();
-            navigator.getUserMedia (
-                {video: true,audio: true},
-                // successCallback
-                function(stream) {
-                    localStream = stream;
-                    video.src = window.URL.createObjectURL(localMediaStream);
-                    video.onloadedmetadata = function(e) {
-                         // Do something with the video here.
-                    };
-                    d.resolve();
-                },
-
-                // errorCallback
-                function(err) {
-                  d.reject(err);
-                }
-            );
-
-            return d.promise;
-        },
-
-        stop : function() {
-            if (localStream) {
-                localStream.stop();
-                localStream = null; 
-            }
-        }
-    });
-
-
-    return  usermedia;
-});
-
-define('skylark-utils/_devices/vibrate',[
-    "../langx"
-], function(langx) {
-    navigator.vibrate = navigator.vibrate
-                        || navigator.webkitVibrate
-                        || navigator.mozVibrate
-                        || navigator.msVibrate;
-    
-
-    function vibrate() {
-        return vibrate;
-    }
-
-    langx.mixin(vibrate, {
-        isSupported : function() {
-            return !!navigator.vibrate;
-        },
-
-        start : function(duration) {
-            navigator.vibrate(duration);
-        },
-
-        stop : function() {
-            navigator.vibrate(0);
-        }
-    });
-
-
-    return  vibrate;
-});
-
-define('skylark-utils/devices',[
-    "./skylark",
-    "./langx",
-    "./_devices/usermedia",
-    "./_devices/vibrate"
-], function(skylark,langx,usermedia,vibrate) {
-
-    function devices() {
-        return devices;
-    }
-
-    langx.mixin(devices, {
-        usermedia: usermedia,
-        vibrate : vibrate
-    });
-
-
-    return skylark.devices = devices;
-});
-
-define('skylark-utils/filer',[
-    "./skylark",
-    "./langx",
-    "./eventer",
-    "./styler"
-], function(skylark, langx, eventer,styler) {
-    var on = eventer.on,
-        attr = eventer.attr,
-        Deferred = langx.Deferred,
-
-        fileInput,
-        fileInputForm,
-        fileSelected,
-        maxFileSize = 1 / 0;
-
-    function dataURLtoBlob(dataurl) {
-        var arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
-            bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
-        while(n--){
-            u8arr[n] = bstr.charCodeAt(n);
-        }
-        return new Blob([u8arr], {type:mime});
-    }
-
-    function selectFile(callback) {
-        fileSelected = callback;
-        if (!fileInput) {
-            var input = fileInput = document.createElement("input");
-
-            function selectFiles(pickedFiles) {
-                for (var i = pickedFiles.length; i--;) {
-                    if (pickedFiles[i].size > maxFileSize) {
-                        pickedFiles.splice(i, 1);
-                    }
-                }
-                fileSelected(pickedFiles);
-            }
-
-            input.type = "file";
-            input.style.position = "fixed",
-                input.style.left = 0,
-                input.style.top = 0,
-                input.style.opacity = .001,
-                document.body.appendChild(input);
-
-            input.onchange = function(e) {
-                selectFiles(Array.prototype.slice.call(e.target.files));
-                // reset to "", so selecting the same file next time still trigger the change handler
-                input.value = "";
-            };
-        }
-        fileInput.click();
-    }
-
-    function upload(files, url, params) {
-        params = params || {};
-        var chunkSize = params.chunkSize || 0,
-            maxSize = params.maxSize || 0,
-            progressCallback = params.progress,
-            errorCallback = params.error,
-            completedCallback = params.completed,
-            uploadedCallback = params.uploaded;
-
-
-        function uploadOneFile(fileItem,oneFileloadedSize, fileItems) {
-            function handleProcess(nowLoadedSize) {
-                var t;
-                speed = Math.ceil(oneFileloadedSize + nowLoadedSize / ((now() - uploadStartedTime) / 1e3)), 
-                percent = Math.round((oneFileloadedSize + nowLoadedSize) / file.size * 100); 
-                if (progressCallback) {
-                    progressCallback({
-                        name: file.name,
-                        loaded: oneFileloadedSize + nowLoadedSize,
-                        total: file.size,
-                        percent: percent,
-                        bytesPerSecond: speed,
-                        global: {
-                            loaded: allLoadedSize + oneFileloadedSize + nowLoadedSize,
-                            total: totalSize
-                        }
-                    });
-                }
-            }
-            var file = fileItem.file,
-                uploadChunkSize = chunkSize || file.size,
-                chunk = file.slice(oneFileloadedSize, oneFileloadedSize + uploadChunkSize);
-
-            xhr = createXmlHttpRequest();
-            //xhr.open("POST", url + 
-            //                "?action=upload&path=" + 
-            //                encodeURIComponent(path) + 
-            //                "&name=" + encodeURIComponent(file.name) + 
-            //                "&loaded=" + oneFileloadedSize + 
-            //                "&total=" + file.size + 
-            //                "&id=" + id + 
-            //                "&csrf=" + encodeURIComponent(token) + 
-            //                "&resolution=" + 
-            //                encodeURIComponent(fileItem.type));
-            xhr.upload.onprogress = function(event) {
-                handleProcess(event.loaded - (event.total - h.size))
-            };
-            xhr.onload = function() {
-                var response, i;
-                xhr.upload.onprogress({
-                    loaded: h.size,
-                    total: h.size
-                });
-                try {
-                    response = JSON.parse(xhr.responseText);
-                } catch (e) {
-                    i = {
-                        code: -1,
-                        message: "Error response is not proper JSON\n\nResponse:\n" + xhr.responseText,
-                        data: {
-                            fileName: file.name,
-                            fileSize: file.size,
-                            maxSize: uploadMaxSize,
-                            extensions: extensions.join(", ")
-                        },
-                        extra: extra
-                    };
-                    errorFileInfos.push(i);
-                    if (errorCallback) {
-                        errorCallback(i);
-                    }
-                    return uploadFiles(fileItems)
-                }
-                if (response.error) {
-
-                    i = {
-                        code: response.error.code,
-                        message: response.error.message,
-                        data: {
-                            fileName: file.name,
-                            fileSize: file.size,
-                            maxSize: uploadMaxSize,
-                            extensions: extensions.join(", ")
-                        },
-                        extra: extra
-                    }; 
-                    errorFileInfos.push(i); 
-                    if (errorCallback) {
-                        errorCallback(i);
-                    }
-                    uploadFiles(fileItems);
-                } else {
-                    if (!response.error && oneFileloadedSize + uploadChunkSize < file.size) {
-                        uploadOneFile(fileItem, oneFileloadedSize + uploadChunkSize, fileItems);
-                    } else {
-                        if (response.result) {
-                            utils.each(response.result, function(e) {
-                                e = File.fromJSON(e);
-                                uploadFileItems.push(e);
-
-                                if (uploadedCallback) {
-                                    uploadedCallback({
-                                        file: e
-                                    });
-                                }
-                            }); 
-
-                        } 
-                        allLoadedSize += file.size;
-                        response.result && k.push(response.result);
-                        uploadFiles(fileItems);
-                    }                            
-                }     
-
-            };
-            handleProcess(0);
-            xhr.send(createFormData(h));
-        }
-
-        function uploadFiles(fileItems) {
-            var fileItem = fileItems.shift();
-            processedFilesCount++; 
-            if (fileItem && fileItem.file.error) {
-                uploadFiles(fileItem);
-            } else {
-                if (uploadingFile) {
-                    uploadOneFile(fileItem, null, 0, fileItems);
-                } else {
-
-                    if (completedCallback) {
-                        completedCallback({
-                            files: new FileCollection(uploadFileItems),
-                            bytesPerSecond: I,
-                            errors: E(D),
-                            extra: extra
-                        });
-                    }
-                }  
-            }
-        }
-
-        var self = this,
-            fileItems = [],
-            processedFilesCount = -1,
-            xhr, 
-            totalSize = 0,
-            allLoadedSize = 0,
-            k = [],
-            errorFileInfos = [],
-            startedTime = now(),
-            I = 0,
-            uploadFileItems = [];
-
-        for ( var  i = 0; i < files.length; i++) {
-            totalSize += files[i].size;
-            fileItems.push({
-                file : files[i]
-            });
-        }        
-
-        uploadFiles(fileItems);
-    }
-
-
-    var filer = function() {
-        return filer;
-    };
-
-    langx.mixin(filer , {
-        dropzone: function(elm, params) {
-            params = params || {};
-            var hoverClass = params.hoverClass || "dropzone",
-                droppedCallback = params.dropped;
-
-            var enterdCount = 0;
-            on(elm, "dragenter", function(e) {
-                if (e.dataTransfer && e.dataTransfer.types.indexOf("Files")>-1) {
-                    eventer.stop(e);
-                    enterdCount ++;
-                    styler.addClass(elm,hoverClass)
-                }
-            });
-
-            on(elm, "dragover", function(e) {
-                if (e.dataTransfer && e.dataTransfer.types.indexOf("Files")>-1) {
-                    eventer.stop(e);
-                }
-            });
-
-
-            on(elm, "dragleave", function(e) {
-                if (e.dataTransfer && e.dataTransfer.types.indexOf("Files")>-1) {
-                    enterdCount--
-                    if (enterdCount==0) {
-                        styler.removeClass(elm,hoverClass);
-                    }
-                }
-            });
-
-            on(elm, "drop", function(e) {
-                if (e.dataTransfer && e.dataTransfer.types.indexOf("Files")>-1) {
-                    styler.removeClass(elm,hoverClass)
-                    eventer.stop(e);
-                    if (droppedCallback) {
-                        droppedCallback(e.dataTransfer.files);
-                    }
-                }
-            });
-
-
-            return this;
-        },
-
-        picker: function(elm, params) {
-            params = params || {};
-
-            var pickedCallback = params.picked;
-
-            on(elm, "click", function(e) {
-                e.preventDefault();
-                selectFile(pickedCallback);
-            });
-            return this;
-        },
-
-        readFile : function(file,params) {
-            params = params || {};
-            var d = new Deferred,
-                reader = new FileReader();
-            
-            reader.onload = function(evt) {
-                d.resolve(evt.target.result);
-            };
-            reader.onerror = function(e) {
-                var code = e.target.error.code;
-                if (code === 2) {
-                    alert('please don\'t open this page using protocol fill:///');
-                } else {
-                    alert('error code: ' + code);
-                }
-            };
-            
-            if (params.asArrayBuffer){
-                reader.readAsArrayBuffer(file);
-            } else if (params.asDataUrl) {
-                reader.readAsDataURL(file);                
-            } else if (params.asText) {
-                reader.readAsText(file);
-            } else {
-                reader.readAsArrayBuffer(file);
-            }
-
-            return d.promise;
-        },
-
-        writeFile : function(data,name) {
-            if (window.navigator.msSaveBlob) { 
-               if (langx.isString(data)) {
-                   data = dataURItoBlob(data);
-               }
-               window.navigator.msSaveBlob(data, name);
-            } else {
-                var a = document.createElement('a');
-                if (data instanceof Blob) {
-                    data = langx.URL.createObjectURL(data);
-                }
-                a.href = data;
-                a.setAttribute('download', name || 'noname');
-                a.dispatchEvent(new CustomEvent('click'));
-            }              
-        }
-
-
-    });
-
-    return skylark.filer = filer;
-});
-
 define('skylark-utils/images',[
     "./skylark",
     "./langx",
@@ -8014,9 +8297,8 @@ define('skylark-utils/images',[
 
 define('skylark-utils/models',[
     "./skylark",
-    "./langx",
-    "./ajax"
-], function(skylark,langx,ajax) {
+    "./langx"
+], function(skylark,langx) {
 
   // Map from CRUD to HTTP for our default `Backbone.sync` implementation.
   var methodMap = {
@@ -8083,7 +8365,7 @@ define('skylark-utils/models',[
     };
 
     // Make the request, allowing the user to override any Ajax options.
-    var xhr = options.xhr = ajax(langx.mixin(params, options));
+    var xhr = options.xhr = langx.Xhr.request(langx.mixin(params, options));
     entity.trigger('request', entity, xhr, options);
     return xhr;
   };
@@ -10912,7 +11194,6 @@ define('skylark-utils/widget',[
 
 define('skylark-utils/main',[
     "./skylark",
-    "./ajax",
     "./browser",
     "./css",
     "./datax",

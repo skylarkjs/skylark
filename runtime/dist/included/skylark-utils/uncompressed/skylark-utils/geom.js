@@ -175,6 +175,18 @@ define([
         }
     }
 
+    function marginRect(elm) {
+        var obj = this.relativeRect(elm),
+            me = this.marginExtents(elm);
+
+        return {
+                left: obj.left,
+                top: obj.top,
+                width: obj.width + me.left + me.right,
+                height: obj.height + me.top + me.bottom
+            };
+    }
+
 
     function paddingExtents(elm) {
         var s = getComputedStyle(elm);
@@ -239,8 +251,8 @@ define([
 
             // Subtract parent offsets and element margins
             return {
-                top: offset.top - parentOffset.top - pbex.top - mex.top,
-                left: offset.left - parentOffset.left - pbex.left - mex.left
+                top: offset.top - parentOffset.top - pbex.top,// - mex.top,
+                left: offset.left - parentOffset.left - pbex.left,// - mex.left
             }
         } else {
             var props = {
@@ -268,8 +280,8 @@ define([
 
             // Subtract parent offsets and element margins
             return {
-                top: offset.top - parentOffset.top - pbex.top - mex.top,
-                left: offset.left - parentOffset.left - pbex.left - mex.left,
+                top: offset.top - parentOffset.top - pbex.top, // - mex.top,
+                left: offset.left - parentOffset.left - pbex.left, // - mex.left,
                 width: offset.width,
                 height: offset.height
             }
@@ -422,6 +434,8 @@ define([
         height: height,
 
         marginExtents: marginExtents,
+
+        marginRect : marginRect,
 
         offsetParent: offsetParent,
 

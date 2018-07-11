@@ -169,17 +169,20 @@ define([
         };
     })();
 
-    function createProxy(event) {
+    function createProxy(src,props) {
         var key,
             proxy = {
-                originalEvent: event
+                originalEvent: src
             };
-        for (key in event) {
-            if (key !== "keyIdentifier" && !ignoreProperties.test(key) && event[key] !== undefined) {
-                proxy[key] = event[key];
+        for (key in src) {
+            if (key !== "keyIdentifier" && !ignoreProperties.test(key) && src[key] !== undefined) {
+                proxy[key] = src[key];
             }
         }
-        return compatible(proxy, event);
+        if (props) {
+            langx.mixin(proxy,props);
+        }
+        return compatible(proxy, src);
     }
 
     var

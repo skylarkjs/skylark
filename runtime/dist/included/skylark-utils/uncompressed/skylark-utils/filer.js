@@ -61,6 +61,12 @@ define([
             completedCallback = params.completed,
             uploadedCallback = params.uploaded;
 
+        function createFormData(e) {
+            var t = new FormData();
+            t.append("file", e);
+            return t;
+        }
+
 
         function uploadOneFile(fileItem,oneFileloadedSize, fileItems) {
             function handleProcess(nowLoadedSize) {
@@ -97,13 +103,13 @@ define([
             //                "&resolution=" + 
             //                encodeURIComponent(fileItem.type));
             xhr.upload.onprogress = function(event) {
-                handleProcess(event.loaded - (event.total - h.size))
+                handleProcess(event.loaded - (event.total - chunk.size))
             };
             xhr.onload = function() {
                 var response, i;
                 xhr.upload.onprogress({
-                    loaded: h.size,
-                    total: h.size
+                    loaded: chunk.size,
+                    total: chunk.size
                 });
                 try {
                     response = JSON.parse(xhr.responseText);
@@ -168,7 +174,7 @@ define([
 
             };
             handleProcess(0);
-            xhr.send(createFormData(h));
+            xhr.send(createFormData(chunk));
         }
 
         function uploadFiles(fileItems) {
@@ -214,7 +220,6 @@ define([
 
         uploadFiles(fileItems);
     }
-
 
     var filer = function() {
         return filer;
@@ -307,6 +312,10 @@ define([
             return d.promise;
         },
 
+        uploader : function(elm,options) {
+
+        },
+         
         writeFile : function(data,name) {
             if (window.navigator.msSaveBlob) { 
                if (langx.isString(data)) {

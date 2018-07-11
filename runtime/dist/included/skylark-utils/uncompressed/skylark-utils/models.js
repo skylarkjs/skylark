@@ -1,8 +1,7 @@
 define([
     "./skylark",
-    "./langx",
-    "./ajax"
-], function(skylark,langx,ajax) {
+    "./langx"
+], function(skylark,langx) {
 
   // Map from CRUD to HTTP for our default `Backbone.sync` implementation.
   var methodMap = {
@@ -69,7 +68,7 @@ define([
     };
 
     // Make the request, allowing the user to override any Ajax options.
-    var xhr = options.xhr = ajax(langx.mixin(params, options));
+    var xhr = options.xhr = langx.Xhr.request(langx.mixin(params, options));
     entity.trigger('request', entity, xhr, options);
     return xhr;
   };

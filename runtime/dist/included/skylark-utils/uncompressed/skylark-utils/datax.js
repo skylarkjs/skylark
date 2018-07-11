@@ -116,6 +116,12 @@ define([
         }
     }
 
+    function cleanData(elm) {
+        if (elm["_$_store"]) {
+            delete elm["_$_store"];
+        }
+    }
+
     function removeData(elm, names) {
         if (langx.isString(names)) {
             names = names.split(/\s+/);
@@ -192,6 +198,8 @@ define([
         
         attr: attr,
 
+        cleanData : cleanData,
+        
         data: data,
 
         pluck: pluck,

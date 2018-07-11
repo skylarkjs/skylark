@@ -86,6 +86,7 @@ define('skylark-langx/skylark',[], function() {
 });
 
 define('skylark-langx/langx',["./skylark"], function(skylark) {
+    "use strict";
     var toString = {}.toString,
         concat = Array.prototype.concat,
         indexOf = Array.prototype.indexOf,
@@ -336,8 +337,7 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
         };
     }
 
-
-    var createClass = (function() {
+    var f1 = function() {
         function extendClass(ctor, props, options) {
             // Copy the properties to the prototype of the class.
             var proto = ctor.prototype,
@@ -350,31 +350,117 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
                 }
 
                 // Check if we're overwriting an existing function
-              proto[name] = typeof props[name] == "function" && !props[name]._constructor && !noOverrided && typeof _super[name] == "function" ?
-                      (function(name, fn, superFn) {
-                        return function() {
-                            var tmp = this.overrided;
+                var prop = props[name];
+                if (typeof props[name] == "function") {
+                    proto[name] =  !prop._constructor && !noOverrided && typeof _super[name] == "function" ?
+                          (function(name, fn, superFn) {
+                            return function() {
+                                var tmp = this.overrided;
 
-                            // Add a new ._super() method that is the same method
-                            // but on the super-class
-                            this.overrided = superFn;
+                                // Add a new ._super() method that is the same method
+                                // but on the super-class
+                                this.overrided = superFn;
 
-                            // The method only need to be bound temporarily, so we
-                            // remove it when we're done executing
-                            var ret = fn.apply(this, arguments);
+                                // The method only need to be bound temporarily, so we
+                                // remove it when we're done executing
+                                var ret = fn.apply(this, arguments);
 
-                            this.overrided = tmp;
+                                this.overrided = tmp;
 
-                            return ret;
-                        };
-                    })(name, props[name], _super[name]) :
-                    props[name];
+                                return ret;
+                            };
+                        })(name, prop, _super[name]) :
+                        prop;
+                } else if (typeof prop == "object" && prop!==null && (prop.get || prop.value !== undefined)) {
+                    Object.defineProperty(proto,name,prop);
+                } else {
+                    proto[name] = prop;
+                }
             }
-
             return ctor;
         }
 
-        return function createClass(props, parent, options) {
+        function serialMixins(ctor,mixins) {
+            var result = [];
+
+            mixins.forEach(function(mixin){
+                if (has(mixin,"__mixins__")) {
+                     throw new Error("nested mixins");
+                }
+                var clss = [];
+                while (mixin) {
+                    clss.unshift(mixin);
+                    mixin = mixin.superclass;
+                }
+                result = result.concat(clss);
+            });
+
+            result = uniq(result);
+
+            result = result.filter(function(mixin){
+                var cls = ctor;
+                while (cls) {
+                    if (mixin === cls) {
+                        return false;
+                    }
+                    if (has(cls,"__mixins__")) {
+                        var clsMixines = cls["__mixins__"];
+                        for (var i=0; i<clsMixines.length;i++) {
+                            if (clsMixines[i]===mixin) {
+                                return false;
+                            }
+                        }
+                    }
+                    cls = cls.superclass;
+                }
+                return true;
+            });
+
+            if (result.length>0) {
+                return result;
+            } else {
+                return false;
+            }
+        }
+
+        function mergeMixins(ctor,mixins) {
+            var newCtor =ctor;
+            for (var i=0;i<mixins.length;i++) {
+                var xtor = new Function();
+                xtor.prototype = Object.create(newCtor.prototype);
+                xtor.__proto__ = newCtor;
+                xtor.superclass = null;
+                mixin(xtor.prototype,mixins[i].prototype);
+                xtor.prototype.__mixin__ = mixins[i];
+                newCtor = xtor;
+            }
+
+            return newCtor;
+        }
+
+        return function createClass(props, parent, mixins,options) {
+            if (isArray(parent)) {
+                options = mixins;
+                mixins = parent;
+                parent = null;
+            }
+            parent = parent || Object;
+
+            if (isDefined(mixins) && !isArray(mixins)) {
+                options = mixins;
+                mixins = false;
+            }
+
+            var innerParent = parent;
+
+            if (mixins) {
+                mixins = serialMixins(innerParent,mixins);
+            }
+
+            if (mixins) {
+                innerParent = mergeMixins(innerParent,mixins);
+            }
+
 
             var _constructor = props.constructor;
             if (_constructor === Object) {
@@ -396,17 +482,22 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
                     "return ctor._constructor.apply(inst, arguments) || inst;" + 
                     "}"
                 )();
+
+
             ctor._constructor = _constructor;
-            parent = parent || Object;
             // Populate our constructed prototype object
-            ctor.prototype = Object.create(parent.prototype);
+            ctor.prototype = Object.create(innerParent.prototype);
 
             // Enforce the constructor to be what we expect
             ctor.prototype.constructor = ctor;
             ctor.superclass = parent;
 
             // And make this class extendable
-            ctor.__proto__ = parent;
+            ctor.__proto__ = innerParent;
+
+            if (mixins) {
+                ctor.__mixins__ = mixins;
+            }
 
             if (!ctor.partial) {
                 ctor.partial = function(props, options) {
@@ -414,16 +505,18 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
                 };
             }
             if (!ctor.inherit) {
-                ctor.inherit = function(props, options) {
-                    return createClass(props, this, options);
+                ctor.inherit = function(props, mixins,options) {
+                    return createClass(props, this, mixins,options);
                 };
             }
 
             ctor.partial(props, options);
 
             return ctor;
-        }
-    })();
+        };
+    }
+
+    var createClass = f1();
 
 
     // Retrieve all the property names of an object.
@@ -436,6 +529,7 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
 
     function createEvent(type, props) {
         var e = new CustomEvent(type, props);
+
         return safeMixin(e, props);
     }
     
@@ -716,6 +810,25 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
         return obj && (obj instanceof Node);
     }
 
+    function isInstanceOf( /*Object*/ value, /*Type*/ type) {
+        //Tests whether the value is an instance of a type.
+        if (value === undefined) {
+            return false;
+        } else if (value === null || type == Object) {
+            return true;
+        } else if (typeof value === "number") {
+            return type === Number;
+        } else if (typeof value === "string") {
+            return type === String;
+        } else if (typeof value === "boolean") {
+            return type === Boolean;
+        } else if (typeof value === "string") {
+            return type === String;
+        } else {
+            return (value instanceof type) || (value && value.isInstanceOf ? value.isInstanceOf(type) : false);
+        }
+    }
+
     function isNumber(obj) {
         return typeof obj == 'number';
     }
@@ -794,6 +907,9 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
             setTimeoutout(fn);
         }
         return this;
+    }
+
+    function noop() {
     }
 
     function proxy(fn, context) {
@@ -882,8 +998,8 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
     }
 
     function _parseMixinArgs(args) {
-        var params = slice.call(arguments, 0);
-        target = params.shift(),
+        var params = slice.call(arguments, 0),
+            target = params.shift(),
             deep = false;
         if (isBoolean(params[params.length - 1])) {
             deep = params.pop();
@@ -1006,45 +1122,83 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
         return prefix ? prefix + id : id;
     }
 
-
-
     var Deferred = function() {
         var self = this,
             p = this.promise = new Promise(function(resolve, reject) {
                 self._resolve = resolve;
                 self._reject = reject;
-            });
-
-        mixin(p,{
-            then : function(onResolved,onRejected,onProgress) {
-                if (onProgress) {
-                    this.progress(onProgress);
+            }),
+           added = {
+                state : function() {
+                    if (self.isResolved()) {
+                        return 'resolved';
+                    }
+                    if (self.isRejected()) {
+                        return 'rejected';
+                    }
+                    return 'pending';
+                },
+                then : function(onResolved,onRejected,onProgress) {
+                    if (onProgress) {
+                        this.progress(onProgress);
+                    }
+                    return mixin(Promise.prototype.then.call(this,
+                            onResolved && function(args) {
+                                if (args && args.__ctx__ !== undefined) {
+                                    return onResolved.apply(args.__ctx__,args);
+                                } else {
+                                    return onResolved(args);
+                                }
+                            },
+                            onRejected && function(args){
+                                if (args && args.__ctx__ !== undefined) {
+                                    return onRejected.apply(args.__ctx__,args);
+                                } else {
+                                    return onRejected(args);
+                                }
+                            }),added);
+                },
+                always: function(handler) {
+                    //this.done(handler);
+                    //this.fail(handler);
+                    this.then(handler,handler);
+                    return this;
+                },
+                done : function(handler) {
+                    return this.then(handler);
+                },
+                fail : function(handler) { 
+                    //return mixin(Promise.prototype.catch.call(this,handler),added);
+                    return this.then(null,handler);
+                }, 
+                progress : function(handler) {
+                    self[PGLISTENERS].push(handler);
+                    return this;
                 }
-                return Promise.prototype.then.call(this,onResolved,onRejected);
-            },
-            done : function(handler) {
-                return Promise.prototype.then.call(this,handler);
-            },
-            fail : function(handler) { 
-                return Promise.prototype.catch.call(this,handler);
-            }, 
-            progress : function(handler) {
-                self[PGLISTENERS].push(handler);
-                return this;
-            }
 
-        });
+            };
+
+        added.pipe = added.then;
+        mixin(p,added);
 
         this[PGLISTENERS] = [];
 
-        this.resolve = Deferred.prototype.resolve.bind(this);
-        this.reject = Deferred.prototype.reject.bind(this);
-        this.progress = Deferred.prototype.progress.bind(this);
+        //this.resolve = Deferred.prototype.resolve.bind(this);
+        //this.reject = Deferred.prototype.reject.bind(this);
+        //this.progress = Deferred.prototype.progress.bind(this);
 
     };
 
     Deferred.prototype.resolve = function(value) {
-        this._resolve.call(this.promise, value);
+        var args = slice.call(arguments);
+        return this.resolveWith(null,args);
+    };
+
+    Deferred.prototype.resolveWith = function(context,args) {
+        args = args ? makeArray(args) : []; 
+        args.__ctx__ = context;
+        this._resolve(args);
+        this._resolved = true;
         return this;
     };
 
@@ -1060,14 +1214,32 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
     };
 
     Deferred.prototype.reject = function(reason) {
-        this._reject.call(this.promise, reason);
+        var args = slice.call(arguments);
+        return this.rejectWith(null,args);
+    };
+
+    Deferred.prototype.rejectWith = function(context,args) {
+        args = args ? makeArray(args) : []; 
+        args.__ctx__ = context;
+        this._reject(args);
+        this._rejected = true;
         return this;
     };
 
+    Deferred.prototype.isResolved = function() {
+        return !!this._resolved;
+    };
+
+    Deferred.prototype.isRejected = function() {
+        return !!this._rejected;
+    };
 
     Deferred.prototype.then = function(callback, errback, progback) {
-        return this.promise.then(callback, errback, progback);
+        var p = result(this,"promise");
+        return p.then(callback, errback, progback);
     };
+
+    Deferred.prototype.done  = Deferred.prototype.then;
 
     Deferred.all = function(array) {
         return Promise.all(array);
@@ -1076,6 +1248,7 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
     Deferred.first = function(array) {
         return Promise.race(array);
     };
+
 
     Deferred.when = function(valueOrPromise, callback, errback, progback) {
         var receivedPromise = valueOrPromise && typeof valueOrPromise.then === "function";
@@ -1171,7 +1344,9 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
                 e = new CustomEvent(e);
             }
 
-            e.target = this;
+            Object.defineProperty(e,"target",{
+                value : this
+            });
 
             var args = slice.call(arguments, 1);
             if (isDefined(args)) {
@@ -1338,8 +1513,6 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
             return this;
         }
     });
-
-
 
     var Stateful = Evented.inherit({
         init : function(attributes, options) {
@@ -1539,6 +1712,786 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
         }
     });
 
+    var SimpleQueryEngine = function(query, options){
+        // summary:
+        //      Simple query engine that matches using filter functions, named filter
+        //      functions or objects by name-value on a query object hash
+        //
+        // description:
+        //      The SimpleQueryEngine provides a way of getting a QueryResults through
+        //      the use of a simple object hash as a filter.  The hash will be used to
+        //      match properties on data objects with the corresponding value given. In
+        //      other words, only exact matches will be returned.
+        //
+        //      This function can be used as a template for more complex query engines;
+        //      for example, an engine can be created that accepts an object hash that
+        //      contains filtering functions, or a string that gets evaluated, etc.
+        //
+        //      When creating a new dojo.store, simply set the store's queryEngine
+        //      field as a reference to this function.
+        //
+        // query: Object
+        //      An object hash with fields that may match fields of items in the store.
+        //      Values in the hash will be compared by normal == operator, but regular expressions
+        //      or any object that provides a test() method are also supported and can be
+        //      used to match strings by more complex expressions
+        //      (and then the regex's or object's test() method will be used to match values).
+        //
+        // options: dojo/store/api/Store.QueryOptions?
+        //      An object that contains optional information such as sort, start, and count.
+        //
+        // returns: Function
+        //      A function that caches the passed query under the field "matches".  See any
+        //      of the "query" methods on dojo.stores.
+        //
+        // example:
+        //      Define a store with a reference to this engine, and set up a query method.
+        //
+        //  |   var myStore = function(options){
+        //  |       //  ...more properties here
+        //  |       this.queryEngine = SimpleQueryEngine;
+        //  |       //  define our query method
+        //  |       this.query = function(query, options){
+        //  |           return QueryResults(this.queryEngine(query, options)(this.data));
+        //  |       };
+        //  |   };
+
+        // create our matching query function
+        switch(typeof query){
+            default:
+                throw new Error("Can not query with a " + typeof query);
+            case "object": case "undefined":
+                var queryObject = query;
+                query = function(object){
+                    for(var key in queryObject){
+                        var required = queryObject[key];
+                        if(required && required.test){
+                            // an object can provide a test method, which makes it work with regex
+                            if(!required.test(object[key], object)){
+                                return false;
+                            }
+                        }else if(required != object[key]){
+                            return false;
+                        }
+                    }
+                    return true;
+                };
+                break;
+            case "string":
+                // named query
+                if(!this[query]){
+                    throw new Error("No filter function " + query + " was found in store");
+                }
+                query = this[query];
+                // fall through
+            case "function":
+                // fall through
+        }
+        
+        function filter(arr, callback, thisObject){
+            // summary:
+            //      Returns a new Array with those items from arr that match the
+            //      condition implemented by callback.
+            // arr: Array
+            //      the array to iterate over.
+            // callback: Function|String
+            //      a function that is invoked with three arguments (item,
+            //      index, array). The return of this function is expected to
+            //      be a boolean which determines whether the passed-in item
+            //      will be included in the returned array.
+            // thisObject: Object?
+            //      may be used to scope the call to callback
+            // returns: Array
+            // description:
+            //      This function corresponds to the JavaScript 1.6 Array.filter() method, with one difference: when
+            //      run over sparse arrays, this implementation passes the "holes" in the sparse array to
+            //      the callback function with a value of undefined. JavaScript 1.6's filter skips the holes in the sparse array.
+            //      For more details, see:
+            //      https://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Objects/Array/filter
+            // example:
+            //  | // returns [2, 3, 4]
+            //  | array.filter([1, 2, 3, 4], function(item){ return item>1; });
+
+            // TODO: do we need "Ctr" here like in map()?
+            var i = 0, l = arr && arr.length || 0, out = [], value;
+            if(l && typeof arr == "string") arr = arr.split("");
+            if(typeof callback == "string") callback = cache[callback] || buildFn(callback);
+            if(thisObject){
+                for(; i < l; ++i){
+                    value = arr[i];
+                    if(callback.call(thisObject, value, i, arr)){
+                        out.push(value);
+                    }
+                }
+            }else{
+                for(; i < l; ++i){
+                    value = arr[i];
+                    if(callback(value, i, arr)){
+                        out.push(value);
+                    }
+                }
+            }
+            return out; // Array
+        }
+
+        function execute(array){
+            // execute the whole query, first we filter
+            var results = filter(array, query);
+            // next we sort
+            var sortSet = options && options.sort;
+            if(sortSet){
+                results.sort(typeof sortSet == "function" ? sortSet : function(a, b){
+                    for(var sort, i=0; sort = sortSet[i]; i++){
+                        var aValue = a[sort.attribute];
+                        var bValue = b[sort.attribute];
+                        // valueOf enables proper comparison of dates
+                        aValue = aValue != null ? aValue.valueOf() : aValue;
+                        bValue = bValue != null ? bValue.valueOf() : bValue;
+                        if (aValue != bValue){
+                            // modified by lwf 2016/07/09
+                            //return !!sort.descending == (aValue == null || aValue > bValue) ? -1 : 1;
+                            return !!sort.descending == (aValue == null || aValue > bValue) ? -1 : 1;
+                        }
+                    }
+                    return 0;
+                });
+            }
+            // now we paginate
+            if(options && (options.start || options.count)){
+                var total = results.length;
+                results = results.slice(options.start || 0, (options.start || 0) + (options.count || Infinity));
+                results.total = total;
+            }
+            return results;
+        }
+        execute.matches = query;
+        return execute;
+    };
+
+    var QueryResults = function(results){
+        // summary:
+        //      A function that wraps the results of a store query with additional
+        //      methods.
+        // description:
+        //      QueryResults is a basic wrapper that allows for array-like iteration
+        //      over any kind of returned data from a query.  While the simplest store
+        //      will return a plain array of data, other stores may return deferreds or
+        //      promises; this wrapper makes sure that *all* results can be treated
+        //      the same.
+        //
+        //      Additional methods include `forEach`, `filter` and `map`.
+        // results: Array|dojo/promise/Promise
+        //      The result set as an array, or a promise for an array.
+        // returns:
+        //      An array-like object that can be used for iterating over.
+        // example:
+        //      Query a store and iterate over the results.
+        //
+        //  |   store.query({ prime: true }).forEach(function(item){
+        //  |       //  do something
+        //  |   });
+
+        if(!results){
+            return results;
+        }
+
+        var isPromise = !!results.then;
+        // if it is a promise it may be frozen
+        if(isPromise){
+            results = Object.delegate(results);
+        }
+        function addIterativeMethod(method){
+            // Always add the iterative methods so a QueryResults is
+            // returned whether the environment is ES3 or ES5
+            results[method] = function(){
+                var args = arguments;
+                var result = Deferred.when(results, function(results){
+                    //Array.prototype.unshift.call(args, results);
+                    return QueryResults(Array.prototype[method].apply(results, args));
+                });
+                // forEach should only return the result of when()
+                // when we're wrapping a promise
+                if(method !== "forEach" || isPromise){
+                    return result;
+                }
+            };
+        }
+
+        addIterativeMethod("forEach");
+        addIterativeMethod("filter");
+        addIterativeMethod("map");
+        if(results.total == null){
+            results.total = Deferred.when(results, function(results){
+                return results.length;
+            });
+        }
+        return results; // Object
+    };
+
+    var ArrayStore = createClass({
+        "klassName-": "ArrayStore",
+
+        "queryEngine": SimpleQueryEngine,
+        
+        "idProperty": "id",
+
+
+        get: function(id){
+            // summary:
+            //      Retrieves an object by its identity
+            // id: Number
+            //      The identity to use to lookup the object
+            // returns: Object
+            //      The object in the store that matches the given id.
+            return this.data[this.index[id]];
+        },
+
+        getIdentity: function(object){
+            return object[this.idProperty];
+        },
+
+        put: function(object, options){
+            var data = this.data,
+                index = this.index,
+                idProperty = this.idProperty;
+            var id = object[idProperty] = (options && "id" in options) ? options.id : idProperty in object ? object[idProperty] : Math.random();
+            if(id in index){
+                // object exists
+                if(options && options.overwrite === false){
+                    throw new Error("Object already exists");
+                }
+                // replace the entry in data
+                data[index[id]] = object;
+            }else{
+                // add the new object
+                index[id] = data.push(object) - 1;
+            }
+            return id;
+        },
+
+        add: function(object, options){
+            (options = options || {}).overwrite = false;
+            // call put with overwrite being false
+            return this.put(object, options);
+        },
+
+        remove: function(id){
+            // summary:
+            //      Deletes an object by its identity
+            // id: Number
+            //      The identity to use to delete the object
+            // returns: Boolean
+            //      Returns true if an object was removed, falsy (undefined) if no object matched the id
+            var index = this.index;
+            var data = this.data;
+            if(id in index){
+                data.splice(index[id], 1);
+                // now we have to reindex
+                this.setData(data);
+                return true;
+            }
+        },
+        query: function(query, options){
+            // summary:
+            //      Queries the store for objects.
+            // query: Object
+            //      The query to use for retrieving objects from the store.
+            // options: dojo/store/api/Store.QueryOptions?
+            //      The optional arguments to apply to the resultset.
+            // returns: dojo/store/api/Store.QueryResults
+            //      The results of the query, extended with iterative methods.
+            //
+            // example:
+            //      Given the following store:
+            //
+            //  |   var store = new Memory({
+            //  |       data: [
+            //  |           {id: 1, name: "one", prime: false },
+            //  |           {id: 2, name: "two", even: true, prime: true},
+            //  |           {id: 3, name: "three", prime: true},
+            //  |           {id: 4, name: "four", even: true, prime: false},
+            //  |           {id: 5, name: "five", prime: true}
+            //  |       ]
+            //  |   });
+            //
+            //  ...find all items where "prime" is true:
+            //
+            //  |   var results = store.query({ prime: true });
+            //
+            //  ...or find all items where "even" is true:
+            //
+            //  |   var results = store.query({ even: true });
+            return QueryResults(this.queryEngine(query, options)(this.data));
+        },
+
+        setData: function(data){
+            // summary:
+            //      Sets the given data as the source for this store, and indexes it
+            // data: Object[]
+            //      An array of objects to use as the source of data.
+            if(data.items){
+                // just for convenience with the data format IFRS expects
+                this.idProperty = data.identifier || this.idProperty;
+                data = this.data = data.items;
+            }else{
+                this.data = data;
+            }
+            this.index = {};
+            for(var i = 0, l = data.length; i < l; i++){
+                this.index[data[i][this.idProperty]] = i;
+            }
+        },
+
+        init: function(options) {
+            for(var i in options){
+                this[i] = options[i];
+            }
+            this.setData(this.data || []);
+        }
+
+    });
+
+    var Xhr = (function(){
+        var jsonpID = 0,
+            document = window.document,
+            key,
+            name,
+            rscript = /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+            scriptTypeRE = /^(?:text|application)\/javascript/i,
+            xmlTypeRE = /^(?:text|application)\/xml/i,
+            jsonType = 'application/json',
+            htmlType = 'text/html',
+            blankRE = /^\s*$/;
+
+        var XhrDefaultOptions = {
+            async: true,
+
+            // Default type of request
+            type: 'GET',
+            // Callback that is executed before request
+            beforeSend: noop,
+            // Callback that is executed if the request succeeds
+            success: noop,
+            // Callback that is executed the the server drops error
+            error: noop,
+            // Callback that is executed on request complete (both: error and success)
+            complete: noop,
+            // The context for the callbacks
+            context: null,
+            // Whether to trigger "global" Ajax events
+            global: true,
+
+            // MIME types mapping
+            // IIS returns Javascript as "application/x-javascript"
+            accepts: {
+                script: 'text/javascript, application/javascript, application/x-javascript',
+                json: 'application/json',
+                xml: 'application/xml, text/xml',
+                html: 'text/html',
+                text: 'text/plain'
+            },
+            // Whether the request is to another domain
+            crossDomain: false,
+            // Default timeout
+            timeout: 0,
+            // Whether data should be serialized to string
+            processData: true,
+            // Whether the browser should be allowed to cache GET responses
+            cache: true,
+
+            xhrFields : {
+                withCredentials : true
+            }
+        };
+
+        function mimeToDataType(mime) {
+            if (mime) {
+                mime = mime.split(';', 2)[0];
+            }
+            if (mime) {
+                if (mime == htmlType) {
+                    return "html";
+                } else if (mime == jsonType) {
+                    return "json";
+                } else if (scriptTypeRE.test(mime)) {
+                    return "script";
+                } else if (xmlTypeRE.test(mime)) {
+                    return "xml";
+                }
+            }
+            return "text";
+        }
+
+        function appendQuery(url, query) {
+            if (query == '') return url
+            return (url + '&' + query).replace(/[&?]{1,2}/, '?')
+        }
+
+        // serialize payload and append it to the URL for GET requests
+        function serializeData(options) {
+            options.data = options.data || options.query;
+            if (options.processData && options.data && type(options.data) != "string") {
+                options.data = param(options.data, options.traditional);
+            }
+            if (options.data && (!options.type || options.type.toUpperCase() == 'GET')) {
+                options.url = appendQuery(options.url, options.data);
+                options.data = undefined;
+            }
+        }
+
+        function serialize(params, obj, traditional, scope) {
+            var t, array = isArray(obj),
+                hash = isPlainObject(obj)
+            each(obj, function(key, value) {
+                t =type(value);
+                if (scope) key = traditional ? scope :
+                    scope + '[' + (hash || t == 'object' || t == 'array' ? key : '') + ']'
+                // handle data in serializeArray() format
+                if (!scope && array) params.add(value.name, value.value)
+                // recurse into nested objects
+                else if (t == "array" || (!traditional && t == "object"))
+                    serialize(params, value, traditional, key)
+                else params.add(key, value)
+            })
+        }
+
+        var param = function(obj, traditional) {
+            var params = []
+            params.add = function(key, value) {
+                if (isFunction(value)) value = value()
+                if (value == null) value = ""
+                this.push(escape(key) + '=' + escape(value))
+            }
+            serialize(params, obj, traditional)
+            return params.join('&').replace(/%20/g, '+')
+        };
+
+        var Xhr = Evented.inherit({
+            klassName : "Xhr",
+
+            _request  : function(args) {
+                var _ = this._,
+                    self = this,
+                    options = mixin({},XhrDefaultOptions,_.options,args),
+                    xhr = _.xhr = new XMLHttpRequest();
+
+                serializeData(options)
+
+                var dataType = options.dataType || options.handleAs,
+                    mime = options.mimeType || options.accepts[dataType],
+                    headers = options.headers,
+                    xhrFields = options.xhrFields,
+                    isFormData = options.data && options.data instanceof FormData,
+                    basicAuthorizationToken = options.basicAuthorizationToken,
+                    type = options.type,
+                    url = options.url,
+                    async = options.async,
+                    user = options.user , 
+                    password = options.password,
+                    deferred = new Deferred(),
+                    contentType = isFormData ? false : 'application/x-www-form-urlencoded';
+
+                if (xhrFields) {
+                    for (name in xhrFields) {
+                        xhr[name] = xhrFields[name];
+                    }
+                }
+
+                if (mime && mime.indexOf(',') > -1) {
+                    mime = mime.split(',', 2)[0];
+                }
+                if (mime && xhr.overrideMimeType) {
+                    xhr.overrideMimeType(mime);
+                }
+
+                //if (dataType) {
+                //    xhr.responseType = dataType;
+                //}
+
+                var finish = function() {
+                    xhr.onloadend = noop;
+                    xhr.onabort = noop;
+                    xhr.onprogress = noop;
+                    xhr.ontimeout = noop;
+                    xhr = null;
+                }
+                var onloadend = function() {
+                    var result, error = false
+                    if ((xhr.status >= 200 && xhr.status < 300) || xhr.status == 304 || (xhr.status == 0 && url.startsWith('file:'))) {
+                        dataType = dataType || mimeToDataType(options.mimeType || xhr.getResponseHeader('content-type'));
+
+                        result = xhr.responseText;
+                        try {
+                            if (dataType == 'script') {
+                                eval(result);
+                            } else if (dataType == 'xml') {
+                                result = xhr.responseXML;
+                            } else if (dataType == 'json') {
+                                result = blankRE.test(result) ? null : JSON.parse(result);
+                            } else if (dataType == "blob") {
+                                result = Blob([xhrObj.response]);
+                            } else if (dataType == "arraybuffer") {
+                                result = xhr.reponse;
+                            }
+                        } catch (e) { 
+                            error = e;
+                        }
+
+                        if (error) {
+                            deferred.reject(error,xhr.status,xhr);
+                        } else {
+                            deferred.resolve(result,xhr.status,xhr);
+                        }
+                    } else {
+                        deferred.reject(new Error(xhr.statusText),xhr.status,xhr);
+                    }
+                    finish();
+                };
+
+                var onabort = function() {
+                    if (deferred) {
+                        deferred.reject(new Error("abort"),xhr.status,xhr);
+                    }
+                    finish();                 
+                }
+ 
+                var ontimeout = function() {
+                    if (deferred) {
+                        deferred.reject(new Error("timeout"),xhr.status,xhr);
+                    }
+                    finish();                 
+                }
+
+                var onprogress = function(evt) {
+                    if (deferred) {
+                        deferred.progress(evt,xhr.status,xhr);
+                    }
+                }
+
+                xhr.onloadend = onloadend;
+                xhr.onabort = onabort;
+                xhr.ontimeout = ontimeout;
+                xhr.onprogress = onprogress;
+
+                xhr.open(type, url, async, user, password);
+               
+                if (headers) {
+                    for ( var key in headers) {
+                        var value = headers[key];
+ 
+                        if(key.toLowerCase() === 'content-type'){
+                            contentType = headers[hdr];
+                        } else {
+                           xhr.setRequestHeader(key, value);
+                        }
+                    }
+                }   
+
+                if  (contentType && contentType !== false){
+                    xhr.setRequestHeader('Content-Type', contentType);
+                }
+
+                if(!headers || !('X-Requested-With' in headers)){
+                    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                }
+
+
+                //If basicAuthorizationToken is defined set its value into "Authorization" header
+                if (basicAuthorizationToken) {
+                    xhr.setRequestHeader("Authorization", basicAuthorizationToken);
+                }
+
+                xhr.send(options.data ? options.data : null);
+
+                return deferred.promise;
+
+            },
+
+            "abort": function() {
+                var _ = this._,
+                    xhr = _.xhr;
+
+                if (xhr) {
+                    xhr.abort();
+                }    
+            },
+
+
+            "request": function(args) {
+                return this._request(args);
+            },
+
+            get : function(args) {
+                args = args || {};
+                args.type = "GET";
+                return this._request(args);
+            },
+
+            post : function(args) {
+                args = args || {};
+                args.type = "POST";
+                return this._request(args);
+            },
+
+            patch : function(args) {
+                args = args || {};
+                args.type = "PATCH";
+                return this._request(args);
+            },
+
+            put : function(args) {
+                args = args || {};
+                args.type = "PUT";
+                return this._request(args);
+            },
+
+            del : function(args) {
+                args = args || {};
+                args.type = "DELETE";
+                return this._request(args);
+            },
+
+            "init": function(options) {
+                this._ = {
+                    options : options || {}
+                };
+            }
+        });
+
+        ["request","get","post","put","del","patch"].forEach(function(name){
+            Xhr[name] = function(url,args) {
+                var xhr = new Xhr({"url" : url});
+                return xhr[name](args);
+            };
+        });
+
+        Xhr.defaultOptions = XhrDefaultOptions;
+        Xhr.param = param;
+
+        return Xhr;
+    })();
+
+    var Restful = Evented.inherit({
+        "klassName" : "Restful",
+
+        "idAttribute": "id",
+        
+        getBaseUrl : function(args) {
+            //$$baseEndpoint : "/files/${fileId}/comments",
+            var baseEndpoint = String.substitute(this.baseEndpoint,args),
+                baseUrl = this.server + this.basePath + baseEndpoint;
+            if (args[this.idAttribute]!==undefined) {
+                baseUrl = baseUrl + "/" + args[this.idAttribute]; 
+            }
+            return baseUrl;
+        },
+        _head : function(args) {
+            //get resource metadata .
+            //args : id and other info for the resource ,ex
+            //{
+            //  "id" : 234,  // the own id, required
+            //  "fileId"   : 2 // the parent resource id, option by resource
+            //}
+        },
+        _get : function(args) {
+            //get resource ,one or list .
+            //args : id and other info for the resource ,ex
+            //{
+            //  "id" : 234,  // the own id, null if list
+            //  "fileId"   : 2 // the parent resource id, option by resource
+            //}
+            return Xhr.get(this.getBaseUrl(args),args);
+        },
+        _post  : function(args,verb) {
+            //create or move resource .
+            //args : id and other info for the resource ,ex
+            //{
+            //  "id" : 234,  // the own id, required
+            //  "data" : body // the own data,required
+            //  "fileId"   : 2 // the parent resource id, option by resource
+            //}
+            //verb : the verb ,ex: copy,touch,trash,untrash,watch
+            var url = this.getBaseUrl(args);
+            if (verb) {
+                url = url + "/" + verb;
+            }
+            return Xhr.post(url, args);
+        },
+
+        _put  : function(args,verb) {
+            //update resource .
+            //args : id and other info for the resource ,ex
+            //{
+            //  "id" : 234,  // the own id, required
+            //  "data" : body // the own data,required
+            //  "fileId"   : 2 // the parent resource id, option by resource
+            //}
+            //verb : the verb ,ex: copy,touch,trash,untrash,watch
+            var url = this.getBaseUrl(args);
+            if (verb) {
+                url = url + "/" + verb;
+            }
+            return Xhr.put(url, args);
+        },
+
+        _delete : function(args) {
+            //delete resource . 
+            //args : id and other info for the resource ,ex
+            //{
+            //  "id" : 234,  // the own id, required
+            //  "fileId"   : 2 // the parent resource id, option by resource
+            //}         
+
+            // HTTP request : DELETE http://center.utilhub.com/registry/v1/apps/{appid}
+            var url = this.getBaseUrl(args);
+            return Xhr.del(url);
+        },
+
+        _patch : function(args){
+            //update resource metadata. 
+            //args : id and other info for the resource ,ex
+            //{
+            //  "id" : 234,  // the own id, required
+            //  "data" : body // the own data,required
+            //  "fileId"   : 2 // the parent resource id, option by resource
+            //}
+            var url = this.getBaseUrl(args);
+            return Xhr.patch(url, args);
+        },
+        query: function(params) {
+            
+            return this._post(params);
+        },
+
+        retrieve: function(params) {
+            return this._get(params);
+        },
+
+        create: function(params) {
+            return this._post(params);
+        },
+
+        update: function(params) {
+            return this._put(params);
+        },
+
+        delete: function(params) {
+            // HTTP request : DELETE http://center.utilhub.com/registry/v1/apps/{appid}
+            return this._delete(params);
+        },
+
+        patch: function(params) {
+           // HTTP request : PATCH http://center.utilhub.com/registry/v1/apps/{appid}
+            return this._patch(params);
+        },
+        init: function(params) {
+            mixin(this,params);
+ //           this._xhr = XHRx();
+       }
+
+
+    });
+
     function langx() {
         return langx;
     }
@@ -1549,6 +2502,8 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
         allKeys: allKeys,
 
         around: aspect("around"),
+
+        ArrayStore : ArrayStore,
 
         before: aspect("before"),
 
@@ -1581,6 +2536,14 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
         deserializeValue: deserializeValue,
 
         each: each,
+
+        first : function(items,n) {
+            if (n) {
+                return items.slice(0,n);
+            } else {
+                return items[0];
+            }
+        },
 
         flatten: flatten,
 
@@ -1628,8 +2591,8 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
 
         keys: keys,
 
-        klass: function(props, parent, options) {
-            return createClass(props, parent, options);
+        klass: function(props, parent,mixins, options) {
+            return createClass(props, parent, mixins,options);
         },
 
         lowerFirst: function(str) {
@@ -1642,10 +2605,13 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
 
         mixin: mixin,
 
+        noop : noop,
 
         proxy: proxy,
 
         removeItem: removeItem,
+
+        Restful: Restful,
 
         result : result,
         
@@ -1685,7 +2651,9 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
 
         URL: typeof window !== "undefined" ? window.URL || window.webkitURL : null,
 
-        values: values
+        values: values,
+
+        Xhr: Xhr
 
     });
 

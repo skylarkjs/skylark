@@ -398,6 +398,11 @@ define([
                 })
             },
 
+            pushStack : function(elms) {
+                var ret = $(elms);
+                ret.prevObject = this;
+                return ret;
+            },
             show: wrapper_every_act(fx.show, fx),
 
             replaceWith: function(newContent) {
@@ -639,6 +644,35 @@ define([
 
         $.fn.append = wrapper_node_operation(noder.append, noder);
 
+
+        langx.each( {
+            appendTo: "append",
+            prependTo: "prepend",
+            insertBefore: "before",
+            insertAfter: "after",
+            replaceAll: "replaceWith"
+        }, function( name, original ) {
+            $.fn[ name ] = function( selector ) {
+                var elems,
+                    ret = [],
+                    insert = $( selector ),
+                    last = insert.length - 1,
+                    i = 0;
+
+                for ( ; i <= last; i++ ) {
+                    elems = i === last ? this : this.clone( true );
+                    $( insert[ i ] )[ original ]( elems );
+
+                    // Support: Android <=4.0 only, PhantomJS 1 only
+                    // .get() because push.apply(_, arraylike) throws on ancient WebKit
+                    push.apply( ret, elems.get() );
+                }
+
+                return this.pushStack( ret );
+            };
+        } );
+
+/*
         $.fn.insertAfter = function(html) {
             $(html).after(this);
             return this;
@@ -659,7 +693,12 @@ define([
             return this;
         };
 
-        return $
+        $.fn.replaceAll = function(selector) {
+            $(selector).replaceWith(this);
+            return this;
+        };
+*/
+        return $;
     })();
 
     (function($) {

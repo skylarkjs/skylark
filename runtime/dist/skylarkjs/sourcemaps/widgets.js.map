@@ -1,0 +1,1 @@
+{"version":3,"sources":["widgets.js"],"names":["define","widgets"],"mappings":";;;;;;;AAAAA,QACI,yBACD,SAASC,GACR,MAAOA","file":"../widgets.js","sourcesContent":["define([\r\n    \"skylark-utils/widgets\"\r\n], function(widgets) {\r\n    return widgets;\r\n});\r\n"]}

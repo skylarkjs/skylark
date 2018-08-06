@@ -764,7 +764,7 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
     }
 
     function isArrayLike(obj) {
-        return !isString(obj) && !isHtmlNode(obj) && typeof obj.length == 'number';
+        return !isString(obj) && !isHtmlNode(obj) && typeof obj.length == 'number' && !isFunction(obj);
     }
 
     function isBoolean(obj) {
@@ -883,6 +883,8 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
       // array of single index
       return [ obj ];             
     }
+
+
 
     function map(elements, callback) {
         var value, values = [],
@@ -1103,7 +1105,6 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
             }); // String
     }
 
-
     var _uid = 1;
 
     function uid(obj) {
@@ -1260,10 +1261,10 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
             } else {
                 return new Deferred().resolve(valueOrPromise);
             }
-        } else if (!nativePromise) {
-            var deferred = new Deferred(valueOrPromise.cancel);
-            valueOrPromise.then(deferred.resolve, deferred.reject, deferred.progress);
-            valueOrPromise = deferred.promise;
+//        } else if (!nativePromise) {
+//            var deferred = new Deferred(valueOrPromise.cancel);
+//            valueOrPromise.then(deferred.resolve, deferred.reject, deferred.progress);
+//            valueOrPromise = deferred.promise;
         }
 
         if (callback || errback || progback) {
@@ -1928,8 +1929,56 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
         return results; // Object
     };
 
+    var async = {
+        parallel : function(arr,args,ctx) {
+            var rets = [];
+            ctx = ctx || null;
+            args = args || [];
+
+            each(arr,function(i,func){
+                rets.push(func.apply(ctx,args));
+            });
+
+            return Deferred.all(rets);
+        },
+
+        series : function(arr,args,ctx) {
+            var rets = [],
+                d = new Deferred(),
+                p = d.promise;
+
+            ctx = ctx || null;
+            args = args || [];
+
+            d.resolve();
+            each(arr,function(i,func){
+                p = p.then(function(){
+                    return func.apply(ctx,args);
+                });
+                rets.push(p);
+            });
+
+            return Deferred.all(rets);
+        },
+
+        waterful : function(arr,args,ctx) {
+            var d = new Deferred(),
+                p = d.promise;
+
+            ctx = ctx || null;
+            args = args || [];
+
+            d.resolveWith(ctx,args);
+
+            each(arr,function(i,func){
+                p = p.then(func);
+            });
+            return p;
+        }
+    };
+
     var ArrayStore = createClass({
-        "klassName-": "ArrayStore",
+        "klassName": "ArrayStore",
 
         "queryEngine": SimpleQueryEngine,
         
@@ -2217,7 +2266,7 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
                 }
                 var onloadend = function() {
                     var result, error = false
-                    if ((xhr.status >= 200 && xhr.status < 300) || xhr.status == 304 || (xhr.status == 0 && url.startsWith('file:'))) {
+                    if ((xhr.status >= 200 && xhr.status < 300) || xhr.status == 304 || (xhr.status == 0 && getAbsoluteUrl(url).startsWith('file:'))) {
                         dataType = dataType || mimeToDataType(options.mimeType || xhr.getResponseHeader('content-type'));
 
                         result = xhr.responseText;
@@ -2505,6 +2554,8 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
 
         ArrayStore : ArrayStore,
 
+        async : async,
+        
         before: aspect("before"),
 
         camelCase: function(str) {

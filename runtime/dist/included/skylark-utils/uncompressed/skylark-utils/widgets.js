@@ -2,35 +2,115 @@ define([
     "./skylark",
     "./langx",
     "./noder",
+    "./datax",
     "./styler",
     "./geom",
     "./eventer",
-    "./query"
-], function(skylark,langx,noder,styler,geom,eventer,query) {
-  // Cached regex to split keys for `delegate`.
-  var delegateEventSplitter = /^(\S+)\s*(.*)$/;
+    "./query",
+    "./velm"
+], function(skylark,langx,noder, datax, styler, geom, eventer,query,velm) {
+	// Cached regex to split keys for `delegate`.
+	var delegateEventSplitter = /^(\S+)\s*(.*)$/,
+		slice = Array.prototype.slice;
 
-    function widget() {
-        return widget;
-    }
+
+	function bridge( name, object ) {
+		var fullName = object.prototype.widgetFullName || name,
+			fn = {};
+
+		function _delegate (isQuery) {
+
+		}
+
+		fn[name] = function( options ) {
+			var isMethodCall = typeof options === "string";
+			var args = slice.call( arguments, 1 );
+			var returnValue = this;
+
+			if ( isMethodCall ) {
+
+				// If this is an empty collection, we need to have the instance method
+				// return undefined instead of the jQuery instance
+				if ( !this.length && options === "instance" ) {
+					returnValue = undefined;
+				} else {
+					this.each( function() {
+						var methodValue;
+						var instance = datax.data( this, fullName );
+
+						if ( options === "instance" ) {
+							returnValue = instance;
+							return false;
+						}
+
+						if ( !instance ) {
+							return $.error( "cannot call methods on " + name +
+								" prior to initialization; " +
+								"attempted to call method '" + options + "'" );
+						}
+
+						if ( !$.isFunction( instance[ options ] ) || options.charAt( 0 ) === "_" ) {
+							return $.error( "no such method '" + options + "' for " + name +
+								" widget instance" );
+						}
+
+						methodValue = instance[ options ].apply( instance, args );
+
+						if ( methodValue !== instance && methodValue !== undefined ) {
+							returnValue = methodValue && methodValue.jquery ?
+								returnValue.pushStack( methodValue.get() ) :
+								methodValue;
+							return false;
+						}
+					} );
+				}
+			} else {
+
+				// Allow multiple hashes to be passed on init
+				if ( args.length ) {
+					options = $.widget.extend.apply( null, [ options ].concat( args ) );
+				}
+
+				this.each( function() {
+					var instance = datax.data( this, fullName );
+					if ( instance ) {
+						instance.option( options || {} );
+						if ( instance._init ) {
+							instance._init();
+						}
+					} else {
+						datax.data( this, fullName, new object( options, this ) );
+					}
+				} );
+			}
+
+			return returnValue;
+		};
+	};
+
+	function widget() {
+	    return widget;
+	}
 
 	var Widget = langx.Evented.inherit({
-        init :function(el,options) {
-            if (!langx.isHtmlNode(el)) {
-                options = el;
-                el = null;
-            }
-            if (el) {
-            	this.el = el;
-        	}
-            if (options) {
-                langx.mixin(this,options);
-            }
-            if (!this.cid) {
-                this.cid = langx.uniqueId('w');
-            }
-            this._ensureElement();
-        },
+	    init :function(options,el) {
+	    	//for supporting init(el,options)
+	        if (langx.isHtmlNode(options)) {
+	        	var _t = el,
+	        		options = el;
+	            el = options;
+	        }
+	        if (el) {
+	        	this.el = el;
+	    	}
+	        if (options) {
+	            langx.mixin(this,options);
+	        }
+	        if (!this.cid) {
+	            this.cid = langx.uniqueId('w');
+	        }
+	        this._ensureElement();
+	    },
 
 	    // The default `tagName` of a View's element is `"div"`.
 	    tagName: 'div',
@@ -158,16 +238,33 @@ define([
 	    // subclasses using an alternative DOM manipulation API.
 	    _setAttributes: function(attributes) {
 	      this.$el.attr(attributes);
-	    }
-  	});
+	    },
+
+	    // Translation function, gets the message key to be translated
+	    // and an object with context specific data as arguments:
+	    i18n: function (message, context) {
+	        message = (this.messages && this.messages[message]) || message.toString();
+	        if (context) {
+	            langx.each(context, function (key, value) {
+	                message = message.replace('{' + key + '}', value);
+	            });
+	        }
+	        return message;
+	    },
+
+		});
+
+	function defineWidgetClass(name,base,prototype) {
+
+	};
+
+	langx.mixin(widget, {
+		$ : query,
+
+		define : defineWidgetClass,
+		Widget : Widget
+	});
 
 
-    langx.mixin(widget, {
-    	$ : query,
-
-    	Widget : Widget
-    });
-
-
-    return skylark.widget = widget;
+	return skylark.widget = widget;
 });

@@ -1,19 +1,41 @@
 define([
     "./skylark",
     "./langx",
+    "./noder",
     "./styler"
-], function(skylark, langx, styler) {
+], function(skylark, langx, noder,styler) {
     var rootNodeRE = /^(?:body|html)$/i,
-        px = langx.toPixel;
+        px = langx.toPixel,
+        offsetParent = noder.offsetParent,
+        cachedScrollbarWidth;
 
-    function offsetParent(elm) {
-        var parent = elm.offsetParent || document.body;
-        while (parent && !rootNodeRE.test(parent.nodeName) && styler.css(parent, "position") == "static") {
-            parent = parent.offsetParent;
+
+    function scrollbarWidth() {
+        if ( cachedScrollbarWidth !== undefined ) {
+            return cachedScrollbarWidth;
         }
-        return parent;
-    }
+        var w1, w2,
+            div = noder.createFragment( "<div style=" +
+                "'display:block;position:absolute;width:200px;height:200px;overflow:hidden;'>" +
+                "<div style='height:300px;width:auto;'></div></div>" )[0],
+            innerDiv = div.childNodes[0];
 
+        noder.append(document.body,div);
+
+        w1 = innerDiv.offsetWidth;
+        
+        styler.css( div, "overflow", "scroll" );
+
+        w2 = innerDiv.offsetWidth;
+
+        if ( w1 === w2 ) {
+            w2 = div[0].clientWidth;
+        }
+
+        noder.remove(div);
+
+        return ( cachedScrollbarWidth = w1 - w2 );
+    }
 
     function borderExtents(elm) {
         var s = getComputedStyle(elm);
@@ -450,6 +472,8 @@ define([
         relativePosition: relativePosition,
 
         relativeRect: relativeRect,
+
+        scrollbarWidth : scrollbarWidth,
 
         scrollIntoView: scrollIntoView,
 

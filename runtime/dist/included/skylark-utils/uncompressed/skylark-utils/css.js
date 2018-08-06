@@ -175,7 +175,6 @@ define([
             index = index || sheet[rulesPropName].length;
 
             return insertRuleFunc.call(sheet, selector, css, index);
-
         }
     });
 

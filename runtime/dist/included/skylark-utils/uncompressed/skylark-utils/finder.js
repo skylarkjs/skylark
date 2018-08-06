@@ -276,7 +276,7 @@ define([
         },
 
         'even' : function(elm, idx, nodes, value) {
-            return (idx % 2) === 1;
+            return (idx % 2) === 0;
         },
 
         'focus': function(elm) {
@@ -321,7 +321,7 @@ define([
         },
 
         'odd' : function(elm, idx, nodes, value) {
-            return (idx % 2) === 0;
+            return (idx % 2) === 1;
         },
 
         'parent': function(elm) {

@@ -44,7 +44,7 @@ define([
                 }
                 return this;
             } else {
-                if (elm.hasAttribute(name)) {
+                if (elm.hasAttribute && elm.hasAttribute(name)) {
                     return elm.getAttribute(name);
                 }
             }

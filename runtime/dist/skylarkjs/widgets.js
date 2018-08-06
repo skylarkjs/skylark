@@ -5,5 +5,5 @@
  * @link www.skylarkjs.org
  * @license MIT
  */
-define(["skylark-utils/widget"],function(e){return e});
-//# sourceMappingURL=sourcemaps/widget.js.map
+define(["skylark-utils/widgets"],function(e){return e});
+//# sourceMappingURL=sourcemaps/widgets.js.map

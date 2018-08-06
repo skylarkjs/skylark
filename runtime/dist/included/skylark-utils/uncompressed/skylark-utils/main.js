@@ -21,9 +21,10 @@ define([
     "./storages",
     "./styler",
     "./touchx",
+    "./transforms",
     "./langx",
     "./velm",
-    "./widget"
+    "./widgets"
 ], function(skylark) {
     return skylark;
 })

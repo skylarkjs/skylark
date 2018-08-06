@@ -43,51 +43,50 @@ define([
         return name;
     };
 
+    function after(node, placing, copyByClone) {
+        var refNode = node,
+            parent = refNode.parentNode;
+        if (parent) {
+            var nodes = ensureNodes(placing, copyByClone),
+                refNode = refNode.nextSibling;
+
+            for (var i = 0; i < nodes.length; i++) {
+                if (refNode) {
+                    parent.insertBefore(nodes[i], refNode);
+                } else {
+                    parent.appendChild(nodes[i]);
+                }
+            }
+        }
+        return this;
+    }
+
+    function append(node, placing, copyByClone) {
+        var parentNode = node,
+            nodes = ensureNodes(placing, copyByClone);
+        for (var i = 0; i < nodes.length; i++) {
+            parentNode.appendChild(nodes[i]);
+        }
+        return this;
+    }
+
+    function before(node, placing, copyByClone) {
+        var refNode = node,
+            parent = refNode.parentNode;
+        if (parent) {
+            var nodes = ensureNodes(placing, copyByClone);
+            for (var i = 0; i < nodes.length; i++) {
+                parent.insertBefore(nodes[i], refNode);
+            }
+        }
+        return this;
+    }
+
     function contents(elm) {
         if (nodeName(elm, "iframe")) {
             return elm.contentDocument;
         }
         return elm.childNodes;
-    }
-
-    function html(node, html) {
-        if (html === undefined) {
-            return node.innerHTML;
-        } else {
-            this.empty(node);
-            html = html || "";
-            if (langx.isString(html) || langx.isNumber(html)) {
-                node.innerHTML = html;
-            } else if (langx.isArrayLike(html)) {
-                for (var i = 0; i < html.length; i++) {
-                    node.appendChild(html[i]);
-                }
-            } else {
-                node.appendChild(html);
-            }
-        }
-    }
-
-    function clone(node, deep) {
-        var self = this,
-            clone;
-
-        // TODO: Add feature detection here in the future
-        if (!isIE || node.nodeType !== 1 || deep) {
-            return node.cloneNode(deep);
-        }
-
-        // Make a HTML5 safe shallow copy
-        if (!deep) {
-            clone = document.createElement(node.nodeName);
-
-            // Copy attribs
-            each(self.getAttribs(node), function(attr) {
-                self.setAttrib(clone, attr.nodeName, self.getAttrib(node, attr.nodeName));
-            });
-
-            return clone;
-        }
     }
 
     function createElement(tag, props,parent) {
@@ -125,6 +124,28 @@ define([
         return dom;
     }
 
+    function clone(node, deep) {
+        var self = this,
+            clone;
+
+        // TODO: Add feature detection here in the future
+        if (!isIE || node.nodeType !== 1 || deep) {
+            return node.cloneNode(deep);
+        }
+
+        // Make a HTML5 safe shallow copy
+        if (!deep) {
+            clone = document.createElement(node.nodeName);
+
+            // Copy attribs
+            each(self.getAttribs(node), function(attr) {
+                self.setAttrib(clone, attr.nodeName, self.getAttrib(node, attr.nodeName));
+            });
+
+            return clone;
+        }
+    }
+
     function contains(node, child) {
         return isChildOf(child, node);
     }
@@ -143,6 +164,24 @@ define([
             node.removeChild(child);
         }
         return this;
+    }
+
+    function html(node, html) {
+        if (html === undefined) {
+            return node.innerHTML;
+        } else {
+            this.empty(node);
+            html = html || "";
+            if (langx.isString(html) || langx.isNumber(html)) {
+                node.innerHTML = html;
+            } else if (langx.isArrayLike(html)) {
+                for (var i = 0; i < html.length; i++) {
+                    node.appendChild(html[i]);
+                }
+            } else {
+                node.appendChild(html);
+            }
+        }
     }
 
     function isChildOf(node, parent,directly) {
@@ -184,35 +223,6 @@ define([
         return  doc.defaultView || doc.parentWindow;
     } 
 
-    function after(node, placing, copyByClone) {
-        var refNode = node,
-            parent = refNode.parentNode;
-        if (parent) {
-            var nodes = ensureNodes(placing, copyByClone),
-                refNode = refNode.nextSibling;
-
-            for (var i = 0; i < nodes.length; i++) {
-                if (refNode) {
-                    parent.insertBefore(nodes[i], refNode);
-                } else {
-                    parent.appendChild(nodes[i]);
-                }
-            }
-        }
-        return this;
-    }
-
-    function before(node, placing, copyByClone) {
-        var refNode = node,
-            parent = refNode.parentNode;
-        if (parent) {
-            var nodes = ensureNodes(placing, copyByClone);
-            for (var i = 0; i < nodes.length; i++) {
-                parent.insertBefore(nodes[i], refNode);
-            }
-        }
-        return this;
-    }
 
     function prepend(node, placing, copyByClone) {
         var parentNode = node,
@@ -228,13 +238,13 @@ define([
         return this;
     }
 
-    function append(node, placing, copyByClone) {
-        var parentNode = node,
-            nodes = ensureNodes(placing, copyByClone);
-        for (var i = 0; i < nodes.length; i++) {
-            parentNode.appendChild(nodes[i]);
+
+    function offsetParent(elm) {
+        var parent = elm.offsetParent || document.body;
+        while (parent && !rootNodeRE.test(parent.nodeName) && styler.css(parent, "position") == "static") {
+            parent = parent.offsetParent;
         }
-        return this;
+        return parent;
     }
 
     function overlay(elm, params) {
@@ -370,6 +380,10 @@ define([
     }
 
     langx.mixin(noder, {
+        body : function() {
+            return document.body;
+        },
+
         clone: clone,
         contents: contents,
 
@@ -391,6 +405,10 @@ define([
 
         isDoc: isDoc,
 
+        isWindow : langx.isWindow,
+
+        offsetParent : offsetParent,
+        
         ownerDoc: ownerDoc,
 
         ownerWindow : ownerWindow,

@@ -20,7 +20,7 @@ define([
     "./selector",
     "./styler",
     "./velm",
-    "./widget"
+    "./widgets"
 ], function(skylark) {
     return skylark;
 })

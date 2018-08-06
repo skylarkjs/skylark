@@ -1,8 +1,13 @@
 define([
     "./skylark",
     "./langx",
+    "./noder",
+    "./geom",
+    "./styler",
+    "./datax",
+    "./transforms",
     "./query"
-], function(skylark,langx,$) {
+], function(skylark,langx,noder,geom,styler,datax,transforms,$) {
 
   var elementNodeTypes = {
     1: true,
@@ -11,16 +16,12 @@ define([
   };
 
   var ImagesLoaded = langx.Evented.inherit({
-  /**
+   /**
    * @param {Array, Element, NodeList, String} elem
    * @param {Object or Function} options - if function, use as callback
    * @param {Function} onAlways - callback function
    */
     init : function(elem, options, onAlways) {
-      // coerce ImagesLoaded() without new, to be new ImagesLoaded()
-      if ( !( this instanceof ImagesLoaded ) ) {
-        return new ImagesLoaded( elem, options, onAlways );
-      }
       // use elem as selector string
       if ( typeof elem == 'string' ) {
         elem = document.querySelectorAll( elem );
@@ -120,7 +121,7 @@ define([
     },
 
     addBackground : function( url, elem ) {
-      var background = new Background( url, elem );
+      var background = new PreloadImage( url, elem );
       this.images.push( background );
     },
 
@@ -172,9 +173,9 @@ define([
     complete : function() {
       var eventName = this.hasAnyBroken ? 'fail' : 'done';
       this.isComplete = true;
-      this.trigger( eventName);
-      this.trigger( 'always');
-
+      this.trigger(langx.createEvent(eventName,{
+        images : this.images
+      }));
     }
 
   });
@@ -219,9 +220,7 @@ define([
         isLoaded : isLoaded
       }));
     },
-
-    // ----- events ----- //
-
+ // ----- events ----- //
     // trigger specified handler for event type
     handleEvent : function( event ) {
       var method = 'on' + event.type;
@@ -250,8 +249,8 @@ define([
   });
 
 
-  // -------------------------- Background -------------------------- //
-  var Background = LoadingImage.inherit({
+  // -------------------------- PreloadImage -------------------------- //
+  var PreloadImage = LoadingImage.inherit({
 
     init : function( url, element ) {
       this.url = url;
@@ -287,9 +286,8 @@ define([
     }
   });
 
-
-   $.fn.imagesLoaded = function( options, callback ) {
-      var inst = new ImagesLoaded( this, options, callback );
+  function loaded(el,options, callback ) {
+      var inst = new ImagesLoaded( el, options, callback );
 
       var d = new langx.Deferred();
       
@@ -298,7 +296,7 @@ define([
       });
 
       inst.on("done",function(e){
-        d.resolve(e);
+        d.resolve(e.images);
       });
 
       inst.on("fail",function(e){
@@ -306,15 +304,120 @@ define([
       });
 
       return d.promise;
-   };
+  }
 
-    function images() {
-        return images;
+  function preload(urls,options) {
+
+  }
+
+  $.fn.imagesLoaded = function( options, callback ) {
+      return loaded(this,options,callback);
+  };
+
+
+  function viewer(el,options) {
+    var img ,
+        style = {},
+        clientSize = geom.clientSize(el),
+        loadedCallback = options.loaded,
+        faileredCallback = options.failered;
+
+    function onload() {
+        styler.css(img,{//居中
+          top: (clientSize.height - img.offsetHeight) / 2 + "px",
+          left: (clientSize.width - img.offsetWidth) / 2 + "px"
+        });
+
+        transforms.reset(img);
+
+        styler.css(img,{
+          visibility: "visible"
+        });
+
+        if (loadedCallback) {
+          loadedCallback();
+        }
     }
 
-    langx.mixin(images, {
-      loaded : ImagesLoaded
-    });
+    function onerror() {
 
-    return skylark.images = images;
+    }
+    function _init() {
+      style = styler.css(el,["position","overflow"]);
+      if (style.position != "relative" && style.position != "absolute") { 
+        styler.css(el,"position", "relative" );
+      }
+      styler.css(el,"overflow", "hidden" );
+
+      img = new Image();
+
+      styler.css(img,{
+        position: "absolute",
+        border: 0, padding: 0, margin: 0, width: "auto", height: "auto",
+        visibility: "hidden"
+      });
+
+      img.onload = onload;
+      img.onerror = onerror;
+
+      noder.append(el,img);
+
+      if (options.url) {
+        _load(options.url);
+      }
+    }
+
+    function _load(url) {
+        img.style.visibility = "hidden";
+        img.src = url;
+    }
+
+    function _dispose() {
+        noder.remove(img);
+        styler.css(el,style);
+        img = img.onload = img.onerror = null;
+    }
+
+    _init();
+
+    var ret =  {
+      load : _load,
+      dispose : _dispose
+    };
+
+    ["vertical","horizontal","rotate","left","right","scale","zoom","zoomin","zoomout","reset"].forEach(
+      function(name){
+        ret[name] = function() {
+          var args = langx.makeArray(arguments);
+          args.unshift(img);
+          transforms[name].apply(null,args);
+        }
+      }
+    );
+
+    return ret;
+  }
+
+
+  function images() {
+    return images;
+  }
+
+  images.transform = function (el,options) {
+  };
+
+  ["vertical","horizontal","rotate","left","right","scale","zoom","zoomin","zoomout","reset"].forEach(
+    function(name){
+      images.transform[name] = transforms[name];
+    }
+  );
+
+
+  langx.mixin(images, {
+    loaded : loaded,
+
+    viewer : viewer
+  });
+
+  return skylark.images = images;
 });

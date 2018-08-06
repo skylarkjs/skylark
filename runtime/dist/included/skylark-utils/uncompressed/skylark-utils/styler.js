@@ -184,7 +184,7 @@ define([
     };
 
     langx.mixin(styler, {
-        autocssfix: true,
+        autocssfix: false,
         cssHooks : {
 
         },

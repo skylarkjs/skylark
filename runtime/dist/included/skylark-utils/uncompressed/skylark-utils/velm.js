@@ -8,10 +8,9 @@ define([
     "./finder",
     "./fx",
     "./geom",
-    "./mover",
     "./noder",
     "./styler"
-], function(skylark, langx, datax, dnd, eventer, filer, finder, fx, geom, mover, noder, styler) {
+], function(skylark, langx, datax, dnd, eventer, filer, finder, fx, geom, noder, styler) {
     var map = Array.prototype.map,
         slice = Array.prototype.slice;
 
@@ -195,7 +194,8 @@ define([
 
     // from ./mover
     velm.delegate([
-        "movable"
+        "draggable",
+        "droppable"
     ], dnd);
 
 

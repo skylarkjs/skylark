@@ -3898,11 +3898,6 @@ define('skylark-utils/filer',[
         return new Blob([u8arr], {type:mime});
     }
 
-    var Uploader =  langx.Evented.inherit({
-        init :function(options) {
-        }
-    });
-
     function dropzone(elm, params) {
         params = params || {};
         var hoverClass = params.hoverClass || "dropzone",
@@ -5918,317 +5913,159 @@ define('skylark-utils/query',[
 define('skylark-utils/images',[
     "./skylark",
     "./langx",
+    "./eventer",
     "./noder",
+    "./finder",
     "./geom",
     "./styler",
     "./datax",
     "./transforms",
     "./query"
-], function(skylark,langx,noder,geom,styler,datax,transforms,$) {
+], function(skylark,langx,eventer,noder,finder,geom,styler,datax,transforms,$) {
 
-  var elementNodeTypes = {
-    1: true,
-    9: true,
-    11: true
-  };
+  function watch(imgs) {
+    if (!langx.isArray(imgs)) {
+      imgs = [imgs];
+    }
+    var totalCount = imgs.length,
+        progressedCount = 0,
+        successedCount = 0,
+        faileredCount = 0,
+        d = new langx.Deferred();
 
-  var ImagesLoaded = langx.Evented.inherit({
-   /**
-   * @param {Array, Element, NodeList, String} elem
-   * @param {Object or Function} options - if function, use as callback
-   * @param {Function} onAlways - callback function
-   */
-    init : function(elem, options, onAlways) {
-      // use elem as selector string
-      if ( typeof elem == 'string' ) {
-        elem = document.querySelectorAll( elem );
-      }
 
-      this.elements = langx.makeArray( elem );
-      this.options = langx.mixin( {}, this.options );
+    function complete() {
 
-      if ( typeof options == 'function' ) {
-        onAlways = options;
-      } else {
-        langx.mixin( this.options, options );
-      }
-
-      if ( onAlways ) {
-        this.on( 'always', onAlways );
-      }
-
-      this.getImages();
-
-     // HACK check async to allow time to bind listeners
-      setTimeout( function() {
-        this.check();
-      }.bind( this ));
-
-    },
-
-    options : {},
-
-    getImages : function() {
-      this.images = [];
-
-      // filter & find items if we have an item selector
-      this.elements.forEach( this.addElementImages, this );
-    },
-
-    /**
-     * @param {Node} element
-     */
-    addElementImages : function( elem ) {
-      // filter siblings
-      if ( elem.nodeName == 'IMG' ) {
-        this.addImage( elem );
-      }
-      // get background image on element
-      if ( this.options.background === true ) {
-        this.addElementBackgroundImages( elem );
-      }
-
-      // find children
-      // no non-element nodes, #143
-      var nodeType = elem.nodeType;
-      if ( !nodeType || !elementNodeTypes[ nodeType ] ) {
-        return;
-      }
-      var childImgs = elem.querySelectorAll('img');
-      // concat childElems to filterFound array
-      for ( var i=0; i < childImgs.length; i++ ) {
-        var img = childImgs[i];
-        this.addImage( img );
-      }
-
-      // get child background images
-      if ( typeof this.options.background == 'string' ) {
-        var children = elem.querySelectorAll( this.options.background );
-        for ( i=0; i < children.length; i++ ) {
-          var child = children[i];
-          this.addElementBackgroundImages( child );
-        }
-      }
-    },
-
-    addElementBackgroundImages : function( elem ) {
-      var style = getComputedStyle( elem );
-      if ( !style ) {
-        // Firefox returns null if in a hidden iframe https://bugzil.la/548397
-        return;
-      }
-      // get url inside url("...")
-      var reURL = /url\((['"])?(.*?)\1\)/gi;
-      var matches = reURL.exec( style.backgroundImage );
-      while ( matches !== null ) {
-        var url = matches && matches[2];
-        if ( url ) {
-          this.addBackground( url, elem );
-        }
-        matches = reURL.exec( style.backgroundImage );
-      }
-    },
-
-    /**
-     * @param {Image} img
-     */
-    addImage : function( img ) {
-      var loadingImage = new LoadingImage( img );
-      this.images.push( loadingImage );
-    },
-
-    addBackground : function( url, elem ) {
-      var background = new PreloadImage( url, elem );
-      this.images.push( background );
-    },
-
-    check : function() {
-      var _this = this;
-      this.progressedCount = 0;
-      this.hasAnyBroken = false;
-      // complete if no images
-      if ( !this.images.length ) {
-        this.complete();
-        return;
-      }
-
-      function onProgress( e ) {
-        // HACK - Chrome triggers event before object properties have changed. #83
-        setTimeout( function() {
-          _this.progress( e );
-        });
-      }
-
-      this.images.forEach( function( loadingImage ) {
-        loadingImage.one( 'progress', onProgress );
-        loadingImage.check();
+      d.resolve({
+        "total" : totalCount,
+        "successed" : successedCount,
+        "failered" : faileredCount,
+        "imgs" : imgs 
       });
-    },
+    }
 
-    progress : function( e ) {
+    function progress(img,isLoaded) {
 
-      this.progressedCount++;
-      this.hasAnyBroken = this.hasAnyBroken || !e.isLoaded;
+      progressedCount++;
+      if (isLoaded) {
+        successedCount ++ ; 
+      } else {
+        faileredCount ++ ;
+      }
+
       // progress event
-      this.trigger( langx.createEvent('progress', {
-        img : e.img,
-        element : e.element,
-        message : e.message,
-        isLoaded : e.isLoaded
-      }));
+      d.progress({
+        "img" : img,
+        "isLoaded" : isLoaded,
+        "progressed" : progressedCount,
+        "total" : totalCount,
+        "imgs" : imgs 
+      });
 
       // check if completed
-      if ( this.progressedCount == this.images.length ) {
-        this.complete();
+      if ( progressedCount == totalCount ) {
+        complete();
       }
-
-      if ( this.options.debug && console ) {
-        console.log( 'progress: ' + message, e.target, e.element );
-      }
-    },
-
-    complete : function() {
-      var eventName = this.hasAnyBroken ? 'fail' : 'done';
-      this.isComplete = true;
-      this.trigger(langx.createEvent(eventName,{
-        images : this.images
-      }));
     }
 
-  });
- 
-
-  // --------------------------  -------------------------- //
-
-  var LoadingImage = langx.Evented.inherit({
-    init: function( img ) {
-      this.img = img;
-    },
-    check : function() {
-      // If complete is true and browser supports natural sizes,
-      // try to check for image status manually.
-      var isComplete = this.getIsImageComplete();
-      if ( isComplete ) {
-        // report based on naturalWidth
-        this.confirm( this.img.naturalWidth !== 0, 'naturalWidth' );
+    function check() {
+      if (!imgs.length ) {
+        complete();
         return;
       }
 
-      // If none of the checks above matched, simulate loading on detached element.
-      this.proxyImage = new Image();
-      this.proxyImage.addEventListener( 'load', this );
-      this.proxyImage.addEventListener( 'error', this );
-      // bind to image as well for Firefox. #191
-      this.img.addEventListener( 'load', this );
-      this.img.addEventListener( 'error', this );
-      this.proxyImage.src = this.img.src;
-    },
+      imgs.forEach(function(img) {
+        if (isCompleted(img)) {
+          progress(img,isLoaded(img));
+        } else {
+          eventer.on(img,{
+            "load" : function() {
+              progress(img,true);
+            },
 
-    getIsImageComplete : function() {
-      return this.img.complete && this.img.naturalWidth !== undefined;
-    },
-
-    confirm : function( isLoaded, message ) {
-      this.isLoaded = isLoaded;
-      this.trigger( langx.createEvent('progress', {
-        img : this.img, 
-        element : this.img,
-        message : message ,
-        isLoaded : isLoaded
-      }));
-    },
- // ----- events ----- //
-    // trigger specified handler for event type
-    handleEvent : function( event ) {
-      var method = 'on' + event.type;
-      if ( this[ method ] ) {
-        this[ method ]( event );
-      }
-    },
-
-    onload : function() {
-      this.confirm( true, 'onload' );
-      this.unbindEvents();
-    },
-
-    onerror : function() {
-      this.confirm( false, 'onerror' );
-      this.unbindEvents();
-    },
-
-    unbindEvents : function() {
-      this.proxyImage.removeEventListener( 'load', this );
-      this.proxyImage.removeEventListener( 'error', this );
-      this.img.removeEventListener( 'load', this );
-      this.img.removeEventListener( 'error', this );
-    },
-
-  });
-
-
-  // -------------------------- PreloadImage -------------------------- //
-  var PreloadImage = LoadingImage.inherit({
-
-    init : function( url, element ) {
-      this.url = url;
-      this.element = element;
-      this.img = new Image();
-    },
-
-    check : function() {
-      this.img.addEventListener( 'load', this );
-      this.img.addEventListener( 'error', this );
-      this.img.src = this.url;
-      // check if image is already complete
-      var isComplete = this.getIsImageComplete();
-      if ( isComplete ) {
-        this.confirm( this.img.naturalWidth !== 0, 'naturalWidth' );
-        this.unbindEvents();
-      }
-    },
-
-    unbindEvents : function() {
-      this.img.removeEventListener( 'load', this );
-      this.img.removeEventListener( 'error', this );
-    },
-
-    confirm : function( isLoaded, message ) {
-      this.isLoaded = isLoaded;
-      this.trigger( langx.createEvent('progress', {
-        img : this.img,
-        element : this.element, 
-        message : message,
-        isLoaded : isLoaded 
-      }));
+            "error" : function() {
+              progress(img,false);
+            }
+          });      
+        }
+      });
     }
-  });
 
-  function loaded(el,options, callback ) {
-      var inst = new ImagesLoaded( el, options, callback );
+    langx.defer(check);
 
-      var d = new langx.Deferred();
-      
-      inst.on("progress",function(e){
-        d.progress(e);
-      });
+    d.promise.totalCount = totalCount;
+    return d.promise;
+  }
 
-      inst.on("done",function(e){
-        d.resolve(e.images);
-      });
 
-      inst.on("fail",function(e){
-        d.reject(e);
-      });
+  function isCompleted(img) {
+     return img.complete && img.naturalWidth !== undefined;
+  }
 
-      return d.promise;
+  function isLoaded(img) {
+    return img.complete && img.naturalWidth !== 0;
+  }
+
+  function loaded(elm,options) {
+    var imgs = [];
+
+    options = options || {};
+
+    function addBackgroundImage (elm1) {
+
+      var reURL = /url\((['"])?(.*?)\1\)/gi;
+      var matches = reURL.exec( styler.css(elm1,"background-image"));
+      var url = matches && matches[2];
+      if ( url ) {
+        var img = new Image();
+        img.src = url;
+        imgs.push(img);
+      }
+    }
+
+    // filter siblings
+    if ( elm.nodeName == 'IMG' ) {
+      imgs.push( elm );
+    } else {
+      // find children
+      var childImgs = finder.findAll(elm,'img');
+      // concat childElems to filterFound array
+      for ( var i=0; i < childImgs.length; i++ ) {
+        imgs.push(childImgs[i]);
+      }
+
+      // get background image on element
+      if ( options.background === true ) {
+        addBackgroundImage(elm);
+      } else  if ( typeof options.background == 'string' ) {
+        var children = finder.findAll(elm, options.background );
+        for ( i=0; i < children.length; i++ ) {
+          addBackgroundImage( children[i] );
+        }
+      }
+    }
+
+    return watch(imgs);
   }
 
   function preload(urls,options) {
+      if (langx.isString(urls)) {
+        urls = [urls];
+      }
+      var images = [];
 
+      urls.forEach(function(url){
+        var img = new Image();
+        img.src = url;
+        images.push(img);
+      });
+
+      return watch(images);
   }
 
-  $.fn.imagesLoaded = function( options, callback ) {
-      return loaded(this,options,callback);
+
+  $.fn.imagesLoaded = function( options ) {
+    return loaded(this,options);
   };
 
 
@@ -6315,6 +6152,9 @@ define('skylark-utils/images',[
     return ret;
   }
 
+  $.fn.imagesViewer = function( options ) {
+    return viewer(this,options);
+  };
 
   function images() {
     return images;
@@ -6331,7 +6171,13 @@ define('skylark-utils/images',[
 
 
   langx.mixin(images, {
+    isCompleted : isCompleted,
+
+    isLoaded : isLoaded,
+
     loaded : loaded,
+
+    preload : preload,
 
     viewer : viewer
   });
@@ -7013,597 +6859,6 @@ define('skylark-utils/models',[
     return skylark.models = models;
 });
 
-define('skylark-utils/mover',[
-    "./skylark",
-    "./langx",
-    "./noder",
-    "./datax",
-    "./geom",
-    "./eventer",
-    "./styler"
-],function(skylark, langx,noder,datax,geom,eventer,styler){
-    var on = eventer.on,
-        off = eventer.off,
-        attr = datax.attr,
-        removeAttr = datax.removeAttr,
-        offset = geom.pagePosition,
-        addClass = styler.addClass,
-        height = geom.height,
-        some = Array.prototype.some,
-        map = Array.prototype.map;
-
-    function _place(/*DomNode*/ node, choices, layoutNode, aroundNodeCoords){
-        // summary:
-        //      Given a list of spots to put node, put it at the first spot where it fits,
-        //      of if it doesn't fit anywhere then the place with the least overflow
-        // choices: Array
-        //      Array of elements like: {corner: 'TL', pos: {x: 10, y: 20} }
-        //      Above example says to put the top-left corner of the node at (10,20)
-        // layoutNode: Function(node, aroundNodeCorner, nodeCorner, size)
-        //      for things like tooltip, they are displayed differently (and have different dimensions)
-        //      based on their orientation relative to the parent.   This adjusts the popup based on orientation.
-        //      It also passes in the available size for the popup, which is useful for tooltips to
-        //      tell them that their width is limited to a certain amount.   layoutNode() may return a value expressing
-        //      how much the popup had to be modified to fit into the available space.   This is used to determine
-        //      what the best placement is.
-        // aroundNodeCoords: Object
-        //      Size of aroundNode, ex: {w: 200, h: 50}
-
-        // get {x: 10, y: 10, w: 100, h:100} type obj representing position of
-        // viewport over document
-
-        var doc = noder.ownerDoc(node),
-            win = noder.ownerWindow(doc),
-            view = geom.size(win);
-
-        view.left = 0;
-        view.top = 0;
-
-        if(!node.parentNode || String(node.parentNode.tagName).toLowerCase() != "body"){
-            doc.body.appendChild(node);
-        }
-
-        var best = null;
-
-        some.apply(choices, function(choice){
-            var corner = choice.corner;
-            var pos = choice.pos;
-            var overflow = 0;
-
-            // calculate amount of space available given specified position of node
-            var spaceAvailable = {
-                w: {
-                    'L': view.left + view.width - pos.x,
-                    'R': pos.x - view.left,
-                    'M': view.width
-                }[corner.charAt(1)],
-
-                h: {
-                    'T': view.top + view.height - pos.y,
-                    'B': pos.y - view.top,
-                    'M': view.height
-                }[corner.charAt(0)]
-            };
-
-            if(layoutNode){
-                var res = layoutNode(node, choice.aroundCorner, corner, spaceAvailable, aroundNodeCoords);
-                overflow = typeof res == "undefined" ? 0 : res;
-            }
-
-            var bb = geom.size(node);
-
-            // coordinates and size of node with specified corner placed at pos,
-            // and clipped by viewport
-            var
-                startXpos = {
-                    'L': pos.x,
-                    'R': pos.x - bb.width,
-                    'M': Math.max(view.left, Math.min(view.left + view.width, pos.x + (bb.width >> 1)) - bb.width) // M orientation is more flexible
-                }[corner.charAt(1)],
-
-                startYpos = {
-                    'T': pos.y,
-                    'B': pos.y - bb.height,
-                    'M': Math.max(view.top, Math.min(view.top + view.height, pos.y + (bb.height >> 1)) - bb.height)
-                }[corner.charAt(0)],
-
-                startX = Math.max(view.left, startXpos),
-                startY = Math.max(view.top, startYpos),
-                endX = Math.min(view.left + view.width, startXpos + bb.width),
-                endY = Math.min(view.top + view.height, startYpos + bb.height),
-                width = endX - startX,
-                height = endY - startY;
-
-            overflow += (bb.width - width) + (bb.height - height);
-
-            if(best == null || overflow < best.overflow){
-                best = {
-                    corner: corner,
-                    aroundCorner: choice.aroundCorner,
-                    left: startX,
-                    top: startY,
-                    width: width,
-                    height: height,
-                    overflow: overflow,
-                    spaceAvailable: spaceAvailable
-                };
-            }
-
-            return !overflow;
-        });
-
-        // In case the best position is not the last one we checked, need to call
-        // layoutNode() again.
-        if(best.overflow && layoutNode){
-            layoutNode(node, best.aroundCorner, best.corner, best.spaceAvailable, aroundNodeCoords);
-        }
-
-
-        geom.boundingPosition(node,best);
-
-        return best;
-    }
-
-    function at(node, pos, corners, padding, layoutNode){
-        var choices = map.apply(corners, function(corner){
-            var c = {
-                corner: corner,
-                aroundCorner: reverse[corner],  // so TooltipDialog.orient() gets aroundCorner argument set
-                pos: {x: pos.x,y: pos.y}
-            };
-            if(padding){
-                c.pos.x += corner.charAt(1) == 'L' ? padding.x : -padding.x;
-                c.pos.y += corner.charAt(0) == 'T' ? padding.y : -padding.y;
-            }
-            return c;
-        });
-
-        return _place(node, choices, layoutNode);
-    }
-
-    function around(
-        /*DomNode*/     node,
-        /*DomNode|__Rectangle*/ anchor,
-        /*String[]*/    positions,
-        /*Boolean*/     leftToRight,
-        /*Function?*/   layoutNode){
-
-        // summary:
-        //      Position node adjacent or kitty-corner to anchor
-        //      such that it's fully visible in viewport.
-        // description:
-        //      Place node such that corner of node touches a corner of
-        //      aroundNode, and that node is fully visible.
-        // anchor:
-        //      Either a DOMNode or a rectangle (object with x, y, width, height).
-        // positions:
-        //      Ordered list of positions to try matching up.
-        //
-        //      - before: places drop down to the left of the anchor node/widget, or to the right in the case
-        //          of RTL scripts like Hebrew and Arabic; aligns either the top of the drop down
-        //          with the top of the anchor, or the bottom of the drop down with bottom of the anchor.
-        //      - after: places drop down to the right of the anchor node/widget, or to the left in the case
-        //          of RTL scripts like Hebrew and Arabic; aligns either the top of the drop down
-        //          with the top of the anchor, or the bottom of the drop down with bottom of the anchor.
-        //      - before-centered: centers drop down to the left of the anchor node/widget, or to the right
-        //          in the case of RTL scripts like Hebrew and Arabic
-        //      - after-centered: centers drop down to the right of the anchor node/widget, or to the left
-        //          in the case of RTL scripts like Hebrew and Arabic
-        //      - above-centered: drop down is centered above anchor node
-        //      - above: drop down goes above anchor node, left sides aligned
-        //      - above-alt: drop down goes above anchor node, right sides aligned
-        //      - below-centered: drop down is centered above anchor node
-        //      - below: drop down goes below anchor node
-        //      - below-alt: drop down goes below anchor node, right sides aligned
-        // layoutNode: Function(node, aroundNodeCorner, nodeCorner)
-        //      For things like tooltip, they are displayed differently (and have different dimensions)
-        //      based on their orientation relative to the parent.   This adjusts the popup based on orientation.
-        // leftToRight:
-        //      True if widget is LTR, false if widget is RTL.   Affects the behavior of "above" and "below"
-        //      positions slightly.
-        // example:
-        //  |   placeAroundNode(node, aroundNode, {'BL':'TL', 'TR':'BR'});
-        //      This will try to position node such that node's top-left corner is at the same position
-        //      as the bottom left corner of the aroundNode (ie, put node below
-        //      aroundNode, with left edges aligned).   If that fails it will try to put
-        //      the bottom-right corner of node where the top right corner of aroundNode is
-        //      (ie, put node above aroundNode, with right edges aligned)
-        //
-
-        // If around is a DOMNode (or DOMNode id), convert to coordinates.
-        var aroundNodePos;
-        if(typeof anchor == "string" || "offsetWidth" in anchor || "ownerSVGElement" in anchor){
-            aroundNodePos = domGeometry.position(anchor, true);
-
-            // For above and below dropdowns, subtract width of border so that popup and aroundNode borders
-            // overlap, preventing a double-border effect.  Unfortunately, difficult to measure the border
-            // width of either anchor or popup because in both cases the border may be on an inner node.
-            if(/^(above|below)/.test(positions[0])){
-                var anchorBorder = domGeometry.getBorderExtents(anchor),
-                    anchorChildBorder = anchor.firstChild ? domGeometry.getBorderExtents(anchor.firstChild) : {t:0,l:0,b:0,r:0},
-                    nodeBorder =  domGeometry.getBorderExtents(node),
-                    nodeChildBorder = node.firstChild ? domGeometry.getBorderExtents(node.firstChild) : {t:0,l:0,b:0,r:0};
-                aroundNodePos.y += Math.min(anchorBorder.t + anchorChildBorder.t, nodeBorder.t + nodeChildBorder.t);
-                aroundNodePos.h -=  Math.min(anchorBorder.t + anchorChildBorder.t, nodeBorder.t+ nodeChildBorder.t) +
-                    Math.min(anchorBorder.b + anchorChildBorder.b, nodeBorder.b + nodeChildBorder.b);
-            }
-        }else{
-            aroundNodePos = anchor;
-        }
-
-        // Compute position and size of visible part of anchor (it may be partially hidden by ancestor nodes w/scrollbars)
-        if(anchor.parentNode){
-            // ignore nodes between position:relative and position:absolute
-            var sawPosAbsolute = domStyle.getComputedStyle(anchor).position == "absolute";
-            var parent = anchor.parentNode;
-            while(parent && parent.nodeType == 1 && parent.nodeName != "BODY"){  //ignoring the body will help performance
-                var parentPos = domGeometry.position(parent, true),
-                    pcs = domStyle.getComputedStyle(parent);
-                if(/relative|absolute/.test(pcs.position)){
-                    sawPosAbsolute = false;
-                }
-                if(!sawPosAbsolute && /hidden|auto|scroll/.test(pcs.overflow)){
-                    var bottomYCoord = Math.min(aroundNodePos.y + aroundNodePos.h, parentPos.y + parentPos.h);
-                    var rightXCoord = Math.min(aroundNodePos.x + aroundNodePos.w, parentPos.x + parentPos.w);
-                    aroundNodePos.x = Math.max(aroundNodePos.x, parentPos.x);
-                    aroundNodePos.y = Math.max(aroundNodePos.y, parentPos.y);
-                    aroundNodePos.h = bottomYCoord - aroundNodePos.y;
-                    aroundNodePos.w = rightXCoord - aroundNodePos.x;
-                }
-                if(pcs.position == "absolute"){
-                    sawPosAbsolute = true;
-                }
-                parent = parent.parentNode;
-            }
-        }           
-
-        var x = aroundNodePos.x,
-            y = aroundNodePos.y,
-            width = "w" in aroundNodePos ? aroundNodePos.w : (aroundNodePos.w = aroundNodePos.width),
-            height = "h" in aroundNodePos ? aroundNodePos.h : (kernel.deprecated("place.around: dijit/place.__Rectangle: { x:"+x+", y:"+y+", height:"+aroundNodePos.height+", width:"+width+" } has been deprecated.  Please use { x:"+x+", y:"+y+", h:"+aroundNodePos.height+", w:"+width+" }", "", "2.0"), aroundNodePos.h = aroundNodePos.height);
-
-        // Convert positions arguments into choices argument for _place()
-        var choices = [];
-        function push(aroundCorner, corner){
-            choices.push({
-                aroundCorner: aroundCorner,
-                corner: corner,
-                pos: {
-                    x: {
-                        'L': x,
-                        'R': x + width,
-                        'M': x + (width >> 1)
-                    }[aroundCorner.charAt(1)],
-                    y: {
-                        'T': y,
-                        'B': y + height,
-                        'M': y + (height >> 1)
-                    }[aroundCorner.charAt(0)]
-                }
-            })
-        }
-        array.forEach(positions, function(pos){
-            var ltr =  leftToRight;
-            switch(pos){
-                case "above-centered":
-                    push("TM", "BM");
-                    break;
-                case "below-centered":
-                    push("BM", "TM");
-                    break;
-                case "after-centered":
-                    ltr = !ltr;
-                    // fall through
-                case "before-centered":
-                    push(ltr ? "ML" : "MR", ltr ? "MR" : "ML");
-                    break;
-                case "after":
-                    ltr = !ltr;
-                    // fall through
-                case "before":
-                    push(ltr ? "TL" : "TR", ltr ? "TR" : "TL");
-                    push(ltr ? "BL" : "BR", ltr ? "BR" : "BL");
-                    break;
-                case "below-alt":
-                    ltr = !ltr;
-                    // fall through
-                case "below":
-                    // first try to align left borders, next try to align right borders (or reverse for RTL mode)
-                    push(ltr ? "BL" : "BR", ltr ? "TL" : "TR");
-                    push(ltr ? "BR" : "BL", ltr ? "TR" : "TL");
-                    break;
-                case "above-alt":
-                    ltr = !ltr;
-                    // fall through
-                case "above":
-                    // first try to align left borders, next try to align right borders (or reverse for RTL mode)
-                    push(ltr ? "TL" : "TR", ltr ? "BL" : "BR");
-                    push(ltr ? "TR" : "TL", ltr ? "BR" : "BL");
-                    break;
-                default:
-                    // To assist dijit/_base/place, accept arguments of type {aroundCorner: "BL", corner: "TL"}.
-                    // Not meant to be used directly.  Remove for 2.0.
-                    push(pos.aroundCorner, pos.corner);
-            }
-        });
-
-        var position = _place(node, choices, layoutNode, {w: width, h: height});
-        position.aroundNodePos = aroundNodePos;
-
-        return position;
-    }
-
-    function movable(elm, params) {
-        function updateWithTouchData(e) {
-            var keys, i;
-
-            if (e.changedTouches) {
-                keys = "screenX screenY pageX pageY clientX clientY".split(' ');
-                for (i = 0; i < keys.length; i++) {
-                    e[keys[i]] = e.changedTouches[0][keys[i]];
-                }
-            }
-        }
-
-        params = params || {};
-        var handleEl = params.handle || elm,
-            auto = params.auto === false ? false : true,
-            constraints = params.constraints,
-            overlayDiv,
-            doc = params.document || document,
-            downButton,
-            start,
-            stop,
-            drag,
-            startX,
-            startY,
-            originalPos,
-            size,
-            startedCallback = params.started,
-            movingCallback = params.moving,
-            stoppedCallback = params.stopped,
-
-            start = function(e) {
-                var docSize = geom.getDocumentSize(doc),
-                    cursor;
-
-                updateWithTouchData(e);
-
-                e.preventDefault();
-                downButton = e.button;
-                //handleEl = getHandleEl();
-                startX = e.screenX;
-                startY = e.screenY;
-
-                originalPos = geom.relativePosition(elm);
-                size = geom.size(elm);
-
-                // Grab cursor from handle so we can place it on overlay
-                cursor = styler.css(handleEl, "curosr");
-
-                overlayDiv = noder.createElement("div");
-                styler.css(overlayDiv, {
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: docSize.width,
-                    height: docSize.height,
-                    zIndex: 0x7FFFFFFF,
-                    opacity: 0.0001,
-                    cursor: cursor
-                });
-                noder.append(doc.body, overlayDiv);
-
-                eventer.on(doc, "mousemove touchmove", move).on(doc, "mouseup touchend", stop);
-
-                if (startedCallback) {
-                    startedCallback(e);
-                }
-            },
-
-            move = function(e) {
-                updateWithTouchData(e);
-
-                if (e.button !== 0) {
-                    return stop(e);
-                }
-
-                e.deltaX = e.screenX - startX;
-                e.deltaY = e.screenY - startY;
-
-                if (auto) {
-                    var l = originalPos.left + e.deltaX,
-                        t = originalPos.top + e.deltaY;
-                    if (constraints) {
-
-                        if (l < constraints.minX) {
-                            l = constraints.minX;
-                        }
-
-                        if (l > constraints.maxX) {
-                            l = constraints.maxX;
-                        }
-
-                        if (t < constraints.minY) {
-                            t = constraints.minY;
-                        }
-
-                        if (t > constraints.maxY) {
-                            t = constraints.maxY;
-                        }
-                    }
-                }
-
-                geom.relativePosition(elm, {
-                    left: l,
-                    top: t
-                })
-
-                e.preventDefault();
-                if (movingCallback) {
-                    movingCallback(e);
-                }
-            },
-
-            stop = function(e) {
-                updateWithTouchData(e);
-
-                eventer.off(doc, "mousemove touchmove", move).off(doc, "mouseup touchend", stop);
-
-                noder.remove(overlayDiv);
-
-                if (stoppedCallback) {
-                    stoppedCallback(e);
-                }
-            };
-
-        eventer.on(handleEl, "mousedown touchstart", start);
-
-        return {
-            // destroys the dragger.
-            remove: function() {
-                eventer.off(handleEl);
-            }
-        }
-    }
-
-    function mover(){
-      return mover;
-    }
-
-    langx.mixin(mover, {
-        around : around,
-
-        at: at, 
-
-        movable: movable
-
-    });
-
-    return skylark.mover = mover;
-});
-
-define('skylark-utils/resizer',[
-    "./skylark",
-    "./langx",
-    "./noder",
-    "./datax",
-    "./finder",
-    "./geom",
-    "./eventer",
-    "./mover",
-    "./styler",
-    "./query"
-],function(skylark, langx,noder,datax,finder,geom,eventer,mover,styler,$){
-    var on = eventer.on,
-        off = eventer.off,
-        attr = datax.attr,
-        removeAttr = datax.removeAttr,
-        offset = geom.pagePosition,
-        addClass = styler.addClass,
-        height = geom.height,
-        some = Array.prototype.some,
-        map = Array.prototype.map;
-
-
-
-    function resizable(elm, params) {
-
-        var defaultOptions = {
-            // prevents browser level actions like forward back gestures
-            touchActionNone: true,
-
-            direction : {
-                top: false, 
-                left: false, 
-                right: true, 
-                bottom: true
-            },
-            // selector for handle that starts dragging
-            handle : {
-                border : true,
-                grabber: "",
-                selector: true
-            }
-        };
-
-        params = params || {};
-        var handle = params.handle || {},
-            handleEl,
-            direction = params.direction || defaultOptions.direction,
-            startSize,
-            currentSize,
-            startedCallback = params.started,
-            movingCallback = params.moving,
-            stoppedCallback = params.stopped;
-
-        if (langx.isString(handle)) {
-            handleEl = finder.find(elm,handle);
-        } else if (langx.isHtmlNode(handle)) {
-            handleEl = handle;
-        }
-        mover.movable(handleEl,{
-            auto : false,
-            started : function(e) {
-                startSize = geom.size(elm);
-                if (startedCallback) {
-                    startedCallback(e);
-                }
-            },
-            moving : function(e) {
-                currentSize = {
-                };
-                if (direction.left || direction.right) {
-                    currentSize.width = startSize.width + e.deltaX;
-                } else {
-                    currentSize.width = startSize.width;
-                }
-
-                if (direction.top || direction.bottom) {
-                    currentSize.height = startSize.height + e.deltaY;
-                } else {
-                    currentSize.height = startSize.height;
-                }
-
-                geom.size(elm,currentSize);
-
-                if (movingCallback) {
-                    movingCallback(e);
-                }
-            },
-            stopped: function(e) {
-                if (stoppedCallback) {
-                    stoppedCallback(e);
-                }                
-            }
-        });
-        
-        return {
-            // destroys the dragger.
-            remove: function() {
-                eventer.off(handleEl);
-            }
-        }
-
-    }
-
-    $.fn.resizable = function(params) {
-        this.each(function(el){
-            resizable(this,params);
-        });
-    };
-
-    function resizer(){
-      return resizer;
-    }
-
-    langx.mixin(resizer, {
-        resizable: resizable
-    });
-
-    return skylark.resizer = resizer;
-});
-
 define('skylark-utils/scripter',[
     "./skylark",
     "./langx",
@@ -7691,233 +6946,6 @@ define('skylark-utils/scripter',[
     });
 
     return skylark.scripter = scripter;
-});
-
-define('skylark-utils/selector',[
-    "./skylark",
-    "./langx",
-    "./noder",
-    "./datax",
-    "./geom",
-    "./eventer",
-    "./mover",
-    "./styler",
-    "./query"
-],function(skylark, langx,noder,datax,geom,eventer,mover,styler,$){
-    var on = eventer.on,
-        off = eventer.off,
-        attr = datax.attr,
-        removeAttr = datax.removeAttr,
-        offset = geom.pagePosition,
-        addClass = styler.addClass,
-        height = geom.height,
-        some = Array.prototype.some,
-        map = Array.prototype.map;
-
-
-
-    var options = {
-        // Function which returns custom X and Y coordinates of the mouse
-            mousePosFetcher: null,
-            // Indicates custom target updating strategy
-            updateTarget: null,
-            // Function which gets HTMLElement as an arg and returns it relative position
-            ratioDefault: 0,
-            posFetcher: null,
-
-            started: null,
-            moving: null,
-            ended: null,
-
-            // Resize unit step
-            step: 1,
-
-            // Minimum dimension
-            minDim: 32,
-
-            // Maximum dimension
-            maxDim: '',
-
-            // Unit used for height resizing
-            unitHeight: 'px',
-
-            // Unit used for width resizing
-            unitWidth: 'px',
-
-            // The key used for height resizing
-            keyHeight: 'height',
-
-            // The key used for width resizing
-            keyWidth: 'width',
-
-            // If true, will override unitHeight and unitWidth, on start, with units
-            // from the current focused element (currently used only in SelectComponent)
-            currentUnit: 1,
-
-            // Handlers
-            direction : {
-                tl: 1, // Top left
-                tc: 1, // Top center
-                tr: 1, // Top right
-                cl: 1, // Center left
-                cr: 1, // Center right
-                bl: 1, // Bottom left
-                bc: 1, // Bottom center
-                br: 1 // Bottom right,
-            },
-            handler : {
-                border : true,
-                grabber: "",
-                selector: true
-            }
-        } ,
-
-
-        currentPos,
-        startRect,
-        currentRect,
-        delta;
-
-    var classPrefix = "",
-        container,
-        handlers,
-        target,
-        direction ={
-            left : true,
-            right : true,
-            top : true,
-            bottom : true
-        },
-        startSize,
-        currentSize,
-
-        startedCallback,
-        resizingCallback,
-        stoppedCallback;
-
-
-
-    function init (options) {
-        options = options || {};
-        classPrefix = options.classPrefix || "";
-
-        var appendTo = options.appendTo || document.body;
-        container = noder.createElement('div',{
-            "class" : classPrefix + 'resizer-c'
-        });
-        noder.append(appendTo,container);
-
-
-        // Create handlers
-        handlers = {};
-        ['tl', 'tc', 'tr', 'cl', 'cr', 'bl', 'bc', 'br'].forEach(function(n) {
-            return handlers[n] = noder.createElement("i",{
-                    "class" : classPrefix + 'resizer-h ' + classPrefix + 'resizer-h-' + n,
-                    "data-resize-handler" : n
-                });
-        });
-
-        for (var n in handlers) {
-            var handler = handlers[n];
-            noder.append(container,handler);
-            mover.movable(handler,{
-                auto : false,
-                started : started,
-                moving : resizing,
-                stopped : stopped
-            })
-        }
-    }
-
-    function started(e) {
-        var handler = e.target;
-        startSize = geom.size(target);
-        if (startedCallback) {
-            startedCallback(e);
-        }
-    }
-
-    function resizing(e) {
-        currentSize = {};
-
-        if (direction.left || direction.right) {
-            currentSize.width = startSize.width + e.deltaX;
-        } else {
-            currentSize.width = startSize.width;
-        }
-
-        if (direction.top || direction.bottom) {
-            currentSize.height = startSize.height + e.deltaY;
-        } else {
-            currentSize.height = startSize.height;
-        }
-
-        geom.size(target,currentSize);
-        geom.pageRect(container,geom.pageRect(target));
-
-        if (resizingCallback) {
-            resizingCallback(e);
-        }
-
-    }
-
-    function stopped(e) {
-        if (stoppedCallback) {
-            stoppedCallback(e);
-        }
-
-    }
-
-    function select(el,options) {
-        // Avoid focusing on already focused element
-        if (el && el === target) {
-          return;
-        } 
-
-        target = el; 
-        startDim = rectDim = startPos = null;
-
-        geom.pageRect(container,geom.pageRect(target));
-        styler.show(container);
-
-    }
-
-
-    function unselect(e) {
-        if (container) {
-            styler.hide(container);
-        }
-        target = null;
-    }
-
-    function isHandler(el) {
-        if (handlers) {
-            for (var n in handlers) {
-              if (handlers[n] === el) return true;
-            }                
-        }
-        return false;
-    }
-
-
-    function docs(el) {
-        return [noder.ownerDoc(el), noder.doc()];
-    }
-
-    function selector(){
-      return selector;
-    }
-
-    langx.mixin(selector, {
-        init : init,
-
-        select : select,
-
-        unselect : unselect
-
-    });
-
-    return skylark.selector = selector;
 });
 
 define('skylark-utils/_storages/cookies',[
@@ -8832,10 +7860,9 @@ define('skylark-utils/velm',[
     "./finder",
     "./fx",
     "./geom",
-    "./mover",
     "./noder",
     "./styler"
-], function(skylark, langx, datax, dnd, eventer, filer, finder, fx, geom, mover, noder, styler) {
+], function(skylark, langx, datax, dnd, eventer, filer, finder, fx, geom, noder, styler) {
     var map = Array.prototype.map,
         slice = Array.prototype.slice;
 
@@ -9019,7 +8046,8 @@ define('skylark-utils/velm',[
 
     // from ./mover
     velm.delegate([
-        "movable"
+        "draggable",
+        "droppable"
     ], dnd);
 
 
@@ -9347,12 +8375,9 @@ define('skylark-utils/main',[
     "./geom",
     "./images",
     "./models",
-    "./mover",
     "./noder",
     "./query",
-    "./resizer",
     "./scripter",
-    "./selector",
     "./storages",
     "./styler",
     "./touchx",

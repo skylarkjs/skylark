@@ -12,12 +12,9 @@ define([
     "./images",
     "./langx",
     "./models",
-    "./mover",
     "./noder",
     "./query",
-    "./resizer",
     "./scripter",
-    "./selector",
     "./styler",
     "./velm",
     "./widgets"

@@ -72,11 +72,6 @@ define([
         return new Blob([u8arr], {type:mime});
     }
 
-    var Uploader =  langx.Evented.inherit({
-        init :function(options) {
-        }
-    });
-
     function dropzone(elm, params) {
         params = params || {};
         var hoverClass = params.hoverClass || "dropzone",

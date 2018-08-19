@@ -338,9 +338,25 @@ define([
             },
 
             is: function(selector) {
-                return this.length > 0 && finder.matches(this[0], selector)
+                if (this.length > 0) {
+                    var self = this;
+                    if (langx.isString(selector)) {
+                        return some.call(self,function(elem) {
+                            return finder.matches(elem, selector);
+                        });
+                    } else if (langx.isArrayLike(selector)) {
+                       return some.call(self,function(elem) {
+                            return langx.inArray(elem, selector);
+                        });
+                    } else if (langx.isHtmlNode(selector)) {
+                       return some.call(self,function(elem) {
+                            return elem ==  selector;
+                        });
+                    }
+                }
+                return false;
             },
-
+            
             not: function(selector) {
                 var nodes = []
                 if (isFunction(selector) && selector.call !== undefined)
@@ -417,6 +433,7 @@ define([
                 ret.prevObject = this;
                 return ret;
             },
+            
             show: wrapper_every_act(fx.show, fx),
 
             replaceWith: function(newContent) {
@@ -575,6 +592,8 @@ define([
 
         $.fn.height = wrapper_value(geom.height, geom, geom.height);
 
+        $.fn.clientSize = wrapper_value(geom.clientSize, geom.clientSize);
+
         ['width', 'height'].forEach(function(dimension) {
             var offset, Dimension = dimension.replace(/./, function(m) {
                 return m[0].toUpperCase()
@@ -625,9 +644,9 @@ define([
             };
         })
 
-        $.fn.innerWidth = wrapper_value(geom.width, geom, geom.width);
+        $.fn.innerWidth = wrapper_value(geom.clientWidth, geom, geom.clientWidth);
 
-        $.fn.innerHeight = wrapper_value(geom.height, geom, geom.height);
+        $.fn.innerHeight = wrapper_value(geom.clientHeight, geom, geom.clientHeight);
 
 
         var traverseNode = noder.traverse;

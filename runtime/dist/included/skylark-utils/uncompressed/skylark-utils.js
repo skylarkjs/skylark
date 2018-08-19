@@ -831,14 +831,14 @@ define('skylark-utils/css',[
     "./skylark",
     "./langx",
     "./noder"
-], function(skylark, langx, construct) {
+], function(skylark, langx, noder) {
 
     var head = document.getElementsByTagName("head")[0],
         count = 0,
         sheetsByUrl = {},
-        sheetElementsById = {},
+        sheetsById = {},
         defaultSheetId = _createStyleSheet(),
-        defaultSheet = sheetElementsById[defaultSheetId],
+        defaultSheet = sheetsById[defaultSheetId],
         rulesPropName = ("cssRules" in defaultSheet) ? "cssRules" : "rules",
         insertRuleFunc,
         deleteRuleFunc = defaultSheet.deleteRule || defaultSheet.removeRule;
@@ -865,146 +865,275 @@ define('skylark-utils/css',[
         return selector.reverse().join(', ');
     }
 
-    function _createStyleSheet() {
-        var link = document.createElement("link"),
+    /*
+     * create a stylesheet element.
+     * @param {Boolean} external
+     * @param {Object} options
+     * @param {String} [options.media = null]
+     */
+    function _createStyleSheet(external,options ) {
+        var node,
+            props = {
+                type : "text/css"
+            },
             id = (count++);
 
-        link.rel = "stylesheet";
-        link.type = "text/css";
-        link.async = false;
-        link.defer = false;
+        options = options || {};
+        if (options.media) {
+            props.media = options.media;
+        }
 
-        head.appendChild(link);
-        sheetElementsById[id] = link;
+        if (external) {
+            node = noder.create("link",langx.mixin(props,{
+                rel  : "stylesheet",
+                async : false
+            }));
+        } else {
+            node = noder.createElement("style",props);
+        }
+
+        noder.append(head,node);
+        sheetsById[id] = {
+            id : id,
+            node :node
+        };
 
         return id;
     }
+
+    function createStyleSheet(css,options) {
+        if (!options) {
+            options = {};
+        }
+        var sheetId = _createStyleSheet(false,options);
+        if (css) {
+            addSheetRules(sheetId,css);
+        }
+
+        return sheetId;
+    }
+
+    function loadStyleSheet(url, options) {
+        var sheet = sheetsByUrl[url];
+        if (!sheet) {
+            var sheetId = _createStyleSheet(true,options);
+
+            sheet = sheetsByUrl[url] = sheetsById[sheetId];
+            langx.mixin(sheet,{
+                state: 0, //0:unload,1:loaded,-1:loaderror
+                url : url,
+                deferred : new langx.Deferred()
+            });
+
+            var node = sheet.node;
+
+            startTime = new Date().getTime();
+
+            node.onload = function() {
+                sheet.state = 1;
+                sheet.deferred.resolve(sheet.id);
+            },
+            node.onerror = function(e) {
+                sheet.state = -1;
+                sheet.deferred.reject(e);
+            };
+
+            node.href = sheet.url;
+        }
+        return sheet.deferred.promise;
+    }
+
+    function deleteSheetRule(sheetId, rule) {
+        var sheet = sheetsById[sheetId];
+        if (langx.isNumber(rule)) {
+            deleteRuleFunc.call(sheet, rule);
+        } else {
+            langx.each(sheet[rulesPropName], function(i, _rule) {
+                if (rule === _rule) {
+                    deleteRuleFunc.call(sheet, i);
+                    return false;
+                }
+            });
+        }
+        return this;
+    }
+
+    function deleteRule(rule) {
+        deleteSheetRule(defaultSheetId, rule);
+        return this;
+    }
+
+    function removeStyleSheet(sheetId) {
+        if (sheetId === defaultSheetId) {
+            throw new Error("The default stylesheet can not be deleted");
+        }
+        var sheet = sheetsById[sheetId];
+        delete sheetsById[sheetId];
+
+        noder.remove(sheet.node);
+        return this;
+    }
+
+    /*
+     * insert a rule to the default stylesheet.
+     * @param {String} selector
+     * @param {String} css
+     * @param {Number} index 
+     */
+    function insertRule(selector, css, index) {
+        return this.insertSheetRule(defaultSheetId, selector, css, index);
+    }
+
+    /*
+     * Add rules to the default stylesheet.
+     * @param {Object} rules
+     */
+    function addRules(rules) {
+        return this.addRules(defaultSheetId,rules);
+    }
+
+    /*
+     * insert a rule to the stylesheet specified by sheetId.
+     * @param {Number} sheetId  
+     * @param {String} selector
+     * @param {String} css
+     * @param {Number} index 
+     */
+    function insertSheetRule(sheetId, selector, css, index) {
+        if (!selector || !css) {
+            return -1;
+        }
+
+        var sheet = sheetsById[sheetId];
+        index = index || sheet[rulesPropName].length;
+
+        return insertRuleFunc.call(sheet, selector, css, index);
+    }
+
+    /*
+     * Add  rules to stylesheet.
+     * @param {Number} sheetId  
+     * @param {Object|String} rules
+     * @return this
+     * @example insertSheetRules(sheetId,{
+     * 
+     * });
+     */
+    function addSheetRules(sheetId,rules) {
+        var sheet = sheetsById[sheetId],
+            css;
+        if (langx.isPlainObject(rules)) {
+            css = toString(rules);
+        } else {
+            css = rules;
+        }
+
+        noder.append(sheet.node,noder.createTextNode(css));
+        
+        return this;
+    }
+
+    function isAtRule(str) {
+        return str.startsWith("@");
+    }
+
+    function toString(json){
+        var strAttr = function (name, value, depth) {
+            return css.SPACE.repeat(depth) + name.trim() + ': ' + value.trim() + ";\n";
+        };
+
+        var adjust = function(parentName,name,depth) {
+            if (parentName) {
+                if (isAtRule(parentName)) {
+                    depth += 1;
+                } else {
+                    name =  parentName + name;
+                }                
+            }
+            return {
+                name : name,
+                depth : depth
+            }
+        };
+
+        var strAt = function(name,values,depth) {
+            var str = "";
+            if (langx.isString(values)) {
+                str = css.SPACE.repeat(depth) + name.trim() + " \"" + values + " \";";
+            } else if (langx.isPlainObject(values)) {
+                str += css.SPACE.repeat(depth) + name.trim() + " {\n";
+                str += strNode("",values,depth+1);
+                str += css.SPACE.repeat(depth) + "}\n";
+
+            } else {
+                throw new Error("Invalid param!");
+            }
+            return str;
+        };
+
+        var strNode = function (name, values, depth) {
+            var str = "";
+            if (name) {
+                str += css.SPACE.repeat(depth) + name.trim() + " {\n";
+
+                for (var n in values) {
+                    var value =values[n];
+                    if (langx.isString(value)) {
+                        // css property
+                        str += strAttr(n,value,depth+1)
+                    }
+                }
+
+                str += css.SPACE.repeat(depth) + "}\n";
+            }
+
+            for (var n in values) {
+                var value =values[n];
+                if (langx.isPlainObject(value)) {
+                    var adjusted = adjust(name,n,depth);
+                    str +=  strNode(adjusted.name,value,adjusted.depth);
+                } 
+            }
+
+            return str;
+        };
+
+        var str = "";
+        for (var n in json) {
+            if (isAtRule(n)) {
+                str += strAt(n,json[n],0);
+            } else {
+                str += strNode(n,json[n],0);
+            }
+        }
+        return str;
+    };
+   
 
     function css() {
         return css;
     }
 
     langx.mixin(css, {
-        createStyleSheet: function(cssText) {
-            return _createStyleSheet();
-        },
+        SPACE : "\t",
 
-        loadStyleSheet: function(url, loadedCallback, errorCallback) {
-            var sheet = sheetsByUrl[url];
-            if (!sheet) {
-                sheet = sheetsByUrl[url] = {
-                    state: 0, //0:unload,1:loaded,-1:loaderror
-                    loadedCallbacks: [],
-                    errorCallbacks: []
-                };
-            }
+        addRules : addRules,
 
-            sheet.loadedCallbacks.push(loadedCallback);
-            sheet.errorCallbacks.push(errorCallback);
+        addSheetRules : addSheetRules,
 
-            if (sheet.state === 1) {
-                sheet.node.onload();
-            } else if (sheet.state === -1) {
-                sheet.node.onerror();
-            } else {
-                sheet.id = _createStyleSheet();
-                var node = sheet.node = sheetElementsById[sheet.id];
+        createStyleSheet: createStyleSheet,
 
-                startTime = new Date().getTime();
+        deleteSheetRule : deleteSheetRule,
 
-                node.onload = function() {
-                    sheet.state = 1;
-                    sheet.state = -1;
-                    var callbacks = sheet.loadedCallbacks,
-                        i = callbacks.length;
+        deleteRule : deleteRule,
 
-                    while (i--) {
-                        callbacks[i]();
-                    }
-                    sheet.loadedCallbacks = [];
-                    sheet.errorCallbacks = [];
-                },
-                node.onerror = function() {
-                    sheet.state = -1;
-                    var callbacks = sheet.errorCallbacks,
-                        i = callbacks.length;
+        insertRule : insertRule,
 
-                    while (i--) {
-                        callbacks[i]();
-                    }
-                    sheet.loadedCallbacks = [];
-                    sheet.errorCallbacks = [];
-                };
+        insertSheetRule : insertSheetRule,
 
-                node.href = sheet.url = url;
+        removeStyleSheet : removeStyleSheet,
 
-                sheetsByUrl[node.url] = sheet;
-
-            }
-            return sheet.id;
-        },
-
-        deleteSheetRule: function(sheetId, rule) {
-            var sheet = sheetElementsById[sheetId];
-            if (langx.isNumber(rule)) {
-                deleteRuleFunc.call(sheet, rule);
-            } else {
-                langx.each(sheet[rulesPropName], function(i, _rule) {
-                    if (rule === _rule) {
-                        deleteRuleFunc.call(sheet, i);
-                        return false;
-                    }
-                });
-            }
-        },
-
-        deleteRule: function(rule) {
-            this.deleteSheetRule(defaultSheetId, rule);
-            return this;
-        },
-
-        removeStyleSheet: function(sheetId) {
-            if (sheetId === defaultSheetId) {
-                throw new Error("The default stylesheet can not be deleted");
-            }
-            var sheet = sheetElementsById[sheetId];
-            delete sheetElementsById[sheetId];
-
-
-            construct.remove(sheet);
-            return this;
-        },
-
-        findRules: function(selector, sheetId) {
-            //return array of CSSStyleRule objects that match the selector text
-            var rules = [],
-                filters = parseSelector(selector);
-            $(document.styleSheets).each(function(i, styleSheet) {
-                if (filterStyleSheet(filters.styleSheet, styleSheet)) {
-                    $.merge(rules, $(styleSheet[_rules]).filter(function() {
-                        return matchSelector(this, filters.selectorText, filters.styleSheet === "*");
-                    }).map(function() {
-                        return normalizeRule($.support.nativeCSSStyleRule ? this : new CSSStyleRule(this), styleSheet);
-                    }));
-                }
-            });
-            return rules.reverse();
-        },
-
-        insertRule: function(selector, css, index) {
-            return this.insertSheetRule(defaultSheetId, selector, css, index);
-        },
-
-        insertSheetRule: function(sheetId, selector, css, index) {
-            if (!selector || !css) {
-                return -1;
-            }
-
-            var sheet = sheetElementsById[sheetId];
-            index = index || sheet[rulesPropName].length;
-
-            return insertRuleFunc.call(sheet, selector, css, index);
-        }
+        toString : toString
     });
 
     return skylark.css = css;
@@ -2440,6 +2569,16 @@ define('skylark-utils/geom',[
     }
 
 
+    function marginSize(elm) {
+        var obj = this.size(elm),
+            me = this.marginExtents(elm);
+
+        return {
+                width: obj.width + me.left + me.right,
+                height: obj.height + me.top + me.bottom
+            };
+    }
+
     function paddingExtents(elm) {
         var s = getComputedStyle(elm);
         return {
@@ -2688,6 +2827,8 @@ define('skylark-utils/geom',[
         marginExtents: marginExtents,
 
         marginRect : marginRect,
+
+        marginSize : marginSize,
 
         offsetParent: offsetParent,
 
@@ -5380,9 +5521,25 @@ define('skylark-utils/query',[
             },
 
             is: function(selector) {
-                return this.length > 0 && finder.matches(this[0], selector)
+                if (this.length > 0) {
+                    var self = this;
+                    if (langx.isString(selector)) {
+                        return some.call(self,function(elem) {
+                            return finder.matches(elem, selector);
+                        });
+                    } else if (langx.isArrayLike(selector)) {
+                       return some.call(self,function(elem) {
+                            return langx.inArray(elem, selector);
+                        });
+                    } else if (langx.isHtmlNode(selector)) {
+                       return some.call(self,function(elem) {
+                            return elem ==  selector;
+                        });
+                    }
+                }
+                return false;
             },
-
+            
             not: function(selector) {
                 var nodes = []
                 if (isFunction(selector) && selector.call !== undefined)
@@ -5459,6 +5616,7 @@ define('skylark-utils/query',[
                 ret.prevObject = this;
                 return ret;
             },
+            
             show: wrapper_every_act(fx.show, fx),
 
             replaceWith: function(newContent) {
@@ -5617,6 +5775,8 @@ define('skylark-utils/query',[
 
         $.fn.height = wrapper_value(geom.height, geom, geom.height);
 
+        $.fn.clientSize = wrapper_value(geom.clientSize, geom.clientSize);
+
         ['width', 'height'].forEach(function(dimension) {
             var offset, Dimension = dimension.replace(/./, function(m) {
                 return m[0].toUpperCase()
@@ -5667,9 +5827,9 @@ define('skylark-utils/query',[
             };
         })
 
-        $.fn.innerWidth = wrapper_value(geom.width, geom, geom.width);
+        $.fn.innerWidth = wrapper_value(geom.clientWidth, geom, geom.clientWidth);
 
-        $.fn.innerHeight = wrapper_value(geom.height, geom, geom.height);
+        $.fn.innerHeight = wrapper_value(geom.clientHeight, geom, geom.clientHeight);
 
 
         var traverseNode = noder.traverse;
@@ -8180,8 +8340,8 @@ define('skylark-utils/widgets',[
 		};
 	};
 
-	function widget() {
-	    return widget;
+	function widgets() {
+	    return widgets;
 	}
 
 	var Widget = langx.Evented.inherit({
@@ -8192,8 +8352,10 @@ define('skylark-utils/widgets',[
 	        		options = el;
 	            el = options;
 	        }
-	        if (el) {
+	        if (langx.isHtmlNode(el)) {
 	        	this.el = el;
+	    	} else {
+	    		this.el = null;
 	    	}
 	        if (options) {
 	            langx.mixin(this,options);
@@ -8250,7 +8412,7 @@ define('skylark-utils/widgets',[
 	    // alternative DOM manipulation API and are only required to set the
 	    // `this.el` property.
 	    _setElement: function(el) {
-	      this.$el = widget.$(el);
+	      this.$el = widgets.$(el);
 	      this.el = this.$el[0];
 	    },
 
@@ -8350,7 +8512,7 @@ define('skylark-utils/widgets',[
 
 	};
 
-	langx.mixin(widget, {
+	langx.mixin(widgets, {
 		$ : query,
 
 		define : defineWidgetClass,
@@ -8358,7 +8520,7 @@ define('skylark-utils/widgets',[
 	});
 
 
-	return skylark.widget = widget;
+	return skylark.widgets = widgets;
 });
 
 define('skylark-utils/main',[

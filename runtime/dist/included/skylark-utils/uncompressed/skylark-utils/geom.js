@@ -210,6 +210,16 @@ define([
     }
 
 
+    function marginSize(elm) {
+        var obj = this.size(elm),
+            me = this.marginExtents(elm);
+
+        return {
+                width: obj.width + me.left + me.right,
+                height: obj.height + me.top + me.bottom
+            };
+    }
+
     function paddingExtents(elm) {
         var s = getComputedStyle(elm);
         return {
@@ -458,6 +468,8 @@ define([
         marginExtents: marginExtents,
 
         marginRect : marginRect,
+
+        marginSize : marginSize,
 
         offsetParent: offsetParent,
 

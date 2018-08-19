@@ -88,8 +88,8 @@ define([
 		};
 	};
 
-	function widget() {
-	    return widget;
+	function widgets() {
+	    return widgets;
 	}
 
 	var Widget = langx.Evented.inherit({
@@ -100,8 +100,10 @@ define([
 	        		options = el;
 	            el = options;
 	        }
-	        if (el) {
+	        if (langx.isHtmlNode(el)) {
 	        	this.el = el;
+	    	} else {
+	    		this.el = null;
 	    	}
 	        if (options) {
 	            langx.mixin(this,options);
@@ -158,7 +160,7 @@ define([
 	    // alternative DOM manipulation API and are only required to set the
 	    // `this.el` property.
 	    _setElement: function(el) {
-	      this.$el = widget.$(el);
+	      this.$el = widgets.$(el);
 	      this.el = this.$el[0];
 	    },
 
@@ -258,7 +260,7 @@ define([
 
 	};
 
-	langx.mixin(widget, {
+	langx.mixin(widgets, {
 		$ : query,
 
 		define : defineWidgetClass,
@@ -266,5 +268,5 @@ define([
 	});
 
 
-	return skylark.widget = widget;
+	return skylark.widgets = widgets;
 });

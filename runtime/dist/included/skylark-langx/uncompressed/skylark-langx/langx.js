@@ -1403,7 +1403,7 @@ define(["./skylark"], function(skylark) {
                         continue;
                     }
 
-                    listeningEvent = listeningEvents[eventName];
+                    var listeningEvent = listeningEvents[eventName];
 
                     for (var j = 0; j < listeningEvent.length; j++) {
                         if (!callback || callback == listeningEvent[i]) {

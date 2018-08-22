@@ -3527,8 +3527,8 @@ define('skylark-utils/dnd',[
 
       prepare : function(draggable) {
           var e = eventer.create("preparing",{
-             dragSource : draggable.elm,
-             handleElm : draggable.handleElm
+             dragSource : draggable.dragSource,
+             dragHandle : draggable.dragHandle
           });
           draggable.trigger(e);
           draggable.dragSource = e.dragSource;
@@ -3536,14 +3536,14 @@ define('skylark-utils/dnd',[
 
       start : function(draggable,event) {
 
-        var p = geom.pagePosition(draggable.elm);
+        var p = geom.pagePosition(draggable.dragSource);
         this.draggingOffsetX = parseInt(event.pageX - p.left);
         this.draggingOffsetY = parseInt(event.pageY - p.top)
 
         var e = eventer.create("started",{
           elm : draggable.elm,
           dragSource : draggable.dragSource,
-          handleElm : draggable.handleElm,
+          dragHandle : draggable.dragHandle,
           ghost : null,
 
           transfer : {
@@ -3571,12 +3571,20 @@ define('skylark-utils/dnd',[
                 event.dataTransfer.setData(key, value);
             });
         }
-
+        
         event.dataTransfer.setDragImage(this.draggingGhost, this.draggingOffsetX, this.draggingOffsetY);
 
         event.dataTransfer.effectAllowed = "copyMove";
 
-        this.trigger(e);
+        var e1 = eventer.create("dndStarted",{
+          elm : e.elm,
+          dragSource : e.dragSource,
+          dragHandle : e.dragHandle,
+          ghost : e.ghost,
+          transfer : e.transfer
+        });
+
+        this.trigger(e1);
       },
 
       over : function() {
@@ -3591,7 +3599,7 @@ define('skylark-utils/dnd',[
           }
         }
 
-        var e = eventer.create("ended",{
+        var e = eventer.create("dndEnded",{
         });        
         this.trigger(e);
 
@@ -3618,7 +3626,7 @@ define('skylark-utils/dnd',[
 
         self.elm = elm;
         self.draggingClass = params.draggingClass || "dragging",
-        self._params = params;
+        self.params = langx.clone(params);
 
         ["preparing","started", "ended", "moving"].forEach(function(eventName) {
             if (langx.isFunction(params[eventName])) {
@@ -3629,28 +3637,34 @@ define('skylark-utils/dnd',[
 
         eventer.on(elm,{
           "mousedown" : function(e) {
+            var params = self.params;
             if (params.handle) {
-              self.handleElm = finder.closest(e.target,params.handle);
-              if (!self.handleElm) {
+              self.dragHandle = finder.closest(e.target,params.handle);
+              if (!self.dragHandle) {
                 return;
               }
             }
+            if (params.source) {
+                self.dragSource = finder.closest(e.target,params.source);
+            } else {
+                self.dragSource = self.elm;
+            }
             manager.prepare(self);
             if (self.dragSource) {
-              datax.prop(self.dragSource, "draggable", true);
-            }
+              datax.attr(self.dragSource, "draggable", 'true');
+            } 
           },
 
           "mouseup" :   function(e) {
             if (self.dragSource) {
-              datax.prop(self.dragSource, "draggable", false);
+              //datax.attr(self.dragSource, "draggable", 'false');
               self.dragSource = null;
-              self.handleElm = null;
+              self.dragHandle = null;
             }
           },
 
           "dragstart":  function(e) {
-            datax.prop(self.dragSource, "draggable", false);
+            datax.attr(self.dragSource, "draggable", 'false');
             manager.start(self, e);
           },
 
@@ -3771,7 +3785,7 @@ define('skylark-utils/dnd',[
           }
         });
 
-        manager.on("started",function(e){
+        manager.on("dndStarted",function(e){
             var e2 = eventer.create("started",{
                 transfer : manager.draggingTransfer,
                 acceptable : false
@@ -3787,7 +3801,7 @@ define('skylark-utils/dnd',[
               styler.addClass(elm,activeClass);
             }
 
-         }).on("ended" , function(e){
+         }).on("dndEnded" , function(e){
             var e2 = eventer.create("ended",{
                 transfer : manager.draggingTransfer,
                 acceptable : false
@@ -8352,7 +8366,7 @@ define('skylark-utils/widgets',[
 	        		options = el;
 	            el = options;
 	        }
-	        if (langx.isHtmlNode(el)) {
+	        if (langx.isHtmlNode(el)) { 
 	        	this.el = el;
 	    	} else {
 	    		this.el = null;

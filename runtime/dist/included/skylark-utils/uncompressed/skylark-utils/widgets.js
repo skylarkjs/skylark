@@ -100,7 +100,7 @@ define([
 	        		options = el;
 	            el = options;
 	        }
-	        if (langx.isHtmlNode(el)) {
+	        if (langx.isHtmlNode(el)) { 
 	        	this.el = el;
 	    	} else {
 	    		this.el = null;

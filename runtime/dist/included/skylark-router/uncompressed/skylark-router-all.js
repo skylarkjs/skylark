@@ -984,9 +984,9 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
 
     function _mixin(target, source, deep, safe) {
         for (var key in source) {
-            if (!source.hasOwnProperty(key)) {
-                continue;
-            }
+            //if (!source.hasOwnProperty(key)) {
+            //    continue;
+            //}
             if (safe && target[key] !== undefined) {
                 continue;
             }

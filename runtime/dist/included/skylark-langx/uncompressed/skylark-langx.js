@@ -1,7 +1,7 @@
 /**
  * skylark-langx - A simple JavaScript language extension library, including class support, Evented class, Deferred class and some commonly used tool functions.
  * @author Hudaokeji Co.,Ltd
- * @version v0.9.5-beta
+ * @version v0.9.5
  * @link www.skylarkjs.org
  * @license MIT
  */
@@ -986,9 +986,9 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
 
     function _mixin(target, source, deep, safe) {
         for (var key in source) {
-            if (!source.hasOwnProperty(key)) {
-                continue;
-            }
+            //if (!source.hasOwnProperty(key)) {
+            //    continue;
+            //}
             if (safe && target[key] !== undefined) {
                 continue;
             }

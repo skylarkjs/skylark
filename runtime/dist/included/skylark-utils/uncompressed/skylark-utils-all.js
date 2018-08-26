@@ -1,7 +1,7 @@
 /**
  * skylark-utils - An Elegant HTML5 JavaScript Library.
  * @author Hudaokeji Co.,Ltd
- * @version v0.9.5-beta
+ * @version v0.9.5
  * @link www.skylarkjs.org
  * @license MIT
  */
@@ -990,9 +990,9 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
 
     function _mixin(target, source, deep, safe) {
         for (var key in source) {
-            if (!source.hasOwnProperty(key)) {
-                continue;
-            }
+            //if (!source.hasOwnProperty(key)) {
+            //    continue;
+            //}
             if (safe && target[key] !== undefined) {
                 continue;
             }
@@ -7852,6 +7852,7 @@ define('skylark-utils/query',[
         filter = Array.prototype.filter,
         forEach = Array.prototype.forEach,
         indexOf = Array.prototype.indexOf,
+        sort = Array.prototype.sort,
         isQ;
 
     var rquickExpr = /^(?:[^#<]*(<[\w\W]+>)[^>]*$|#([\w\-]*)$)/;
@@ -8143,6 +8144,10 @@ define('skylark-utils/query',[
 
             indexOf: function() {
                 return indexOf.apply(this,arguments);
+            },
+
+            sort : function() {
+                return sort.apply(this,arguments);
             },
 
             toArray: function() {

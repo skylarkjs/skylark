@@ -413,7 +413,9 @@ define([
         }
 
         if (tag = cond.tag) {
-            nativeSelector = tag.toUpperCase() + nativeSelector;
+            if (tag !== "*") {
+                nativeSelector = tag.toUpperCase() + nativeSelector;
+            }
         }
 
         if (!nativeSelector) {

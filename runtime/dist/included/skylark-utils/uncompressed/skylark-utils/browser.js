@@ -21,9 +21,19 @@ define([
         testEl = document.createElement("div"),
 
         matchesSelector = testEl.webkitMatchesSelector ||
-        testEl.mozMatchesSelector ||
-        testEl.oMatchesSelector ||
-        testEl.matchesSelector,
+                          testEl.mozMatchesSelector ||
+                          testEl.oMatchesSelector ||
+                          testEl.matchesSelector,
+
+        requestFullScreen = testEl.requestFullscreen || 
+                            testEl.webkitRequestFullscreen || 
+                            testEl.mozRequestFullScreen || 
+                            testEl.msRequestFullscreen,
+
+        exitFullScreen =  document.exitFullscreen ||
+                          document.webkitCancelFullScreen ||
+                          document.mozCancelFullScreen ||
+                          document.msExitFullscreen,
 
         testStyle = testEl.style;
 
@@ -74,11 +84,17 @@ define([
 
         matchesSelector: matchesSelector,
 
+        requestFullScreen : requestFullScreen,
+
+        exitFullscreen : requestFullScreen,
+
         location: function() {
             return window.location;
         },
 
-        support : {}
+        support : {
+
+        }
 
     });
 

@@ -49,7 +49,7 @@ define([
 								"attempted to call method '" + options + "'" );
 						}
 
-						if ( !$.isFunction( instance[ options ] ) || options.charAt( 0 ) === "_" ) {
+						if ( !langx.isFunction( instance[ options ] ) || options.charAt( 0 ) === "_" ) {
 							return $.error( "no such method '" + options + "' for " + name +
 								" widget instance" );
 						}
@@ -93,8 +93,8 @@ define([
 	}
 
 	var Widget = langx.Evented.inherit({
-	    init :function(options,el) {
-	    	//for supporting init(el,options)
+	    init :function(el,options) {
+	    	//for supporting init(options,el)
 	        if (langx.isHtmlNode(options)) {
 	        	var _t = el,
 	        		options = el;
@@ -117,7 +117,7 @@ define([
 	    // The default `tagName` of a View's element is `"div"`.
 	    tagName: 'div',
 
-	    // jQuery delegate for element lookup, scoped to DOM elements within the
+	    // query delegate for element lookup, scoped to DOM elements within the
 	    // current view. This should be preferred to global lookups where possible.
 	    $: function(selector) {
 	      return this.$el.find(selector);

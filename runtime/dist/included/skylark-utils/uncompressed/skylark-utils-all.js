@@ -2750,9 +2750,19 @@ define('skylark-utils/browser',[
         testEl = document.createElement("div"),
 
         matchesSelector = testEl.webkitMatchesSelector ||
-        testEl.mozMatchesSelector ||
-        testEl.oMatchesSelector ||
-        testEl.matchesSelector,
+                          testEl.mozMatchesSelector ||
+                          testEl.oMatchesSelector ||
+                          testEl.matchesSelector,
+
+        requestFullScreen = testEl.requestFullscreen || 
+                            testEl.webkitRequestFullscreen || 
+                            testEl.mozRequestFullScreen || 
+                            testEl.msRequestFullscreen,
+
+        exitFullScreen =  document.exitFullscreen ||
+                          document.webkitCancelFullScreen ||
+                          document.mozCancelFullScreen ||
+                          document.msExitFullscreen,
 
         testStyle = testEl.style;
 
@@ -2803,11 +2813,17 @@ define('skylark-utils/browser',[
 
         matchesSelector: matchesSelector,
 
+        requestFullScreen : requestFullScreen,
+
+        exitFullscreen : requestFullScreen,
+
         location: function() {
             return window.location;
         },
 
-        support : {}
+        support : {
+
+        }
 
     });
 
@@ -3024,8 +3040,9 @@ define('skylark-utils/styler',[
 define('skylark-utils/noder',[
     "./skylark",
     "./langx",
+    "./browser",
     "./styler"
-], function(skylark, langx, styler) {
+], function(skylark, langx, browser, styler) {
     var isIE = !!navigator.userAgent.match(/Trident/g) || !!navigator.userAgent.match(/MSIE/g),
         fragmentRE = /^\s*<(\w+|!)[^>]*>/,
         singleTagRE = /^<(\w+)\s*\/?>(?:<\/\1>|)$/,
@@ -3187,6 +3204,23 @@ define('skylark-utils/noder',[
             node.removeChild(child);
         }
         return this;
+    }
+
+    var fulledEl = null;
+    function fullScreen(el) {
+        if (el === false) {
+            browser.exitFullScreen.apply(document);
+        } else if (el) {
+            browser.requestFullScreen.apply(el);
+            fulledEl = el;
+        } else {
+          return (
+            document.fullscreenElement ||
+            document.webkitFullscreenElement ||
+            document.mozFullScreenElement ||
+            document.msFullscreenElement
+          )
+        }
     }
 
     function html(node, html) {
@@ -3421,6 +3455,8 @@ define('skylark-utils/noder',[
         doc: doc,
 
         empty: empty,
+
+        fullScreen : fullScreen,
 
         html: html,
 
@@ -3659,10 +3695,10 @@ define('skylark-utils/css',[
     function addSheetRules(sheetId,rules) {
         var sheet = sheetsById[sheetId],
             css;
-        if (langx.isPlainObject(rules)) {
-            css = toString(rules);
-        } else {
+        if (langx.isString(rules)) {
             css = rules;
+        } else {
+            css = toString(rules);
         }
 
         noder.append(sheet.node,noder.createTextNode(css));
@@ -3675,16 +3711,12 @@ define('skylark-utils/css',[
     }
 
     function toString(json){
-        var strAttr = function (name, value, depth) {
-            return css.SPACE.repeat(depth) + name.trim() + ': ' + value.trim() + ";\n";
-        };
-
         var adjust = function(parentName,name,depth) {
             if (parentName) {
                 if (isAtRule(parentName)) {
                     depth += 1;
                 } else {
-                    name =  parentName + name;
+                    name =  parentName + " " + name;
                 }                
             }
             return {
@@ -3693,59 +3725,83 @@ define('skylark-utils/css',[
             }
         };
 
-        var strAt = function(name,values,depth) {
-            var str = "";
-            if (langx.isString(values)) {
-                str = css.SPACE.repeat(depth) + name.trim() + " \"" + values + " \";";
-            } else if (langx.isPlainObject(values)) {
-                str += css.SPACE.repeat(depth) + name.trim() + " {\n";
-                str += strNode("",values,depth+1);
-                str += css.SPACE.repeat(depth) + "}\n";
-
-            } else {
-                throw new Error("Invalid param!");
-            }
-            return str;
-        };
-
         var strNode = function (name, values, depth) {
-            var str = "";
-            if (name) {
-                str += css.SPACE.repeat(depth) + name.trim() + " {\n";
+            var str = "",
+                atFlg = isAtRule(name);
 
-                for (var n in values) {
-                    var value =values[n];
-                    if (langx.isString(value)) {
-                        // css property
-                        str += strAttr(n,value,depth+1)
+
+            if (isAtRule(name)) {
+                // at rule
+                if (langx.isString(values)) {
+                    // an at rule without block
+                    // ex: (1) @charset 'utf8';
+                    str = css.SPACE.repeat(depth) + name.trim() + " \"" + values.trim() + " \";\n";
+                } else {
+                    // an at rule with block, ex :
+                    //  @media 'screen' {
+                    //  }
+                    str += css.SPACE.repeat(depth) + name.trim() + " {\n";
+                    str += strNode("",values,depth+1);
+                    str += css.SPACE.repeat(depth) + " }\n";
+                }
+            } else {
+                // a selector or a property
+                if (langx.isString(values)) {
+                    // a css property 
+                    // ex : (1) font-color : red;
+                    str = css.SPACE.repeat(depth) + name.trim() ;
+                    if (atFlg) {
+                        str = str +  " \"" + values.trim() + " \";\n";
+                    } else {
+                        str = str + ': ' + values.trim() + ";\n";
+                    }
+
+                } else {
+                    // a selector rule 
+                    // ex : (1) .class1 : {
+                    //            font-color : red;
+                    //          }
+                    if (langx.isArray(values)) {
+                        // array for ordering
+                        for (var n =0; n<values.length; n ++) {
+                           str +=  strNode(name,values[n],depth);
+                        }
+                    } else {
+                        // plain object
+
+                        if (name) {
+                            str += css.SPACE.repeat(depth) + name.trim() + " {\n";
+
+                            for (var n in values) {
+                                var value =values[n];
+                                if (langx.isString(value)) {
+                                    // css property
+                                    str += strNode(n,value,depth+1)
+                                }
+                            }
+
+                            str += css.SPACE.repeat(depth) + "}\n";
+                        }
+
+                        for (var n in values) {
+                            var value =values[n];
+                            if (!langx.isString(value)) {
+                                var adjusted = adjust(name,n,depth);
+                                str +=  strNode(adjusted.name,value,adjusted.depth);
+                            } 
+                        }
+
                     }
                 }
-
-                str += css.SPACE.repeat(depth) + "}\n";
-            }
-
-            for (var n in values) {
-                var value =values[n];
-                if (langx.isPlainObject(value)) {
-                    var adjusted = adjust(name,n,depth);
-                    str +=  strNode(adjusted.name,value,adjusted.depth);
-                } 
-            }
+            }   
 
             return str;
         };
 
-        var str = "";
-        for (var n in json) {
-            if (isAtRule(n)) {
-                str += strAt(n,json[n],0);
-            } else {
-                str += strNode(n,json[n],0);
-            }
-        }
-        return str;
-    };
-   
+
+        return strNode("",json,0);
+    }
+ 
 
     function css() {
         return css;
@@ -4191,7 +4247,9 @@ define('skylark-utils/finder',[
         }
 
         if (tag = cond.tag) {
-            nativeSelector = tag.toUpperCase() + nativeSelector;
+            if (tag !== "*") {
+                nativeSelector = tag.toUpperCase() + nativeSelector;
+            }
         }
 
         if (!nativeSelector) {
@@ -10957,7 +11015,7 @@ define('skylark-utils/widgets',[
 								"attempted to call method '" + options + "'" );
 						}
 
-						if ( !$.isFunction( instance[ options ] ) || options.charAt( 0 ) === "_" ) {
+						if ( !langx.isFunction( instance[ options ] ) || options.charAt( 0 ) === "_" ) {
 							return $.error( "no such method '" + options + "' for " + name +
 								" widget instance" );
 						}
@@ -11001,8 +11059,8 @@ define('skylark-utils/widgets',[
 	}
 
 	var Widget = langx.Evented.inherit({
-	    init :function(options,el) {
-	    	//for supporting init(el,options)
+	    init :function(el,options) {
+	    	//for supporting init(options,el)
 	        if (langx.isHtmlNode(options)) {
 	        	var _t = el,
 	        		options = el;
@@ -11025,7 +11083,7 @@ define('skylark-utils/widgets',[
 	    // The default `tagName` of a View's element is `"div"`.
 	    tagName: 'div',
 
-	    // jQuery delegate for element lookup, scoped to DOM elements within the
+	    // query delegate for element lookup, scoped to DOM elements within the
 	    // current view. This should be preferred to global lookups where possible.
 	    $: function(selector) {
 	      return this.$el.find(selector);

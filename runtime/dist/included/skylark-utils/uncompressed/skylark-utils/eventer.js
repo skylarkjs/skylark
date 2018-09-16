@@ -129,8 +129,7 @@ define([
                 "unload": 14, // UIEvent,
 
                 "wheel": 15 // WheelEvent
-            }
-        ;
+            };
 
         function getEventCtor(type) {
             var idx = NativeEvents[type];
@@ -170,7 +169,7 @@ define([
         };
     })();
 
-    function createProxy(src,props) {
+    function createProxy(src, props) {
         var key,
             proxy = {
                 originalEvent: src
@@ -181,7 +180,7 @@ define([
             }
         }
         if (props) {
-            langx.mixin(proxy,props);
+            langx.mixin(proxy, props);
         }
         return compatible(proxy, src);
     }
@@ -226,7 +225,7 @@ define([
                             args = [e];
                         }
 
-                        langx.each(bindings,function(idx,binding) {
+                        langx.each(bindings, function(idx, binding) {
                             var match = elm;
                             if (e.isImmediatePropagationStopped && e.isImmediatePropagationStopped()) {
                                 return false;
@@ -237,8 +236,8 @@ define([
                                 one = options.one,
                                 data = options.data;
 
-                            if (ns && ns != options.ns && options.ns.indexOf(ns)===-1) {
-                                return ;
+                            if (ns && ns != options.ns && options.ns.indexOf(ns) === -1) {
+                                return;
                             }
                             if (selector) {
                                 match = finder.closest(e.target, selector);
@@ -248,7 +247,7 @@ define([
                                         liveFired: elm
                                     });
                                 } else {
-                                    return ;
+                                    return;
                                 }
                             }
 
@@ -258,7 +257,7 @@ define([
                                 if (related && (related === match || noder.contains(match, related))) {
                                     return;
                                 }
-                            }                           
+                            }
 
                             if (langx.isDefined(data)) {
                                 e.data = data;
@@ -278,17 +277,17 @@ define([
                     };
 
                     var event = self._event;
-/*
-                    if (event in hover) {
-                        var l = self._listener;
-                        self._listener = function(e) {
-                            var related = e.relatedTarget;
-                            if (!related || (related !== this && !noder.contains(this, related))) {
-                                return l.apply(this, arguments);
-                            }
-                        }
-                    }
-*/
+                    /*
+                                        if (event in hover) {
+                                            var l = self._listener;
+                                            self._listener = function(e) {
+                                                var related = e.relatedTarget;
+                                                if (!related || (related !== this && !noder.contains(this, related))) {
+                                                    return l.apply(this, arguments);
+                                                }
+                                            }
+                                        }
+                    */
 
                     if (self._target.addEventListener) {
                         self._target.addEventListener(realEvent(event), self._listener, false);
@@ -388,6 +387,13 @@ define([
             return handler;
         };
 
+    /*   
+     * Remove an event handler for one or more events from the specified element.
+     * @param {HTMLElement} elm  
+     * @param {String} events
+     * @param {String　Optional } selector
+     * @param {Function} callback
+     */
     function off(elm, events, selector, callback) {
         var $this = this
         if (langx.isPlainObject(events)) {
@@ -425,6 +431,15 @@ define([
         return this;
     }
 
+    /*   
+     * Attach an event handler function for one or more events to the selected elements.
+     * @param {HTMLElement} elm  
+     * @param {String} events
+     * @param {String　Optional} selector
+     * @param {Anything Optional} data
+     * @param {Function} callback
+     * @param {Boolean　Optional} one
+     */
     function on(elm, events, selector, data, callback, one) {
 
         var autoRemove, delegator;
@@ -473,12 +488,24 @@ define([
         return this;
     }
 
+    /*   
+     * Attach a handler to an event for the elements. The handler is executed at most once per 
+     * @param {HTMLElement} elm  
+     * @param {String} event
+     * @param {String　Optional} selector
+     * @param {Anything Optional} data
+     * @param {Function} callback
+     */
     function one(elm, events, selector, data, callback) {
         on(elm, events, selector, data, callback, 1);
 
         return this;
     }
 
+    /*   
+     * Prevents propagation and clobbers the default action of the passed event. The same as calling event.preventDefault() and event.stopPropagation(). 
+     * @param {String} event
+     */
     function stop(event) {
         if (window.document.all) {
             event.keyCode = 0;
@@ -489,7 +516,12 @@ define([
         }
         return this;
     }
-
+    /*   
+     * Execute all handlers and behaviors attached to the matched elements for the given event  
+     * @param {String} evented
+     * @param {String} type
+     * @param {Array or PlainObject } args
+     */
     function trigger(evented, type, args) {
         var e;
         if (type instanceof Event) {
@@ -508,7 +540,10 @@ define([
 
         return this;
     }
-
+    /*   
+     * Specify a function to execute when the DOM is fully loaded.  
+     * @param {Function} callback
+     */
     function ready(callback) {
         // need to check if document.body exists for IE as that browser reports
         // document ready when it hasn't yet created the body elm
@@ -537,7 +572,7 @@ define([
         "right": 39,
         "space": 32,
         "tab": 9,
-        "up": 38        
+        "up": 38
     };
     //example:
     //shortcuts(elm).add("CTRL+ALT+SHIFT+X",function(){console.log("test!")});
@@ -612,7 +647,7 @@ define([
     langx.mixin(eventer, {
         create: createEvent,
 
-        keys : keyCodeLookup,
+        keys: keyCodeLookup,
 
         off: off,
 
@@ -626,7 +661,7 @@ define([
 
         shortcuts: shortcuts,
 
-        special : specialEvents,
+        special: specialEvents,
 
         stop: stop,
 

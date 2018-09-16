@@ -82,7 +82,10 @@ define([
         }
         return this;
     }
-
+    /*   
+     * Get the children of the specified node, including text and comment nodes.
+     * @param {HTMLElement} elm
+     */
     function contents(elm) {
         if (nodeName(elm, "iframe")) {
             return elm.contentDocument;
@@ -90,7 +93,13 @@ define([
         return elm.childNodes;
     }
 
-    function createElement(tag, props,parent) {
+    /*   
+     * Create a element and set attributes on it.
+     * @param {HTMLElement} tag
+     * @param {props} props
+     * @param } parent
+     */
+    function createElement(tag, props, parent) {
         var node = document.createElement(tag);
         if (props) {
             for (var name in props) {
@@ -98,11 +107,15 @@ define([
             }
         }
         if (parent) {
-            append(parent,node);
+            append(parent, node);
         }
         return node;
     }
 
+    /*   
+     * Create a DocumentFragment from the HTML fragment.
+     * @param {String} html
+     */
     function createFragment(html) {
         // A special case optimization for a single tag
         html = langx.trim(html);
@@ -125,6 +138,11 @@ define([
         return dom;
     }
 
+    /*   
+     * Create a deep copy of the set of matched elements.
+     * @param {HTMLElement} node
+     * @param {Boolean} deep
+     */
     function clone(node, deep) {
         var self = this,
             clone;
@@ -147,18 +165,35 @@ define([
         }
     }
 
+    /*   
+     * Check to see if a dom node is a descendant of another dom node .
+     * @param {String} node
+     * @param {Node} child
+     */
     function contains(node, child) {
         return isChildOf(child, node);
     }
 
+    /*   
+     * Create a new Text node.
+     * @param {String} text
+     * @param {Node} child
+     */
     function createTextNode(text) {
         return document.createTextNode(text);
     }
 
+    /*   
+     * Get the current document object.
+     */
     function doc() {
         return document;
     }
 
+    /*   
+     * Remove all child nodes of the set of matched elements from the DOM.
+     * @param {Object} node
+     */
     function empty(node) {
         while (node.hasChildNodes()) {
             var child = node.firstChild;
@@ -168,6 +203,7 @@ define([
     }
 
     var fulledEl = null;
+
     function fullScreen(el) {
         if (el === false) {
             browser.exitFullScreen.apply(document);
@@ -175,15 +211,20 @@ define([
             browser.requestFullScreen.apply(el);
             fulledEl = el;
         } else {
-          return (
-            document.fullscreenElement ||
-            document.webkitFullscreenElement ||
-            document.mozFullScreenElement ||
-            document.msFullscreenElement
-          )
+            return (
+                document.fullscreenElement ||
+                document.webkitFullscreenElement ||
+                document.mozFullScreenElement ||
+                document.msFullscreenElement
+            )
         }
     }
 
+    /*   
+     * Get the HTML contents of the first element in the set of matched elements.
+     * @param {HTMLElement} node
+     * @param {String} html
+     */
     function html(node, html) {
         if (html === undefined) {
             return node.innerHTML;
@@ -202,7 +243,13 @@ define([
         }
     }
 
-    function isChildOf(node, parent,directly) {
+    /*   
+     * Check to see if a dom node is a descendant of another dom node.
+     * @param {Node} node
+     * @param {Node} parent
+     * @param {Node} directly
+     */
+    function isChildOf(node, parent, directly) {
         if (directly) {
             return node.parentNode === parent;
         }
@@ -220,10 +267,20 @@ define([
         return false;
     }
 
+    /*   
+     * Check to see if a dom node is a descendant of another dom node.
+     * @param {Node} node
+     * @param {Node} parent
+     * @param {Node} directly
+     */
     function isDoc(node) {
         return node != null && node.nodeType == node.DOCUMENT_NODE
     }
 
+    /*   
+     * Get the owner document object for the specified element.
+     * @param {Node} elm
+     */
     function ownerDoc(elm) {
         if (!elm) {
             return document;
@@ -236,12 +293,21 @@ define([
         return elm.ownerDocument;
     }
 
+    /*   
+     *
+     * @param {Node} elm
+     */
     function ownerWindow(elm) {
         var doc = ownerDoc(elm);
-        return  doc.defaultView || doc.parentWindow;
-    } 
+        return doc.defaultView || doc.parentWindow;
+    }
 
-
+    /*   
+     * insert one or more nodes as the first children of the specified node.
+     * @param {Node} node
+     * @param {Node or ArrayLike} placing
+     * @param {Boolean Optional} copyByClone
+     */
     function prepend(node, placing, copyByClone) {
         var parentNode = node,
             refNode = parentNode.firstChild,
@@ -256,7 +322,10 @@ define([
         return this;
     }
 
-
+    /*   
+     *
+     * @param {Node} elm
+     */
     function offsetParent(elm) {
         var parent = elm.offsetParent || document.body;
         while (parent && !rootNodeRE.test(parent.nodeName) && styler.css(parent, "position") == "static") {
@@ -265,6 +334,11 @@ define([
         return parent;
     }
 
+    /*   
+     *
+     * @param {Node} elm
+     * @param {Node} params
+     */
     function overlay(elm, params) {
         var overlayDiv = createElement("div", params);
         styler.css(overlayDiv, {
@@ -281,24 +355,46 @@ define([
 
     }
 
-
-
+    /*   
+     * Remove the set of matched elements from the DOM.
+     * @param {Node} node
+     */
     function remove(node) {
         if (node && node.parentNode) {
             try {
-               node.parentNode.removeChild(node);
+                node.parentNode.removeChild(node);
             } catch (e) {
-                console.warn("The node is already removed",e);
+                console.warn("The node is already removed", e);
             }
-         }
+        }
         return this;
     }
 
+    function removeChild(node,children) {
+        if (!langx.isArrayLike(children)) {
+            children = [children];
+        }
+        for (var i=0;i<children.length;i++) {
+            node.removeChild(children[i]);
+        }
+
+        return this;
+    }
+    /*   
+     * Replace an old node with the specified node.
+     * @param {Node} node
+     * @param {Node} oldNode
+     */
     function replace(node, oldNode) {
         oldNode.parentNode.replaceChild(node, oldNode);
         return this;
     }
 
+    /*   
+     * Replace an old node with the specified node.
+     * @param {HTMLElement} elm
+     * @param {Node} params
+     */
     function throb(elm, params) {
         params = params || {};
         var self = this,
@@ -350,6 +446,11 @@ define([
         };
     }
 
+    /*   
+     * traverse the specified node and its descendants, perform the callback function on each
+     * @param {Node} node
+     * @param {Function} fn
+     */
     function traverse(node, fn) {
         fn(node)
         for (var i = 0, len = node.childNodes.length; i < len; i++) {
@@ -358,6 +459,10 @@ define([
         return this;
     }
 
+    /*   
+     *
+     * @param {Node} node
+     */
     function reverse(node) {
         var firstChild = node.firstChild;
         for (var i = node.children.length - 1; i > 0; i--) {
@@ -368,6 +473,11 @@ define([
         }
     }
 
+    /*   
+     * Wrap an HTML structure around each element in the set of matched elements.
+     * @param {Node} node
+     * @param {Node} wrapperNode
+     */
     function wrapper(node, wrapperNode) {
         if (langx.isString(wrapperNode)) {
             wrapperNode = this.createFragment(wrapperNode).firstChild;
@@ -376,6 +486,11 @@ define([
         wrapperNode.appendChild(node);
     }
 
+    /*   
+     * Wrap an HTML structure around the content of each element in the set of matched
+     * @param {Node} node
+     * @param {Node} wrapperNode
+     */
     function wrapperInner(node, wrapperNode) {
         var childNodes = slice.call(node.childNodes);
         node.appendChild(wrapperNode);
@@ -385,6 +500,10 @@ define([
         return this;
     }
 
+    /*   
+     * Remove the parents of the set of matched elements from the DOM, leaving the matched
+     * @param {Node} node
+     */
     function unwrap(node) {
         var child, parent = node.parentNode;
         if (parent) {
@@ -398,7 +517,7 @@ define([
     }
 
     langx.mixin(noder, {
-        body : function() {
+        body: function() {
             return document.body;
         },
 
@@ -417,7 +536,7 @@ define([
 
         empty: empty,
 
-        fullScreen : fullScreen,
+        fullScreen: fullScreen,
 
         html: html,
 
@@ -425,13 +544,13 @@ define([
 
         isDoc: isDoc,
 
-        isWindow : langx.isWindow,
+        isWindow: langx.isWindow,
 
-        offsetParent : offsetParent,
-        
+        offsetParent: offsetParent,
+
         ownerDoc: ownerDoc,
 
-        ownerWindow : ownerWindow,
+        ownerWindow: ownerWindow,
 
         after: after,
 
@@ -442,6 +561,8 @@ define([
         append: append,
 
         remove: remove,
+
+        removeChild : removeChild,
 
         replace: replace,
 

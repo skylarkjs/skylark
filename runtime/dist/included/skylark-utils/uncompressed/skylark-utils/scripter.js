@@ -15,7 +15,12 @@ define([
     }
 
     langx.mixin(scripter, {
-
+        /*
+         * Load a script from a url into the document.
+         * @param {} url
+         * @param {} loadedCallback
+         * @param {} errorCallback
+         */
         loadJavaScript: function(url, loadedCallback, errorCallback) {
             var script = scriptsByUrl[url];
             if (!script) {
@@ -72,7 +77,10 @@ define([
             }
             return script.id;
         },
-
+        /*
+         * Remove the specified script from the document.
+         * @param {Number} id
+         */
         deleteJavaScript: function(id) {
             var node = scriptElementsById[id];
             if (node) {

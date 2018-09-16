@@ -35,6 +35,15 @@ define([
 
 
 
+    /*   
+     * Perform a custom animation of a set of CSS properties.
+     * @param {Object} elm  
+     * @param {Number or String} properties
+     * @param {String} ease
+     * @param {Number or String} duration
+     * @param {Function} callback
+     * @param {Number or String} delay
+     */
     function animate(elm, properties, duration, ease, callback, delay) {
         var key,
             cssValues = {},
@@ -158,6 +167,12 @@ define([
         return this;
     }
 
+    /*   
+     * Display the matched elements.
+     * @param {Object} elm  
+     * @param {String} speed
+     * @param {Function} callback
+     */
     function show(elm, speed, callback) {
         styler.show(elm);
         if (speed) {
@@ -172,6 +187,12 @@ define([
     }
 
 
+    /*   
+     * Hide the matched elements.
+     * @param {Object} elm  
+     * @param {String} speed
+     * @param {Function} callback
+     */
     function hide(elm, speed, callback) {
         if (speed) {
             if (!callback && langx.isFunction(speed)) {
@@ -190,6 +211,13 @@ define([
         return this;
     }
 
+    /*   
+     * Get the current vertical position of the scroll bar for the first element in the set of matched elements or set the vertical position of the scroll bar for every matched element.
+     * @param {Object} elm  
+     * @param {Number or String} pos
+     * @param {Number or String} speed
+     * @param {Function} callback
+     */
     function scrollToTop(elm, pos, speed, callback) {
         var scrollFrom = parseInt(elm.scrollTop),
             i = 0,
@@ -209,6 +237,12 @@ define([
         }, runEvery);
     }
 
+    /*   
+     * Display or hide the matched elements.
+     * @param {Object} elm  
+     * @param {Number or String} speed
+     * @param {Function} callback
+     */
     function toggle(elm, speed, callback) {
         if (styler.isInvisible(elm)) {
             show(elm, speed, callback);
@@ -218,11 +252,27 @@ define([
         return this;
     }
 
+    /*   
+     * Adjust the opacity of the matched elements.
+     * @param {Object} elm  
+     * @param {Number or String} speed
+     * @param {Number or String} opacity
+     * @param {String} easing
+     * @param {Function} callback
+     */
     function fadeTo(elm, speed, opacity, easing, callback) {
         animate(elm, { opacity: opacity }, speed, easing, callback);
         return this;
     }
 
+
+    /*   
+     * Display the matched elements by fading them to opaque.
+     * @param {Object} elm  
+     * @param {Number or String} speed
+     * @param {String} easing
+     * @param {Function} callback
+     */
     function fadeIn(elm, speed, easing, callback) {
         var target = styler.css(elm, "opacity");
         if (target > 0) {
@@ -237,6 +287,13 @@ define([
         return this;
     }
 
+    /*   
+     * Hide the matched elements by fading them to transparent.
+     * @param {Object} elm  
+     * @param {Number or String} speed
+     * @param {String} easing
+     * @param {Function} callback
+     */
     function fadeOut(elm, speed, easing, callback) {
         var _elm = elm,
             complete,
@@ -267,6 +324,13 @@ define([
         return this;
     }
 
+    /*   
+     * Display or hide the matched elements by animating their opacity.
+     * @param {Object} elm  
+     * @param {Number or String} speed
+     * @param {String} ceasing
+     * @param {Function} callback
+     */
     function fadeToggle(elm, speed, ceasing, allback) {
         if (styler.isInvisible(elm)) {
             fadeIn(elm, speed, easing, callback);
@@ -276,29 +340,35 @@ define([
         return this;
     }
 
-    function slideDown(elm,duration,callback) {    
-    
+    /*   
+     * Display the matched elements with a sliding motion.
+     * @param {Object} elm  
+     * @param {Number or String} duration
+     * @param {Function} callback
+     */
+    function slideDown(elm, duration, callback) {
+
         // get the element position to restore it then
-        var position = styler.css(elm,'position');
-        
+        var position = styler.css(elm, 'position');
+
         // show element if it is hidden
         show(elm);
-        
+
         // place it so it displays as usually but hidden
-        styler.css(elm,{
+        styler.css(elm, {
             position: 'absolute',
             visibility: 'hidden'
         });
-        
+
         // get naturally height, margin, padding
-        var marginTop = styler.css(elm,'margin-top');
-        var marginBottom = styler.css(elm,'margin-bottom');
-        var paddingTop = styler.css(elm,'padding-top');
-        var paddingBottom = styler.css(elm,'padding-bottom');
-        var height = styler.css(elm,'height');
-        
+        var marginTop = styler.css(elm, 'margin-top');
+        var marginBottom = styler.css(elm, 'margin-bottom');
+        var paddingTop = styler.css(elm, 'padding-top');
+        var paddingBottom = styler.css(elm, 'padding-bottom');
+        var height = styler.css(elm, 'height');
+
         // set initial css for animation
-        styler.css(elm,{
+        styler.css(elm, {
             position: position,
             visibility: 'visible',
             overflow: 'hidden',
@@ -308,43 +378,48 @@ define([
             paddingTop: 0,
             paddingBottom: 0
         });
-        
+
         // animate to gotten height, margin and padding
-        animate(elm,{
+        animate(elm, {
             height: height,
             marginTop: marginTop,
             marginBottom: marginBottom,
             paddingTop: paddingTop,
             paddingBottom: paddingBottom
         }, {
-            duration : duration,
-            complete: function(){
+            duration: duration,
+            complete: function() {
                 if (callback) {
-                    callback.apply(elm); 
+                    callback.apply(elm);
                 }
-            }    
-        }
-    );
-        
+            }
+        });
+
         return this;
     };
 
-    function slideUp(elm,duration,callback) {
+    /*   
+     * Hide the matched elements with a sliding motion.
+     * @param {Object} elm  
+     * @param {Number or String} duration
+     * @param {Function} callback
+     */
+    function slideUp(elm, duration, callback) {
         // active the function only if the element is visible
         if (geom.height(elm) > 0) {
-                   
+
             // get the element position to restore it then
-            var position = styler.css(elm,'position');
-            
+            var position = styler.css(elm, 'position');
+
             // get the element height, margin and padding to restore them then
-            var height = styler.css(elm,'height');
-            var marginTop = styler.css(elm,'margin-top');
-            var marginBottom = styler.css(elm,'margin-bottom');
-            var paddingTop = styler.css(elm,'padding-top');
-            var paddingBottom = styler.css(elm,'padding-bottom');
-            
+            var height = styler.css(elm, 'height');
+            var marginTop = styler.css(elm, 'margin-top');
+            var marginBottom = styler.css(elm, 'margin-bottom');
+            var paddingTop = styler.css(elm, 'padding-top');
+            var paddingBottom = styler.css(elm, 'padding-bottom');
+
             // set initial css for animation
-            styler.css(elm,{
+            styler.css(elm, {
                 visibility: 'visible',
                 overflow: 'hidden',
                 height: height,
@@ -353,21 +428,21 @@ define([
                 paddingTop: paddingTop,
                 paddingBottom: paddingBottom
             });
-            
+
             // animate element height, margin and padding to zero
-            animate(elm,{
+            animate(elm, {
                 height: 0,
                 marginTop: 0,
                 marginBottom: 0,
                 paddingTop: 0,
                 paddingBottom: 0
-            }, { 
+            }, {
                 // callback : restore the element position, height, margin and padding to original values
                 duration: duration,
                 queue: false,
-                complete: function(){
+                complete: function() {
                     hide(elm);
-                    styler.css(elm,{
+                    styler.css(elm, {
                         visibility: 'visible',
                         overflow: 'hidden',
                         height: height,
@@ -377,24 +452,30 @@ define([
                         paddingBottom: paddingBottom
                     });
                     if (callback) {
-                        callback.apply(elm); 
+                        callback.apply(elm);
                     }
                 }
             });
         }
         return this;
     };
-    
-    /* SlideToggle */
-    function slideToggle(elm,duration,callback) {
-    
+
+
+    /*   
+     * Display or hide the matched elements with a sliding motion.
+     * @param {Object} elm  
+     * @param {Number or String} duration
+     * @param {Function} callback
+     */
+    function slideToggle(elm, duration, callback) {
+
         // if the element is hidden, slideDown !
         if (geom.height(elm) == 0) {
-            slideDown(elm,duration,callback);
-        } 
+            slideDown(elm, duration, callback);
+        }
         // if the element is visible, slideUp !
         else {
-            slideUp(elm,duration,callback);
+            slideUp(elm, duration, callback);
         }
         return this;
     };
@@ -421,9 +502,9 @@ define([
         hide: hide,
         scrollToTop: scrollToTop,
 
-        slideDown : slideDown,
-        slideToggle : slideToggle,
-        slideUp : slideUp,
+        slideDown: slideDown,
+        slideToggle: slideToggle,
+        slideUp: slideUp,
         show: show,
         toggle: toggle
     });

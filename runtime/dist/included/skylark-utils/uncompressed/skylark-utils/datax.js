@@ -23,6 +23,12 @@ define([
             'frameborder': 'frameBorder',
             'contenteditable': 'contentEditable'
         };
+    /*
+     * Set property values
+     * @param {Object} elm  
+     * @param {String} name
+     * @param {String} value
+     */
 
     function setAttribute(elm, name, value) {
         if (value == null) {
@@ -32,9 +38,16 @@ define([
         }
     }
 
-    function aria(elm,name,value) {
-        return this.attr(elm, "aria-"+name, value);
+    function aria(elm, name, value) {
+        return this.attr(elm, "aria-" + name, value);
     }
+
+    /*
+     * Set property values
+     * @param {Object} elm  
+     * @param {String} name
+     * @param {String} value
+     */
 
     function attr(elm, name, value) {
         if (value === undefined) {
@@ -54,7 +67,12 @@ define([
         }
     }
 
-    // Read all "data-*" attributes from a node
+
+    /*
+     *  Read all "data-*" attributes from a node
+     * @param {Object} elm  
+     */
+
     function _attributeData(elm) {
         var store = {}
         langx.each(elm.attributes || [], function(i, attr) {
@@ -99,6 +117,12 @@ define([
     }
 
 
+    /*
+     * xxx
+     * @param {Object} elm  
+     * @param {String} name
+     * @param {String} value
+     */
     function data(elm, name, value) {
 
         if (value === undefined) {
@@ -114,7 +138,11 @@ define([
             _setData(elm, name, value);
             return this;
         }
-    }
+    } +
+    /*
+     * Remove from the element all items that have not yet been run. 
+     * @param {Object} elm  
+     */
 
     function cleanData(elm) {
         if (elm["_$_store"]) {
@@ -122,6 +150,11 @@ define([
         }
     }
 
+    /*
+     * Remove a previously-stored piece of data. 
+     * @param {Object} elm  
+     * @param {Array} names
+     */
     function removeData(elm, names) {
         if (langx.isString(names)) {
             names = names.split(/\s+/);
@@ -133,12 +166,23 @@ define([
         return this;
     }
 
+    /*
+     * xxx 
+     * @param {Object} elm  
+     * @param {Array} names
+     */
     function pluck(nodes, property) {
         return map.call(nodes, function(elm) {
             return elm[property];
         });
     }
 
+    /*
+     * Get or set the value of an property for the specified element.
+     * @param {Object} elm  
+     * @param {String} name
+     * @param {String} value
+     */
     function prop(elm, name, value) {
         name = propMap[name] || name;
         if (value === undefined) {
@@ -149,6 +193,11 @@ define([
         }
     }
 
+    /*
+     * remove Attributes  
+     * @param {Object} elm  
+     * @param {String} name
+     */
     function removeAttr(elm, name) {
         name.split(' ').forEach(function(attr) {
             setAttribute(elm, attr);
@@ -156,6 +205,12 @@ define([
         return this;
     }
 
+
+    /*
+     * Remove the value of a property for the first element in the set of matched elements or set one or more properties for every matched element.
+     * @param {Object} elm  
+     * @param {String} name
+     */
     function removeProp(elm, name) {
         name.split(' ').forEach(function(prop) {
             delete elm[prop];
@@ -163,6 +218,11 @@ define([
         return this;
     }
 
+    /*   
+     * Get the combined text contents of each element in the set of matched elements, including their descendants, or set the text contents of the matched elements.  
+     * @param {Object} elm  
+     * @param {String} txt
+     */
     function text(elm, txt) {
         if (txt === undefined) {
             return elm.textContent;
@@ -172,6 +232,11 @@ define([
         }
     }
 
+    /*   
+     * Get the current value of the first element in the set of matched elements or set the value of every matched element.
+     * @param {Object} elm  
+     * @param {String} value
+     */
     function val(elm, value) {
         if (value === undefined) {
             if (elm.multiple) {
@@ -195,11 +260,11 @@ define([
 
     langx.mixin(datax, {
         aria: aria,
-        
+
         attr: attr,
 
-        cleanData : cleanData,
-        
+        cleanData: cleanData,
+
         data: data,
 
         pluck: pluck,

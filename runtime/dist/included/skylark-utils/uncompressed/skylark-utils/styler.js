@@ -30,6 +30,11 @@ define([
     }
 
     // access className property while respecting SVGAnimatedString
+    /*
+     * Adds the specified class(es) to each element in the set of matched elements.
+     * @param {HTMLElement} node
+     * @param {String} value
+     */
     function className(node, value) {
         var klass = node.className || '',
             svg = klass && klass.baseVal !== undefined
@@ -38,6 +43,15 @@ define([
         svg ? (klass.baseVal = value) : (node.className = value)
     }
 
+    function disabled(elm, value ) {
+        if (arguments.length < 2) {
+            return !!this.dom.disabled;
+        }
+
+        elm.disabled = value;
+
+        return this;
+    }
 
     var elementDisplay = {};
 
@@ -53,7 +67,10 @@ define([
         }
         return elementDisplay[nodeName]
     }
-
+    /*
+     * Display the matched elements.
+     * @param {HTMLElement} elm
+     */
     function show(elm) {
         styler.css(elm, "display", "");
         if (styler.css(elm, "display") == "none") {
@@ -66,11 +83,20 @@ define([
         return styler.css(elm, "display") == "none" || styler.css(elm, "opacity") == 0;
     }
 
+    /*
+     * Hide the matched elements.
+     * @param {HTMLElement} elm
+     */
     function hide(elm) {
         styler.css(elm, "display", "none");
         return this;
     }
 
+    /*
+     * Adds the specified class(es) to each element in the set of matched elements.
+     * @param {HTMLElement} elm
+     * @param {String} name
+     */
     function addClass(elm, name) {
         if (!name) return this
         var cls = className(elm),
@@ -91,7 +117,12 @@ define([
 
         return this;
     }
-
+    /*
+     * Get the value of a computed style property for the first element in the set of matched elements or set one or more CSS properties for every matched element.
+     * @param {HTMLElement} elm
+     * @param {String} property
+     * @param {Any} value
+     */
     function css(elm, property, value) {
         if (arguments.length < 3) {
             var computedStyle,
@@ -131,12 +162,21 @@ define([
         return this;
     }
 
-
+    /*
+     * Determine whether any of the matched elements are assigned the given class.
+     * @param {HTMLElement} elm
+     * @param {String} name
+     */
     function hasClass(elm, name) {
         var re = classRE(name);
         return elm.className && elm.className.match(re);
     }
 
+    /*
+     * Remove a single class, multiple classes, or all classes from each element in the set of matched elements.
+     * @param {HTMLElement} elm
+     * @param {String} name
+     */
     function removeClass(elm, name) {
         if (name) {
             var cls = className(elm),
@@ -157,12 +197,18 @@ define([
 
             className(elm, cls.trim());
         } else {
-            className(elm,"");
+            className(elm, "");
         }
 
         return this;
     }
 
+    /*
+     * Add or remove one or more classes from the specified element.
+     * @param {HTMLElement} elm
+     * @param {String} name
+     * @param {} when
+     */
     function toggleClass(elm, name, when) {
         var self = this;
         name.split(/\s+/g).forEach(function(klass) {
@@ -185,13 +231,14 @@ define([
 
     langx.mixin(styler, {
         autocssfix: false,
-        cssHooks : {
+        cssHooks: {
 
         },
-        
+
         addClass: addClass,
         className: className,
         css: css,
+        disabled : disabled,        
         hasClass: hasClass,
         hide: hide,
         isInvisible: isInvisible,

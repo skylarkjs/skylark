@@ -4,7 +4,7 @@ define([
     "./datax",
     "./eventer",
     "./styler"
-], function(skylark, langx, datax, eventer,styler) {
+], function(skylark, langx, datax, eventer, styler) {
     var concat = Array.prototype.concat,
         on = eventer.on,
         attr = eventer.attr,
@@ -16,8 +16,8 @@ define([
         maxFileSize = 1 / 0;
 
 
-    var webentry = (function(){
-        function  one(entry, path) {
+    var webentry = (function() {
+        function one(entry, path) {
             var d = new Deferred(),
                 onError = function(e) {
                     d.reject(e);
@@ -25,17 +25,17 @@ define([
 
             path = path || '';
             if (entry.isFile) {
-                entry.file(function (file) {
+                entry.file(function(file) {
                     file.relativePath = path;
                     d.resolve(file);
                 }, onError);
             } else if (entry.isDirectory) {
                 var dirReader = entry.createReader();
-                dirReader.readEntries(function (entries) {
+                dirReader.readEntries(function(entries) {
                     all(
                         entries,
                         path + entry.name + '/'
-                    ).then(function (files) {
+                    ).then(function(files) {
                         d.resolve(files);
                     }).catch(onError);
                 }, onError);
@@ -49,29 +49,36 @@ define([
 
         function all(entries, path) {
             return Deferred.all(
-                langx.map(entries, function (entry) {
+                langx.map(entries, function(entry) {
                     return one(entry, path);
                 })
-            ).then(function(){
-                return concat.apply([],arguments);
+            ).then(function() {
+                return concat.apply([], arguments);
             });
         }
 
         return {
-            one : one,
-            all : all
+            one: one,
+            all: all
         };
     })();
 
     function dataURLtoBlob(dataurl) {
-        var arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
-            bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
-        while(n--){
+        var arr = dataurl.split(','),
+            mime = arr[0].match(/:(.*?);/)[1],
+            bstr = atob(arr[1]),
+            n = bstr.length,
+            u8arr = new Uint8Array(n);
+        while (n--) {
             u8arr[n] = bstr.charCodeAt(n);
         }
-        return new Blob([u8arr], {type:mime});
+        return new Blob([u8arr], { type: mime });
     }
-
+    /*
+     * Make the specified element to could accept HTML5 file drag and drop.
+     * @param {HTMLElement} elm
+     * @param {PlainObject} params
+     */
     function dropzone(elm, params) {
         params = params || {};
         var hoverClass = params.hoverClass || "dropzone",
@@ -79,38 +86,38 @@ define([
 
         var enterdCount = 0;
         on(elm, "dragenter", function(e) {
-            if (e.dataTransfer && e.dataTransfer.types.indexOf("Files")>-1) {
+            if (e.dataTransfer && e.dataTransfer.types.indexOf("Files") > -1) {
                 eventer.stop(e);
-                enterdCount ++;
-                styler.addClass(elm,hoverClass)
+                enterdCount++;
+                styler.addClass(elm, hoverClass)
             }
         });
 
         on(elm, "dragover", function(e) {
-            if (e.dataTransfer && e.dataTransfer.types.indexOf("Files")>-1) {
+            if (e.dataTransfer && e.dataTransfer.types.indexOf("Files") > -1) {
                 eventer.stop(e);
             }
         });
 
         on(elm, "dragleave", function(e) {
-            if (e.dataTransfer && e.dataTransfer.types.indexOf("Files")>-1) {
+            if (e.dataTransfer && e.dataTransfer.types.indexOf("Files") > -1) {
                 enterdCount--
-                if (enterdCount==0) {
-                    styler.removeClass(elm,hoverClass);
+                if (enterdCount == 0) {
+                    styler.removeClass(elm, hoverClass);
                 }
             }
         });
 
         on(elm, "drop", function(e) {
-            if (e.dataTransfer && e.dataTransfer.types.indexOf("Files")>-1) {
-                styler.removeClass(elm,hoverClass)
+            if (e.dataTransfer && e.dataTransfer.types.indexOf("Files") > -1) {
+                styler.removeClass(elm, hoverClass)
                 eventer.stop(e);
                 if (droppedCallback) {
                     var items = e.dataTransfer.items;
                     if (items && items.length && (items[0].webkitGetAsEntry ||
-                        items[0].getAsEntry)) {
+                            items[0].getAsEntry)) {
                         webentry.all(
-                            langx.map(items, function (item) {
+                            langx.map(items, function(item) {
                                 if (item.webkitGetAsEntry) {
                                     return item.webkitGetAsEntry();
                                 }
@@ -119,7 +126,7 @@ define([
                         ).then(droppedCallback);
                     } else {
                         droppedCallback(e.dataTransfer.files);
-                    }                    
+                    }
                 }
             }
         });
@@ -127,17 +134,17 @@ define([
         return this;
     }
 
-    function pastezone(elm,params) {
+    function pastezone(elm, params) {
         params = params || {};
         var hoverClass = params.hoverClass || "pastezone",
             pastedCallback = params.pasted;
 
         on(elm, "paste", function(e) {
             var items = e.originalEvent && e.originalEvent.clipboardData &&
-                    e.originalEvent.clipboardData.items,
+                e.originalEvent.clipboardData.items,
                 files = [];
             if (items && items.length) {
-                langx.each(items, function (index, item) {
+                langx.each(items, function(index, item) {
                     var file = item.getAsFile && item.getAsFile();
                     if (file) {
                         files.push(file);
@@ -151,7 +158,11 @@ define([
 
         return this;
     }
-   
+    /*
+     * Make the specified element to pop-up the file selection dialog box when clicked , and read the contents the files selected from client file system by user.
+     * @param {HTMLElement} elm
+     * @param {PlainObject} params
+     */
     function picker(elm, params) {
         on(elm, "click", function(e) {
             e.preventDefault();
@@ -162,7 +173,7 @@ define([
 
     function select(params) {
         params = params || {};
-        var directory = params.directory || false, 
+        var directory = params.directory || false,
             multiple = params.multiple || false,
             fileSelected = params.picked;
         if (!fileInput) {
@@ -205,7 +216,7 @@ define([
 
     function upload(params) {
         var xoptions = langx.mixin({
-            contentRange : null, //
+            contentRange: null, //
 
             // The parameter name for the file form data (the request argument name).
             // If undefined or empty, the name property of the file input field is
@@ -266,10 +277,10 @@ define([
 
             // Translation function, gets the message key to be translated
             // and an object with context specific data as arguments:
-            i18n: function (message, context) {
+            i18n: function(message, context) {
                 message = this.messages[message] || message.toString();
                 if (context) {
-                    langx.each(context, function (key, value) {
+                    langx.each(context, function(key, value) {
                         message = message.replace('{' + key + '}', value);
                     });
                 }
@@ -281,7 +292,7 @@ define([
             // value properties, a function returning such an array, a FormData
             // object (for XHR file uploads), or a simple object.
             // The form of the first fileInput is given as parameter to the function:
-            formData: function (form) {
+            formData: function(form) {
                 return form.serializeArray();
             },
 
@@ -301,13 +312,13 @@ define([
             // data.submit() returns a Promise object and allows to attach additional
             // handlers using jQuery's Deferred callbacks:
             // data.submit().done(func).fail(func).always(func);
-            add: function (e, data) {
+            add: function(e, data) {
                 if (e.isDefaultPrevented()) {
                     return false;
                 }
                 if (data.autoUpload || (data.autoUpload !== false &&
                         $(this).fileupload('option', 'autoUpload'))) {
-                    data.process().done(function () {
+                    data.process().done(function() {
                         data.submit();
                     });
                 }
@@ -371,14 +382,15 @@ define([
             processData: false,
             contentType: false,
             cache: false
-        },params);
+        }, params);
 
-        var blobSlice = function () {
-            var slice = Blob.prototype.slice || Blob.prototype.webkitSlice || Blob.prototype.mozSlice;
-            return slice.apply(this, arguments);
-        },ajax = function(data) {
-            return langx.Xhr.request(data.url,data);
-        };
+        var blobSlice = function() {
+                var slice = Blob.prototype.slice || Blob.prototype.webkitSlice || Blob.prototype.mozSlice;
+                return slice.apply(this, arguments);
+            },
+            ajax = function(data) {
+                return langx.Xhr.request(data.url, data);
+            };
 
         function initDataSettings(o) {
             o.type = o.type || "POST";
@@ -398,7 +410,7 @@ define([
                 // Ignore non-multipart setting if not supported:
                 multipart = o.multipart,
                 paramName = langx.type(o.paramName) === 'array' ?
-                    o.paramName[0] : o.paramName;
+                o.paramName[0] : o.paramName;
 
             o.headers = langx.mixin({}, o.headers);
             if (o.contentRange) {
@@ -414,7 +426,7 @@ define([
                 if (o.blob) {
                     formData.append(paramName, o.blob, file.name);
                 } else {
-                    langx.each(o.files, function (index, file) {
+                    langx.each(o.files, function(index, file) {
                         // This check allows the tests to run with
                         // dummy objects:
                         formData.append(
@@ -423,8 +435,8 @@ define([
                             file,
                             file.uploadName || file.name
                         );
-                    });                    
-                }                
+                    });
+                }
                 o.data = formData;
             }
             // Blob reference is not needed anymore, free memory:
@@ -433,7 +445,7 @@ define([
 
         function getTotal(files) {
             var total = 0;
-            langx.each(files, function (index, file) {
+            langx.each(files, function(index, file) {
                 total += file.size || 1;
             });
             return total;
@@ -443,7 +455,7 @@ define([
             var range = jqXHR.getResponseHeader('Range'),
                 parts = range && range.split('-'),
                 upperBytesPos = parts && parts.length > 1 &&
-                    parseInt(parts[1], 10);
+                parseInt(parts[1], 10);
             return upperBytesPos && upperBytesPos + 1;
         }
 
@@ -464,7 +476,7 @@ define([
             this.timestamp = ((Date.now) ? Date.now() : (new Date()).getTime());
             this.loaded = 0;
             this.bitrate = 0;
-            this.getBitrate = function (now, loaded, interval) {
+            this.getBitrate = function(now, loaded, interval) {
                 var timeDiff = now - this.timestamp;
                 if (!this.bitrate || !interval || timeDiff > interval) {
                     this.bitrate = (loaded - this.loaded) * (1000 / timeDiff) * 8;
@@ -488,7 +500,7 @@ define([
                 jqXHR,
                 upload;
             if (!(slice && (ub || mcs < fs)) ||
-                    options.data) {
+                options.data) {
                 return false;
             }
             if (testOnly) {
@@ -498,12 +510,11 @@ define([
                 file.error = options.i18n('uploadedBytes');
                 return this._getXHRPromise(
                     false,
-                    options.context,
-                    [null, 'error', file.error]
+                    options.context, [null, 'error', file.error]
                 );
             }
             // The chunk upload method:
-            upload = function () {
+            upload = function() {
                 // Clone the options object for each chunk upload:
                 var o = langx.mixin({}, options),
                     currentLoaded = o._progress.loaded;
@@ -523,7 +534,7 @@ define([
                 initXHRData(o);
                 // Add progress listeners for this chunk upload:
                 //initProgressListener(o);
-                jqXHR = $.ajax(o).done(function (result, textStatus, jqXHR) {
+                jqXHR = $.ajax(o).done(function(result, textStatus, jqXHR) {
                         ub = getUploadedBytes(jqXHR) ||
                             (ub + o.chunkSize);
                         // Create a progress event if no final progress event
@@ -548,31 +559,29 @@ define([
                             upload();
                         } else {
                             dfd.resolveWith(
-                                o.context,
-                                [result, textStatus, jqXHR]
+                                o.context, [result, textStatus, jqXHR]
                             );
                         }
                     })
-                    .fail(function (jqXHR, textStatus, errorThrown) {
+                    .fail(function(jqXHR, textStatus, errorThrown) {
                         o.jqXHR = jqXHR;
                         o.textStatus = textStatus;
                         o.errorThrown = errorThrown;
                         //that._trigger('chunkfail', null, o);
                         //that._trigger('chunkalways', null, o);
                         dfd.rejectWith(
-                            o.context,
-                            [jqXHR, textStatus, errorThrown]
+                            o.context, [jqXHR, textStatus, errorThrown]
                         );
                     });
             };
             //this._enhancePromise(promise);
-            promise.abort = function () {
+            promise.abort = function() {
                 return jqXHR.abort();
             };
             upload();
             return promise;
         }
-        
+
         initDataSettings(xoptions);
 
         xoptions._bitrateTimer = new BitrateTimer();
@@ -588,22 +597,22 @@ define([
         return filer;
     };
 
-    langx.mixin(filer , {
+    langx.mixin(filer, {
         dropzone: dropzone,
 
         pastezone: pastezone,
 
         picker: picker,
 
-        select : select,
+        select: select,
 
-        upload  : upload,
+        upload: upload,
 
-        readFile : function(file,params) {
+        readFile: function(file, params) {
             params = params || {};
             var d = new Deferred,
                 reader = new FileReader();
-            
+
             reader.onload = function(evt) {
                 d.resolve(evt.target.result);
             };
@@ -615,11 +624,11 @@ define([
                     alert('error code: ' + code);
                 }
             };
-            
-            if (params.asArrayBuffer){
+
+            if (params.asArrayBuffer) {
                 reader.readAsArrayBuffer(file);
             } else if (params.asDataUrl) {
-                reader.readAsDataURL(file);                
+                reader.readAsDataURL(file);
             } else if (params.asText) {
                 reader.readAsText(file);
             } else {
@@ -628,13 +637,13 @@ define([
 
             return d.promise;
         },
-         
-        writeFile : function(data,name) {
-            if (window.navigator.msSaveBlob) { 
-               if (langx.isString(data)) {
-                   data = dataURItoBlob(data);
-               }
-               window.navigator.msSaveBlob(data, name);
+
+        writeFile: function(data, name) {
+            if (window.navigator.msSaveBlob) {
+                if (langx.isString(data)) {
+                    data = dataURItoBlob(data);
+                }
+                window.navigator.msSaveBlob(data, name);
             } else {
                 var a = document.createElement('a');
                 if (data instanceof Blob) {
@@ -643,7 +652,7 @@ define([
                 a.href = data;
                 a.setAttribute('download', name || 'noname');
                 a.dispatchEvent(new CustomEvent('click'));
-            }              
+            }
         }
 
     });

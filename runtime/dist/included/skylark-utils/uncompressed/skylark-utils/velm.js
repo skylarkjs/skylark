@@ -13,7 +13,9 @@ define([
 ], function(skylark, langx, datax, dnd, eventer, filer, finder, fx, geom, noder, styler) {
     var map = Array.prototype.map,
         slice = Array.prototype.slice;
-
+    /*
+     * VisualElement is a skylark class type wrapping a visule dom node,provides a number of prototype methods and supports chain calls.
+     */
     var VisualElement = langx.klass({
         klassName: "VisualElement",
 
@@ -24,7 +26,9 @@ define([
             this.domNode = node;
         }
     });
-
+    /*
+     * the VisualElement object wrapping document.body
+     */
     var root = new VisualElement(document.body),
         velm = function(node) {
             if (node) {
@@ -33,7 +37,11 @@ define([
                 return root;
             }
         };
-
+    /*
+     * Extend VisualElement prototype with wrapping the specified methods.
+     * @param {ArrayLike} fn
+     * @param {Object} context
+     */
     function _delegator(fn, context) {
         return function() {
             var self = this,
@@ -75,7 +83,7 @@ define([
 
         VisualElement: VisualElement,
 
-        partial : function(name,fn) {
+        partial: function(name, fn) {
             var props = {};
 
             props[name] = fn;
@@ -146,6 +154,10 @@ define([
         "siblings"
     ], finder);
 
+    /*
+     * find a dom element matched by the specified selector.
+     * @param {String} selector
+     */
     velm.find = function(selector) {
         if (selector === "body") {
             return this.root;
@@ -213,6 +225,7 @@ define([
         "ownerDoc",
         "prepend",
         "remove",
+        "removeChild",
         "replace",
         "reverse",
         "throb",
@@ -234,6 +247,42 @@ define([
         "show",
         "toggleClass"
     ], styler);
-    
+
+    // properties
+
+    var properties = [ 'position', 'left', 'top', 'right', 'bottom', 'width', 'height', 'border', 'borderLeft',
+    'borderTop', 'borderRight', 'borderBottom', 'borderColor', 'display', 'overflow', 'margin', 'marginLeft', 'marginTop', 'marginRight', 'marginBottom', 'padding', 'paddingLeft', 'paddingTop', 'paddingRight', 'paddingBottom', 'color',
+    'background', 'backgroundColor', 'opacity', 'fontSize', 'fontWeight', 'textAlign', 'textDecoration', 'textTransform', 'cursor', 'zIndex' ];
+
+    properties.forEach( function ( property ) {
+
+        var method = property;
+
+        Velm.prototype[ method ] = function (value) {
+
+            this.css( property, value );
+
+            return this;
+
+        };
+
+    });
+
+    // events
+    var events = [ 'keyUp', 'keyDown', 'mouseOver', 'mouseOut', 'click', 'dblClick', 'change' ];
+
+    events.forEach( function ( event ) {
+
+        var method = event;
+
+        Velm.prototype[ method ] = function ( callback ) {
+
+            this.on( event.toLowerCase(), callback);
+
+            return this;
+        };
+
+    });
+
     return skylark.velm = velm;
 });

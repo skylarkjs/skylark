@@ -250,7 +250,7 @@ define([
 
     var pseudos = local.pseudos = {
         // custom pseudos
-        "button": function( elem ) {
+        "button": function(elem) {
             var name = elem.nodeName.toLowerCase();
             return name === "input" && elem.type === "button" || name === "button";
         },
@@ -275,7 +275,7 @@ define([
             return (idx == value);
         },
 
-        'even' : function(elm, idx, nodes, value) {
+        'even': function(elm, idx, nodes, value) {
             return (idx % 2) === 0;
         },
 
@@ -296,16 +296,16 @@ define([
         },
 
         // Element/input types
-        "header": function( elem ) {
-            return rheader.test( elem.nodeName );
+        "header": function(elem) {
+            return rheader.test(elem.nodeName);
         },
 
         'hidden': function(elm) {
             return !local.pseudos["visible"](elm);
         },
 
-        "input": function( elem ) {
-            return rinputs.test( elem.nodeName );
+        "input": function(elem) {
+            return rinputs.test(elem.nodeName);
         },
 
         'last': function(elm, idx, nodes) {
@@ -320,10 +320,14 @@ define([
             return !matches(elm, sel);
         },
 
-        'odd' : function(elm, idx, nodes, value) {
+        'odd': function(elm, idx, nodes, value) {
             return (idx % 2) === 1;
         },
 
+        /*   
+         * Get the parent of each element in the current set of matched elements.
+         * @param {Object} elm
+         */
         'parent': function(elm) {
             return !!elm.parentNode;
         },
@@ -332,7 +336,7 @@ define([
             return !!elm.selected;
         },
 
-        'text': function(elm){
+        'text': function(elm) {
             return elm.type === "text";
         },
 
@@ -341,7 +345,7 @@ define([
         }
     };
 
-    ["first","eq","last"].forEach(function(item){
+    ["first", "eq", "last"].forEach(function(item) {
         pseudos[item].isArrayFilter = true;
     });
 
@@ -349,26 +353,35 @@ define([
 
     pseudos["nth"] = pseudos["eq"];
 
-    function createInputPseudo( type ) {
-        return function( elem ) {
+    function createInputPseudo(type) {
+        return function(elem) {
             var name = elem.nodeName.toLowerCase();
             return name === "input" && elem.type === type;
         };
     }
 
-    function createButtonPseudo( type ) {
-        return function( elem ) {
+    function createButtonPseudo(type) {
+        return function(elem) {
             var name = elem.nodeName.toLowerCase();
             return (name === "input" || name === "button") && elem.type === type;
         };
     }
 
     // Add button/input type pseudos
-    for ( i in { radio: true, checkbox: true, file: true, password: true, image: true } ) {
-        pseudos[ i ] = createInputPseudo( i );
+    for (i in {
+        radio: true,
+        checkbox: true,
+        file: true,
+        password: true,
+        image: true
+    }) {
+        pseudos[i] = createInputPseudo(i);
     }
-    for ( i in { submit: true, reset: true } ) {
-        pseudos[ i ] = createButtonPseudo( i );
+    for (i in {
+        submit: true,
+        reset: true
+    }) {
+        pseudos[i] = createButtonPseudo(i);
     }
 
 
@@ -393,7 +406,7 @@ define([
         if (attributes = cond.attributes) {
             for (var i = 0; i < attributes.length; i++) {
                 if (attributes[i].operator) {
-                    nativeSelector += ("[" + attributes[i].key + attributes[i].operator + JSON.stringify(attributes[i].value)  +"]");
+                    nativeSelector += ("[" + attributes[i].key + attributes[i].operator + JSON.stringify(attributes[i].value) + "]");
                 } else {
                     nativeSelector += ("[" + attributes[i].key + "]");
                 }
@@ -429,7 +442,7 @@ define([
 
     };
 
-    local.check = function(node, cond, idx, nodes,arrayFilte) {
+    local.check = function(node, cond, idx, nodes, arrayFilte) {
         var tag,
             id,
             classes,
@@ -463,7 +476,7 @@ define([
             }
 
             if (attributes = cond.attributes) {
-                 for (i = attributes.length; i--;) {
+                for (i = attributes.length; i--;) {
                     part = attributes[i];
                     if (part.operator ? !part.test(node.getAttribute(part.key)) : !node.hasAttribute(part.key)) return false;
                 }
@@ -491,14 +504,14 @@ define([
 
     local.match = function(node, selector) {
 
-        var parsed ;
+        var parsed;
 
         if (langx.isString(selector)) {
             parsed = local.Slick.parse(selector);
         } else {
-            parsed = selector;            
+            parsed = selector;
         }
-        
+
         if (!parsed) {
             return true;
         }
@@ -512,7 +525,7 @@ define([
             (currentExpression = expressions[i]); i++) {
             if (currentExpression.length == 1) {
                 var exp = currentExpression[0];
-                if (this.check(node,exp)) {
+                if (this.check(node, exp)) {
                     return true;
                 }
                 simpleExpCounter++;
@@ -534,14 +547,14 @@ define([
     };
 
 
-    local.filterSingle = function(nodes, exp){
+    local.filterSingle = function(nodes, exp) {
         var matchs = filter.call(nodes, function(node, idx) {
-            return local.check(node, exp, idx, nodes,false);
-        });    
+            return local.check(node, exp, idx, nodes, false);
+        });
 
         matchs = filter.call(matchs, function(node, idx) {
-            return local.check(node, exp, idx, matchs,true);
-        }); 
+            return local.check(node, exp, idx, matchs, true);
+        });
         return matchs;
     };
 
@@ -551,7 +564,7 @@ define([
         if (langx.isString(selector)) {
             parsed = local.Slick.parse(selector);
         } else {
-            return local.filterSingle(nodes,selector);           
+            return local.filterSingle(nodes, selector);
         }
 
         // simple (single) selectors
@@ -564,7 +577,7 @@ define([
             if (currentExpression.length == 1) {
                 var exp = currentExpression[0];
 
-                var matchs = local.filterSingle(nodes,exp);  
+                var matchs = local.filterSingle(nodes, exp);
 
                 ret = langx.uniq(ret.concat(matchs));
             } else {
@@ -573,8 +586,8 @@ define([
         }
 
         return ret;
- 
-    };    
+
+    };
 
     local.combine = function(elm, bit) {
         var op = bit.combinator,
@@ -643,14 +656,14 @@ define([
                         nodes = filter.call(nodes, function(item, idx) {
                             return local.check(item, {
                                 pseudos: [divided.customPseudos[i]]
-                            }, idx, nodes,false)
+                            }, idx, nodes, false)
                         });
 
                         nodes = filter.call(nodes, function(item, idx) {
                             return local.check(item, {
                                 pseudos: [divided.customPseudos[i]]
-                            }, idx, nodes,true)
-                        });                        
+                            }, idx, nodes, true)
+                        });
                     }
                 }
                 break;
@@ -690,7 +703,12 @@ define([
         return founds;
     }
 
-
+    /*
+     * Get the nearest ancestor of the specified element,optional matched by a selector.
+     * @param {HTMLElement} node
+     * @param {String Optional } selector
+     * @param {Object} root
+     */
     function ancestor(node, selector, root) {
         var rootIsSelector = root && langx.isString(root);
         while (node = node.parentNode) {
@@ -699,45 +717,60 @@ define([
             }
             if (root) {
                 if (rootIsSelector) {
-                    if (matches(node,root)) {
+                    if (matches(node, root)) {
                         break;
                     }
                 } else if (node == root) {
                     break;
                 }
-            } 
+            }
         }
         return null;
     }
 
-    function ancestors(node, selector,root) {
+    /*
+     * Get the ancestors of the specitied element , optionally filtered by a selector.
+     * @param {HTMLElement} node
+     * @param {String Optional } selector
+     * @param {Object} root
+     */
+    function ancestors(node, selector, root) {
         var ret = [],
             rootIsSelector = root && langx.isString(root);
         while ((node = node.parentNode) && (node.nodeType !== 9)) {
             ret.push(node);
             if (root) {
                 if (rootIsSelector) {
-                    if (matches(node,root)) {
+                    if (matches(node, root)) {
                         break;
                     }
                 } else if (node == root) {
                     break;
                 }
-            } 
+            }
 
         }
 
         if (selector) {
-            ret = local.filter(ret,selector);
+            ret = local.filter(ret, selector);
         }
         return ret;
     }
 
+    /*
+     * Returns a element by its ID.
+     * @param {string} id
+     */
     function byId(id, doc) {
         doc = doc || noder.doc();
         return doc.getElementById(id);
     }
 
+    /*
+     * Get the children of the specified element , optionally filtered by a selector.
+     * @param {string} node
+     * @param {String optionlly} selector
+     */
     function children(node, selector) {
         var childNodes = node.childNodes,
             ret = [];
@@ -748,7 +781,7 @@ define([
             }
         }
         if (selector) {
-            ret = local.filter(ret,selector);
+            ret = local.filter(ret, selector);
         }
         return ret;
     }
@@ -761,6 +794,11 @@ define([
         return node;
     }
 
+    /*
+     * Get the decendant of the specified element , optionally filtered by a selector.
+     * @param {HTMLElement} elm
+     * @param {String optionlly} selector
+     */
     function descendants(elm, selector) {
         // Selector
         try {
@@ -771,6 +809,11 @@ define([
         return local.query(elm, selector);
     }
 
+    /*
+     * Get the nearest decendent of the specified element,optional matched by a selector.
+     * @param {HTMLElement} elm
+     * @param {String optionlly} selector
+     */
     function descendant(elm, selector) {
         // Selector
         try {
@@ -786,19 +829,29 @@ define([
         }
     }
 
-    function find(elm,selector) {
+    /*
+     * Get the descendants of each element in the current set of matched elements, filtered by a selector, jQuery object, or element.
+     * @param {HTMLElement} elm
+     * @param {String optionlly} selector
+     */
+    function find(elm, selector) {
         if (!selector) {
             selector = elm;
             elm = document.body;
         }
-        if (matches(elm,selector)) {
+        if (matches(elm, selector)) {
             return elm;
         } else {
             return descendant(elm, selector);
         }
     }
 
-    function findAll(elm,selector) {
+    /*
+     * Get the findAll of the specified element , optionally filtered by a selector.
+     * @param {HTMLElement} elm
+     * @param {String optionlly} selector
+     */
+    function findAll(elm, selector) {
         if (!selector) {
             selector = elm;
             elm = document.body;
@@ -806,6 +859,12 @@ define([
         return descendants(elm, selector);
     }
 
+    /*
+     * Get the first child of the specified element , optionally filtered by a selector.
+     * @param {HTMLElement} elm
+     * @param {String optionlly} selector
+     * @param {String} first
+     */
     function firstChild(elm, selector, first) {
         var childNodes = elm.childNodes,
             node = childNodes[0];
@@ -824,6 +883,12 @@ define([
         return null;
     }
 
+    /*
+     * Get the last child of the specified element , optionally filtered by a selector.
+     * @param {HTMLElement} elm
+     * @param {String optionlly} selector
+     * @param {String } last
+     */
     function lastChild(elm, selector, last) {
         var childNodes = elm.childNodes,
             node = childNodes[childNodes.length - 1];
@@ -842,6 +907,11 @@ define([
         return null;
     }
 
+    /*
+     * Check the specified element against a selector.
+     * @param {HTMLElement} elm
+     * @param {String optionlly} selector
+     */
     function matches(elm, selector) {
         if (!selector || !elm || elm.nodeType !== 1) {
             return false
@@ -855,8 +925,8 @@ define([
             }
             return local.match(elm, selector);
         } else if (langx.isArrayLike(selector)) {
-            return langx.inArray(elm,selector) > -1;
-        } else if (langx.isPlainObject(selector)){    
+            return langx.inArray(elm, selector) > -1;
+        } else if (langx.isPlainObject(selector)) {
             return local.check(elm, selector);
         } else {
             return elm === selector;
@@ -864,6 +934,12 @@ define([
 
     }
 
+    /*
+     * Get the nearest next sibing of the specitied element , optional matched by a selector.
+     * @param {HTMLElement} elm
+     * @param {String optionlly} selector
+     * @param {Boolean Optional} adjacent
+     */
     function nextSibling(elm, selector, adjacent) {
         var node = elm.nextSibling;
         while (node) {
@@ -880,6 +956,11 @@ define([
         return null;
     }
 
+    /*
+     * Get the next siblings of the specified element , optional filtered by a selector.
+     * @param {HTMLElement} elm
+     * @param {String optionlly} selector
+     */
     function nextSiblings(elm, selector) {
         var node = elm.nextSibling,
             ret = [];
@@ -894,7 +975,11 @@ define([
         return ret;
     }
 
-
+    /*
+     * Get the parent element of the specified element. if a selector is provided, it retrieves the parent element only if it matches that selector.
+     * @param {HTMLElement} elm
+     * @param {String optionlly} selector
+     */
     function parent(elm, selector) {
         var node = elm.parentNode;
         if (node && (!selector || matches(node, selector))) {
@@ -904,6 +989,12 @@ define([
         return null;
     }
 
+    /*
+     * Get hte nearest previous sibling of the specified element ,optional matched by a selector.
+     * @param {HTMLElement} elm
+     * @param {String optionlly} selector
+     * @param {Boolean Optional } adjacent
+     */
     function previousSibling(elm, selector, adjacent) {
         var node = elm.previousSibling;
         while (node) {
@@ -920,6 +1011,11 @@ define([
         return null;
     }
 
+    /*
+     * Get all preceding siblings of each element in the set of matched elements, optionally filtered by a selector.
+     * @param {HTMLElement} elm
+     * @param {String optionlly} selector
+     */
     function previousSiblings(elm, selector) {
         var node = elm.previousSibling,
             ret = [];
@@ -934,6 +1030,11 @@ define([
         return ret;
     }
 
+    /*
+     * Selects all sibling elements that follow after the “prev” element, have the same parent, and match the filtering “siblings” selector.
+     * @param {HTMLElement} elm
+     * @param {String optionlly} selector
+     */
     function siblings(elm, selector) {
         var node = elm.parentNode.firstChild,
             ret = [];

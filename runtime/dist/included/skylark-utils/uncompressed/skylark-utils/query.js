@@ -351,7 +351,7 @@ define([
                         });
                     } else if (langx.isArrayLike(selector)) {
                        return some.call(self,function(elem) {
-                            return langx.inArray(elem, selector);
+                            return langx.inArray(elem, selector) > -1;
                         });
                     } else if (langx.isHtmlNode(selector)) {
                        return some.call(self,function(elem) {

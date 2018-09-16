@@ -3,44 +3,46 @@ define([
     "./langx",
     "./noder",
     "./styler"
-], function(skylark, langx, noder,styler) {
+], function(skylark, langx, noder, styler) {
     var rootNodeRE = /^(?:body|html)$/i,
         px = langx.toPixel,
         offsetParent = noder.offsetParent,
         cachedScrollbarWidth;
 
-
     function scrollbarWidth() {
-        if ( cachedScrollbarWidth !== undefined ) {
+        if (cachedScrollbarWidth !== undefined) {
             return cachedScrollbarWidth;
         }
         var w1, w2,
-            div = noder.createFragment( "<div style=" +
+            div = noder.createFragment("<div style=" +
                 "'display:block;position:absolute;width:200px;height:200px;overflow:hidden;'>" +
-                "<div style='height:300px;width:auto;'></div></div>" )[0],
+                "<div style='height:300px;width:auto;'></div></div>")[0],
             innerDiv = div.childNodes[0];
 
-        noder.append(document.body,div);
+        noder.append(document.body, div);
 
         w1 = innerDiv.offsetWidth;
-        
-        styler.css( div, "overflow", "scroll" );
+
+        styler.css(div, "overflow", "scroll");
 
         w2 = innerDiv.offsetWidth;
 
-        if ( w1 === w2 ) {
+        if (w1 === w2) {
             w2 = div[0].clientWidth;
         }
 
         noder.remove(div);
 
-        return ( cachedScrollbarWidth = w1 - w2 );
+        return (cachedScrollbarWidth = w1 - w2);
     }
-
+    /*
+     * Get the widths of each border of the specified element.
+     * @param {HTMLElement} elm
+     */
     function borderExtents(elm) {
         var s = getComputedStyle(elm);
         return {
-            left: px(s.borderLeftWidth , elm),
+            left: px(s.borderLeftWidth, elm),
             top: px(s.borderTopWidth, elm),
             right: px(s.borderRightWidth, elm),
             bottom: px(s.borderBottomWidth, elm)
@@ -48,6 +50,11 @@ define([
     }
 
     //viewport coordinate
+    /*
+     * Get or set the viewport position of the specified element border box.
+     * @param {HTMLElement} elm
+     * @param {PlainObject} coords
+     */
     function boundingPosition(elm, coords) {
         if (coords === undefined) {
             return rootNodeRE.test(elm.nodeName) ? { top: 0, left: 0 } : elm.getBoundingClientRect();
@@ -67,6 +74,11 @@ define([
         }
     }
 
+    /*
+     * Get or set the viewport rect of the specified element border box.
+     * @param {HTMLElement} elm
+     * @param {PlainObject} coords
+     */
     function boundingRect(elm, coords) {
         if (coords === undefined) {
             return elm.getBoundingClientRect()
@@ -77,6 +89,11 @@ define([
         }
     }
 
+    /*
+     * Get or set the height of the specified element client box.
+     * @param {HTMLElement} elm
+     * @param {Number} value
+     */
     function clientHeight(elm, value) {
         if (value == undefined) {
             return clientSize(elm).height;
@@ -87,6 +104,11 @@ define([
         }
     }
 
+    /*
+     * Get or set the size of the specified element client box.
+     * @param {HTMLElement} elm
+     * @param {PlainObject} dimension
+     */
     function clientSize(elm, dimension) {
         if (dimension == undefined) {
             return {
@@ -130,6 +152,11 @@ define([
         };
     }
 
+    /*
+     * Get or set the width of the specified element client box.
+     * @param {HTMLElement} elm
+     * @param {PlainObject} dimension
+     */
     function clientWidth(elm, value) {
         if (value == undefined) {
             return clientSize(elm).width;
@@ -141,6 +168,10 @@ define([
         }
     }
 
+    /*
+     * Get the rect of the specified element content box.
+     * @param {HTMLElement} elm
+     */
     function contentRect(elm) {
         var cs = clientSize(elm),
             pex = paddingExtents(elm);
@@ -159,6 +190,10 @@ define([
         };
     }
 
+    /*
+     * Get the document size.
+     * @param {HTMLDocument} doc
+     */
     function getDocumentSize(doc) {
         var documentElement = doc.documentElement,
             body = doc.body,
@@ -176,6 +211,11 @@ define([
         };
     }
 
+    /*
+     * Get the document size.
+     * @param {HTMLElement} elm
+     * @param {Number} value
+     */
     function height(elm, value) {
         if (value == undefined) {
             return size(elm).height;
@@ -187,6 +227,10 @@ define([
         }
     }
 
+    /*
+     * Get the widths of each margin of the specified element.
+     * @param {HTMLElement} elm
+     */
     function marginExtents(elm) {
         var s = getComputedStyle(elm);
         return {
@@ -197,16 +241,17 @@ define([
         }
     }
 
+
     function marginRect(elm) {
         var obj = this.relativeRect(elm),
             me = this.marginExtents(elm);
 
         return {
-                left: obj.left,
-                top: obj.top,
-                width: obj.width + me.left + me.right,
-                height: obj.height + me.top + me.bottom
-            };
+            left: obj.left,
+            top: obj.top,
+            width: obj.width + me.left + me.right,
+            height: obj.height + me.top + me.bottom
+        };
     }
 
 
@@ -215,11 +260,15 @@ define([
             me = this.marginExtents(elm);
 
         return {
-                width: obj.width + me.left + me.right,
-                height: obj.height + me.top + me.bottom
-            };
+            width: obj.width + me.left + me.right,
+            height: obj.height + me.top + me.bottom
+        };
     }
 
+    /*
+     * Get the widths of each padding of the specified element.
+     * @param {HTMLElement} elm
+     */
     function paddingExtents(elm) {
         var s = getComputedStyle(elm);
         return {
@@ -230,6 +279,11 @@ define([
         }
     }
 
+    /*
+     * Get or set the document position of the specified element border box.
+     * @param {HTMLElement} elm
+     * @param {PlainObject} coords
+     */
     //coordinate to the document
     function pagePosition(elm, coords) {
         if (coords === undefined) {
@@ -254,6 +308,11 @@ define([
         }
     }
 
+    /*
+     * Get or set the document rect of the specified element border box.
+     * @param {HTMLElement} elm
+     * @param {PlainObject} coords
+     */
     function pageRect(elm, coords) {
         if (coords === undefined) {
             var obj = elm.getBoundingClientRect()
@@ -270,6 +329,11 @@ define([
         }
     }
 
+    /*
+     * Get or set the position of the specified element border box , relative to parent element.
+     * @param {HTMLElement} elm
+     * @param {PlainObject} coords
+     */
     // coordinate relative to it's parent
     function relativePosition(elm, coords) {
         if (coords == undefined) {
@@ -283,8 +347,8 @@ define([
 
             // Subtract parent offsets and element margins
             return {
-                top: offset.top - parentOffset.top - pbex.top,// - mex.top,
-                left: offset.left - parentOffset.left - pbex.left,// - mex.left
+                top: offset.top - parentOffset.top - pbex.top, // - mex.top,
+                left: offset.left - parentOffset.left - pbex.left, // - mex.left
             }
         } else {
             var props = {
@@ -300,6 +364,11 @@ define([
         }
     }
 
+    /*
+     * Get or set the rect of the specified element border box , relatived to parent element.
+     * @param {HTMLElement} elm
+     * @param {PlainObject} coords
+     */
     function relativeRect(elm, coords) {
         if (coords === undefined) {
             var // Get *real* offsetParent
@@ -323,7 +392,11 @@ define([
             return this;
         }
     }
-
+    /*
+     * Scroll the specified element into view.
+     * @param {HTMLElement} elm
+     * @param {} align
+     */
     function scrollIntoView(elm, align) {
         function getOffset(elm, rootElm) {
             var x, y, parent = elm;
@@ -362,7 +435,11 @@ define([
 
         return this;
     }
-
+    /*
+     * Get or set the current horizontal position of the scroll bar for the specified element.
+     * @param {HTMLElement} elm
+     * @param {Number} value
+     */
     function scrollLeft(elm, value) {
         var hasScrollLeft = "scrollLeft" in elm;
         if (value === undefined) {
@@ -376,7 +453,11 @@ define([
             return this;
         }
     }
-
+    /*
+     * Get or the current vertical position of the scroll bar for the specified element.
+     * @param {HTMLElement} elm
+     * @param {Number} value
+     */
     function scrollTop(elm, value) {
         var hasScrollTop = "scrollTop" in elm;
 
@@ -391,7 +472,11 @@ define([
             return this;
         }
     }
-
+    /*
+     * Get or set the size of the specified element border box.
+     * @param {HTMLElement} elm
+     * @param {PlainObject}dimension
+     */
     function size(elm, dimension) {
         if (dimension == undefined) {
             if (langx.isWindow(elm)) {
@@ -430,7 +515,11 @@ define([
             return this;
         }
     }
-
+    /*
+     * Get or set the size of the specified element border box.
+     * @param {HTMLElement} elm
+     * @param {Number} value
+     */
     function width(elm, value) {
         if (value == undefined) {
             return size(elm).width;
@@ -467,9 +556,9 @@ define([
 
         marginExtents: marginExtents,
 
-        marginRect : marginRect,
+        marginRect: marginRect,
 
-        marginSize : marginSize,
+        marginSize: marginSize,
 
         offsetParent: offsetParent,
 
@@ -485,7 +574,7 @@ define([
 
         relativeRect: relativeRect,
 
-        scrollbarWidth : scrollbarWidth,
+        scrollbarWidth: scrollbarWidth,
 
         scrollIntoView: scrollIntoView,
 

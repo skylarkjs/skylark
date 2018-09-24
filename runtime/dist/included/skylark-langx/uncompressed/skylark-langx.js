@@ -536,19 +536,18 @@ define('skylark-langx/langx',["./skylark"], function(skylark) {
     }
     
     function debounce(fn, wait) {
-        var timeout,
-            args,
-            later = function() {
-                fn.apply(null, args);
+        var timeout;
+        return function () {
+            var context = this, args = arguments;
+            var later = function () {
+                timeout = null;
+                fn.apply(context, args);
             };
-
-        return function() {
-            args = arguments;
-            clearTimeout(timeout);
+            if (timeout) clearTimeout(timeout);
             timeout = setTimeout(later, wait);
         };
     }
-
+   
     var delegate = (function() {
         // boodman/crockford delegation w/ cornford optimization
         function TMP() {}

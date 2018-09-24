@@ -76,6 +76,8 @@ define([
     langx.mixin(browser, {
         css3PropPrefix: css3PropPrefix,
 
+        isIE : !!/msie/i.exec( window.navigator.userAgent ),
+
         normalizeStyleProperty: normalizeStyleProperty,
 
         normalizeCssProperty: normalizeCssProperty,

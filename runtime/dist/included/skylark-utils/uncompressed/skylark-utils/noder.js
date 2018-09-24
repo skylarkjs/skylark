@@ -220,6 +220,8 @@ define([
         }
     }
 
+   var rxhtmlTag = /<(?!area|br|col|embed|hr|img|input|link|meta|param)(([\w:]+)[^>]*)\/>/gi;
+ 
     /*   
      * Get the HTML contents of the first element in the set of matched elements.
      * @param {HTMLElement} node
@@ -232,6 +234,9 @@ define([
             this.empty(node);
             html = html || "";
             if (langx.isString(html) || langx.isNumber(html)) {
+
+                html = html.replace( rxhtmlTag, "<$1></$2>" );
+               
                 node.innerHTML = html;
             } else if (langx.isArrayLike(html)) {
                 for (var i = 0; i < html.length; i++) {
@@ -242,6 +247,7 @@ define([
             }
         }
     }
+
 
     /*   
      * Check to see if a dom node is a descendant of another dom node.

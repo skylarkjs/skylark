@@ -128,11 +128,11 @@ define([
             var computedStyle,
                 computedStyle = getComputedStyle(elm, '')
             if (langx.isString(property)) {
-                return elm.style[camelCase(property)] || computedStyle.getPropertyValue(property)
+                return elm.style[camelCase(property)] || computedStyle.getPropertyValue(dasherize(property))
             } else if (langx.isArrayLike(property)) {
                 var props = {}
                 forEach.call(property, function(prop) {
-                    props[prop] = (elm.style[camelCase(prop)] || computedStyle.getPropertyValue(prop))
+                    props[prop] = (elm.style[camelCase(prop)] || computedStyle.getPropertyValue(dasherize(prop)))
                 })
                 return props
             }

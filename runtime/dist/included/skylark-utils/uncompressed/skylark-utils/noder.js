@@ -233,10 +233,10 @@ define([
         } else {
             this.empty(node);
             html = html || "";
-            if (langx.isString(html) || langx.isNumber(html)) {
-
+            if (langx.isString(html)) {
                 html = html.replace( rxhtmlTag, "<$1></$2>" );
-               
+            }
+            if (langx.isString(html) || langx.isNumber(html)) {               
                 node.innerHTML = html;
             } else if (langx.isArrayLike(html)) {
                 for (var i = 0; i < html.length; i++) {

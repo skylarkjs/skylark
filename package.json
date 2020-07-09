@@ -1,6 +1,6 @@
 {
   "name": "skylarkjs",
-  "version": "0.9.8-beta",
+  "version": "0.9.9",
   "runtime": {
     "version": "0.9.7-beta"
   },
@@ -28,45 +28,85 @@
   "license": "MIT",
   "bugs": "https://github.com/skylarkjs/skylark/issues",
   "dependencies": {
-    "asar": "^0.13.0",
-    "copy-dir": "^0.3.0",
-    "del": "^1.2.1",
-    "ejs": "^2.5.7",
-    "electron": "^1.7.6",
-    "rmdir": "^1.2.0",
-    "skylark-slax-browser": "^0.9.0",
-    "skylark-slax-nodeserver": "^0.9.0",
-    "zip-local": "^0.3.4"
-  },
-  "bin": {
-    "skylarkjs": "./bin/cli.js",
-    "sjs": "./bin/cli.js"
-  },
-  "devDependencies": {
-    "del": "^1.2.1",
+    "@babel/cli": "latest",
+    "@babel/core": "latest",
+    "@babel/plugin-transform-react-jsx": "latest",
+    "@babel/preset-env": "latest",
+    "asar": "latest",
+    "async": "^3.2.0",
+    "comparify": "latest",
+    "copy-dir": "latest",
+    "del": "latest",
+    "ejs": "latest",
+    "electron": "latest",
+    "escodegen": "latest",
+    "espree": "latest",
+    "esprima": "latest",
+    "esquery": "latest",
+    "esquery-jsx": "latest",
+    "estemplate": "latest",
+    "estraverse": "latest",
+    "event-stream": "^4.0.1",
+    "fancy-log": "latest",
     "gulp": "^3.9.0",
-    "gulp-amd-optimizer": "^0.3.4",
     "gulp-autoprefixer": "^2.3.1",
-    "gulp-babel": "^5.2.0",
+    "gulp-babel": "^8.0.0",
     "gulp-concat": "^2.6.0",
     "gulp-connect": "^2.2.0",
     "gulp-footer": "^1.0.5",
     "gulp-header": "^1.7.1",
-    "gulp-jslint": "~0.2.2",
+    "gulp-jslint": "^1.0.0",
     "gulp-livereload": "^3.8.0",
+    "gulp-noop": "^1.0.0",
     "gulp-rename": "~1.2.2",
     "gulp-replace": "^0.6.1",
-    "gulp-requirejs": "^1.0.0",
+    "gulp-runner": "^1.1.0",
     "gulp-sourcemaps": "^1.5.2",
-    "gulp-uglify": "^1.5.4",
-    "gulp-usemin": "^0.3.11",
-    "gulp-util": "^3.0.6",
-    "run-sequence": "^2.1.0",
-    "skylark-langx": "^0.9.4",
-    "skylark-router": "^0.9.4",
-    "skylark-spa": "^0.9.4",
-    "skylark-utils": "^0.9.4"
+    "gulp-texttojs": "^1.0.3",
+    "gulp-uglify": "^3.0.2",
+    "gulp-usemin": "^0.3.30",
+    "lru-cache": "latest",
+    "moment": "^2.27.0",
+    "plugin-error": "latest",
+    "prettier": "latest",
+    "rmdir": "latest",
+    "run-sequence": "latest",
+    "skylark-slax-browser": "^0.9.0",
+    "skylark-slax-nodeserver": "^0.9.0",
+    "skynode-nfs": "git+https://github.com/skylarknode/skynode-nfs.git#master",
+    "skynode-rjs": "git+https://github.com/skynode-integration/skynode-rjs.git#master",
+    "to-ast": "latest",
+    "uglify-es": "latest",
+    "underscore": "^1.10.2",
+    "yargs": "^15.4.0",
+    "zip-local": "latest"
   },
+  "babel": {
+    "presets": [
+      [
+        "@babel/preset-env",
+        {
+          "targets": {
+            "node": "current"
+          },
+          "shippedProposals": true
+        }
+      ]
+    ],
+    "plugins": [
+      "transform-react-jsx"
+    ],
+    "ignore": [
+      "node_modules/**/*"
+    ]
+  },
+  "bin": {
+    "skylarkjs": "./bin/cli.js",
+    "sjs": "./bin/cli.js",
+    "slax": "./bin/slax.js",
+    "slib": "./bin/slib"
+  },
+  "devDependencies": {},
   "engines": {
     "node": ">=0.8.0"
   }

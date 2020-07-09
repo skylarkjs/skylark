@@ -1,0 +1,71 @@
+{
+    "name" : "chaptersApp",
+    "title": "A exmaple with navbar and a welcome view and three chapter views",
+
+
+    "skylarkjs" : {
+	    "build": {
+	      "packages": {
+	        "skylark-nunugui": "./packages/skylark-nunugui/src",
+	        "skylark-nunu-three": "./packages/skylark-nunu-three/src"
+	      },
+	      "prepare": {
+	        "texttojs": [
+	          "html",
+	          "json",
+	          "css"
+	        ],
+	        "jsxtojs": false,
+	        "es6toamd": false,
+	        "cjstoamd": false
+	      },
+	      "bundle": {
+	        "standard": {
+	          "include": [
+	            "skylark-threejs",
+	            "skylark-threejs-ex",
+	            "skylark-nunugui",
+	            "skylark-nunu-three"
+	          ]
+	        }
+	      }
+	    },
+	    "libs"  : {
+	    	
+	    }
+    },
+    "runtime" : {
+      "skylarkjs" : {
+        "version" : "0.9.1"
+      },
+      "paths": {
+        "text" : "https://cdnjs.cloudflare.com/ajax/libs/require-text/2.0.12/text"
+      }
+    },
+    "page" : {
+        "routeViewer" : "#yield"
+     },
+    "plugins" : {
+      "highlight" : {
+          "hookers": "routed",
+          "controller" : {
+            "type"  : "scripts/plugins/highlight/HighlightController"
+          }
+      }
+    },
+    "routes" : {
+      "home": {
+          "pathto" : "/",
+          "controller" : {
+            "type" : "scripts/routes/home/HomeController"
+          }
+      },
+      "chapter": {
+          "pathto" : "/chapter/:id",
+          "controller" : {
+            "type" : "scripts/routes/chapter/ChapterController"
+          }
+      }
+    }
+}
+  

@@ -101,8 +101,6 @@
     ]
   },
   "bin": {
-    "skylarkjs": "./bin/cli.js",
-    "sjs": "./bin/cli.js",
     "slax": "./bin/slax.js",
     "slib": "./bin/slib"
   },

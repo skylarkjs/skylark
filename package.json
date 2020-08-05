@@ -102,7 +102,7 @@
   },
   "bin": {
     "slax": "./bin/slax.js",
-    "slib": "./bin/slib"
+    "slib": "./bin/slib.js"
   },
   "devDependencies": {},
   "engines": {
